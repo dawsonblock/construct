@@ -12,6 +12,7 @@ Verifies that:
 """
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 import pytest
@@ -24,9 +25,32 @@ except Exception:  # pragma: no cover
 WEB_DIR = Path(__file__).resolve().parents[1] / "apps" / "web"
 
 
+def _db_available() -> bool:
+    """The API app constructs Repositories.from_env() at import time, which
+    requires a reachable PostgreSQL. Skip the HTTP tests when it is not
+    available, unless REQUIRE_INTEGRATION=1 turns the skip into a failure —
+    the same convention as tests/conftest.py.
+    """
+    dsn = (os.getenv("APP_DATABASE_URL") or os.getenv("DATABASE_URL") or "").strip()
+    if not dsn:
+        return False
+    try:
+        import psycopg
+        with psycopg.connect(dsn, connect_timeout=2) as conn:
+            with conn.cursor() as cur:
+                cur.execute("SELECT 1")
+                return cur.fetchone() is not None
+    except Exception:
+        return False
+
+
 def _client():
     if TestClient is None:
         pytest.skip("FastAPI TestClient not available")
+    if not _db_available():
+        if os.getenv("REQUIRE_INTEGRATION") == "1":
+            pytest.fail("no PostgreSQL reachable (REQUIRE_INTEGRATION=1)")
+        pytest.skip("no PostgreSQL reachable — start the stack with `make up`")
     from apps.api.main import app
 
     return TestClient(app, raise_server_exceptions=False)

@@ -11,7 +11,7 @@ from construction_ai.persistence.repositories.base import Repository
 APPROVAL_COLUMNS = (
     "organization_id, approval_id, project_id, reference, approval_type, subject_type, subject_id, "
     "recommended_action, amount, currency, status, exceptions, evidence_ids, requested_by, decided_by, decided_at, "
-    "state_fingerprint, quorum_threshold"
+    "state_fingerprint, quorum_threshold, decision_fingerprint"
 )
 
 
@@ -34,6 +34,7 @@ def _to_approval(row: dict[str, Any]) -> Approval:
         requested_by=row.get("requested_by") or "ai",
         state_fingerprint=row.get("state_fingerprint"),
         quorum_threshold=row.get("quorum_threshold") or 1,
+        decision_fingerprint=row.get("decision_fingerprint"),
     )
 
 
@@ -114,7 +115,7 @@ class ApprovalRepository(Repository):
         )
         return _to_approval(row) if row else None
 
-    def decide(self, *, scope: Scope, approval_id: UUID, status: str, decided_by: str, state_fingerprint: str | None = None) -> Approval | None:
+    def decide(self, *, scope: Scope, approval_id: UUID, status: str, decided_by: str, state_fingerprint: str | None = None, decision_fingerprint: str | None = None) -> Approval | None:
         """Only a pending approval can be decided, and never by 'ai'.
 
         The transition is a single conditional UPDATE so two concurrent approvers
@@ -123,6 +124,10 @@ class ApprovalRepository(Repository):
 
         v0.5.0-rc1 (item 48): state_fingerprint records the project state at
         decision time, enabling stale-approval detection before execution.
+        v0.5.0-rc3 (Phase 6): decision_fingerprint binds the exact
+        InvoiceSnapshot||VerificationPacket||EvidenceSet||PolicyVersion||
+        ApprovalRequirements hash, so unrelated project changes do not produce
+        false stale positives.
         """
         if status not in {"approved", "held", "rejected"}:
             raise ValueError(f"unsupported approval status: {status!r}")
@@ -131,10 +136,11 @@ class ApprovalRepository(Repository):
         clause, params = self._tenant_clause(scope)
         with self.db.scoped(scope) as cur:
             cur.execute(
-                f"""UPDATE approvals SET status = %s, decided_by = %s, decided_at = now(), state_fingerprint = %s
+                f"""UPDATE approvals SET status = %s, decided_by = %s, decided_at = now(),
+                        state_fingerprint = %s, decision_fingerprint = %s
                     WHERE {clause} AND approval_id = %s AND status = 'pending'
                     RETURNING {APPROVAL_COLUMNS}""",  # noqa: S608
-                [status, decided_by, state_fingerprint, *params, approval_id],
+                [status, decided_by, state_fingerprint, decision_fingerprint, *params, approval_id],
             )
             row = cur.fetchone()
             if row is None:
@@ -147,16 +153,50 @@ class ApprovalPacketRepository(Repository):
     table = "approval_packets"
     id_column = "packet_id"
 
-    def create(self, *, scope: Scope, approval_id: UUID, reference: str, payload: dict[str, Any], created_by: str = "system") -> UUID:
+    @staticmethod
+    def _canonical_hash(payload: dict[str, Any]) -> str:
+        """SHA-256 over a canonical JSON rendering of the packet payload (Phase 19).
+
+        The hash binds the approval decision to the exact packet content. A
+        later verification that produces a different packet yields a different
+        hash, so the decision can detect that it no longer points at current
+        state.
+        """
+        import hashlib
+        import json
+
+        return hashlib.sha256(
+            json.dumps(payload, sort_keys=True, default=str, separators=(",", ":")).encode()
+        ).hexdigest()
+
+    def create(
+        self,
+        *,
+        scope: Scope,
+        approval_id: UUID,
+        reference: str,
+        payload: dict[str, Any],
+        verifier_version: str | None = None,
+        policy_inputs: dict[str, Any] | None = None,
+        version: int = 1,
+        created_by: str = "system",
+    ) -> UUID:
         from psycopg.types.json import Jsonb
 
         from construction_ai.persistence.serialization import dumps
 
+        canonical_hash = self._canonical_hash(payload)
         with self.db.scoped(scope) as cur:
             cur.execute(
-                """INSERT INTO approval_packets(organization_id, approval_id, project_id, reference, payload, created_by)
-                   VALUES(%s,%s,%s,%s,%s,%s) RETURNING packet_id""",
-                (scope.organization_id, approval_id, scope.project_id, reference, Jsonb(payload, dumps=dumps), created_by),
+                """INSERT INTO approval_packets(
+                       organization_id, approval_id, project_id, reference, payload,
+                       version, canonical_hash, verifier_version, policy_inputs, created_by)
+                   VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) RETURNING packet_id""",
+                (
+                    scope.organization_id, approval_id, scope.project_id, reference,
+                    Jsonb(payload, dumps=dumps), version, canonical_hash, verifier_version,
+                    Jsonb(policy_inputs or {}, dumps=dumps), created_by,
+                ),
             )
             return cur.fetchone()[0]
 
@@ -164,11 +204,52 @@ class ApprovalPacketRepository(Repository):
         row = self.get_row(scope=scope, record_id=packet_id, columns="payload")
         return row["payload"] if row else None
 
+    def get_with_meta(self, *, scope: Scope, packet_id: UUID) -> dict[str, Any] | None:
+        """Return the payload plus immutability metadata (version, canonical_hash,
+        verifier_version, policy_inputs, created_at)."""
+        row = self.get_row(
+            scope=scope, record_id=packet_id,
+            columns="payload, version, canonical_hash, verifier_version, policy_inputs, created_at",
+        )
+        if not row:
+            return None
+        return {
+            "payload": row["payload"],
+            "version": row.get("version", 1),
+            "canonical_hash": row.get("canonical_hash"),
+            "verifier_version": row.get("verifier_version"),
+            "policy_inputs": row.get("policy_inputs") or {},
+            "created_at": row.get("created_at"),
+        }
+
     def for_approval(self, *, scope: Scope, approval_id: UUID) -> dict[str, Any] | None:
+        """Latest packet for an approval, ordered by created_at (packets are
+        immutable append-only rows — updated_at no longer changes)."""
         clause, params = self._tenant_clause(scope)
         row = self._fetch_one(
             scope,
-            f"SELECT payload FROM approval_packets WHERE {clause} AND approval_id = %s ORDER BY updated_at DESC LIMIT 1",
+            f"SELECT payload FROM approval_packets WHERE {clause} AND approval_id = %s ORDER BY created_at DESC LIMIT 1",
             [*params, approval_id],
         )
         return row["payload"] if row else None
+
+    def latest_meta_for_approval(self, *, scope: Scope, approval_id: UUID) -> dict[str, Any] | None:
+        """Immutability metadata for the latest packet of an approval."""
+        clause, params = self._tenant_clause(scope)
+        row = self._fetch_one(
+            scope,
+            f"""SELECT packet_id, version, canonical_hash, verifier_version, policy_inputs, created_at
+                FROM approval_packets WHERE {clause} AND approval_id = %s
+                ORDER BY created_at DESC LIMIT 1""",
+            [*params, approval_id],
+        )
+        if not row:
+            return None
+        return {
+            "packet_id": str(row["packet_id"]),
+            "version": row.get("version", 1),
+            "canonical_hash": row.get("canonical_hash"),
+            "verifier_version": row.get("verifier_version"),
+            "policy_inputs": row.get("policy_inputs") or {},
+            "created_at": row.get("created_at"),
+        }

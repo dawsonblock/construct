@@ -3,7 +3,7 @@ SHELL := /bin/bash
 COMPOSE := docker compose
 SCRATCH := .venv
 
-.PHONY: help env up down logs ps migrate migrate-status seed acceptance gate test test-integration test-stack lint lock clean
+.PHONY: help env up down logs ps migrate migrate-status seed acceptance gate test test-integration test-stack lint lock clean qualify-external-effects qualify qualify-full
 
 help: ## Show available targets
 	@grep -hE '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN{FS=":.*?## "}{printf "  \033[1m%-16s\033[0m %s\n", $$1, $$2}'
@@ -62,11 +62,48 @@ lock: ## Regenerate requirements.lock.txt / requirements-dev.lock.txt
 	   $(SCRATCH)-lock/bin/pip freeze --exclude-editable | grep -v '^construction-ai-ops' | sort; } > requirements.lock.txt
 	python -m venv $(SCRATCH)-devlock
 	$(SCRATCH)-devlock/bin/pip install -q --upgrade pip
-	$(SCRATCH)-devlock/bin/pip install -q pytest==8.4.2 pytest-cov==7.0.0 ruff==0.16.0
-	@{ echo "# Dev/test lock. Install on top of requirements.lock.txt. Regenerate with 'make lock'."; \
+	$(SCRATCH)-devlock/bin/pip install -q pytest==8.4.2 pytest-cov==7.0.0 ruff==0.16.0 hypothesis==6.151.4
+	@{ echo "# Dev/test lock. Install on top of requirements.lock.txt. Regenerate with 'make lock'; never hand-edit."; \
 	   $(SCRATCH)-devlock/bin/pip freeze | sort; } > requirements-dev.lock.txt
 	@rm -rf $(SCRATCH)-lock $(SCRATCH)-devlock
 	@echo "locks regenerated"
+
+qualify-external-effects: ## Full clean-slate qualification of external-effect safety (requires PostgreSQL + Redis + ERP stub)
+	@echo "==> Qualifying external-effect safety: clean-slate PostgreSQL + Redis + ERP stub"
+	@echo "    This target requires the full stack to be running (make up)."
+	@echo "    It runs every external-effect test with REQUIRE_INTEGRATION=1 so skips fail."
+	REQUIRE_INTEGRATION=1 python -m pytest -q \
+		tests/test_executor.py \
+		tests/test_reconciliation.py \
+		tests/test_reconcile_unknown.py \
+		tests/test_stale_approval.py \
+		tests/test_decision_fingerprint.py \
+		tests/test_execution_preconditions.py \
+		tests/test_external_action_properties.py \
+		tests/test_external_action_state_machine.py \
+		tests/test_schedule_of_values.py \
+		tests/test_duplicate_detection.py \
+		tests/test_verification_packet_immutable.py \
+		tests/test_evidence_freshness.py \
+		tests/test_integration_pipeline.py \
+		tests/test_erp_supplier_verification.py \
+		tests/test_crash_injection.py \
+		tests/test_crash_injection_erp.py \
+		tests/test_replay_fingerprints.py
+	@echo "==> External-effect qualification passed."
+
+qualify: ## Full qualification: run all tests + generate qualification report (requires full stack)
+	@echo "==> Full qualification: running all tests and generating report"
+	@echo "    This target requires the full stack to be running (make up)."
+	python scripts/qualification_report.py --pytest --output QUALIFICATION_REPORT.json
+	@echo "==> Qualification report written to QUALIFICATION_REPORT.json"
+	@cat QUALIFICATION_REPORT.json | python -c "import json,sys; r=json.load(sys.stdin); print(f'Qualified: {r[\"qualified\"]}')"
+
+qualify-full: ## Full clean-slate qualification: reset DB + run all categories + report (requires full stack)
+	@echo "==> Full clean-slate qualification (Phase 30)"
+	@echo "    This target requires the full stack to be running (make up)."
+	@echo "    It will DROP and RECREATE the database schema."
+	python scripts/full_qualification.py
 
 clean: ## Remove local caches and runtime artifacts
 	rm -rf .pytest_cache .ruff_cache object_store construction_ai_ops.db

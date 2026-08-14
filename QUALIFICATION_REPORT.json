@@ -1,0 +1,43 @@
+{
+  "adversarial": {
+    "exit_code": 0,
+    "passed": true,
+    "summary": "49 passed in 1.85s"
+  },
+  "crash_recovery": {
+    "exit_code": 0,
+    "passed": true,
+    "summary": "23 passed in 1.13s"
+  },
+  "dependency_lock_hash": "655f8e2135e560a60defc0264a9a88c8b7ceda3585142e733f087e89149e8ea0",
+  "external_effect": {
+    "exit_code": 0,
+    "passed": true,
+    "summary": "63 passed in 2.37s"
+  },
+  "generated_at": "2026-08-14T22:28:42.194592+00:00",
+  "git_branch": "v0.4-hardening",
+  "git_commit": "bb1dccc5ba4f0716ac3c1b3639d609de6c8a1778",
+  "manifest_sha": "581baecff1a48024a944577f1fa920b499c78d0ae4a5034684df5d5a50a0acc2",
+  "qualified": true,
+  "release_integrity": {
+    "exit_code": 0,
+    "passed": true,
+    "summary": "20 passed in 0.50s"
+  },
+  "schema": {
+    "migration_count": 23,
+    "migration_fingerprint": "ad9268dbf7f4fc503b9a450422416762b6dfe6116db48826bccc7680add8130e"
+  },
+  "test_suite": {
+    "error": 0,
+    "exit_code": 0,
+    "failed": 0,
+    "passed": 491,
+    "run": true,
+    "skipped": 0,
+    "summary": "491 passed in 16.07s",
+    "total": 491
+  },
+  "version": "0.5.0-rc3.dev0"
+}

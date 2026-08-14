@@ -257,7 +257,7 @@ def test_env_example_documents_every_variable_the_code_reads():
         read.update(re.findall(r"os\.getenv\(\s*[\"']([A-Z0-9_]+)[\"']", path.read_text()))
         read.update(re.findall(r"os\.environ\[\s*[\"']([A-Z0-9_]+)[\"']", path.read_text()))
     # Names supplied by the runtime rather than by operators.
-    ambient = {"LOG_LEVEL", "PATH", "HOME", "HEALTH_PATH", "ACCEPTANCE_JOB_TIMEOUT", "API_BASE", "TEST_DATABASE_URL"}
+    ambient = {"LOG_LEVEL", "PATH", "HOME", "HEALTH_PATH", "ACCEPTANCE_JOB_TIMEOUT", "API_BASE", "TEST_DATABASE_URL", "REQUIRE_INTEGRATION"}
     missing = read - documented - ambient
     assert missing == set(), f"undocumented environment variables: {sorted(missing)}"
 

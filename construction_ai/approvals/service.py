@@ -199,11 +199,22 @@ def decide_approval(
                     "the project state could not be reconstructed"
                 )
 
+            # Phase 6: Compute the decision fingerprint — the exact
+            # InvoiceSnapshot||VerificationPacket||EvidenceSet||PolicyVersion||
+            # ApprovalRequirements hash — atomically with the decision.
+            from construction_ai.approvals.decision_fingerprint import (
+                compute_decision_fingerprint_for_approval,
+            )
+
+            decision_fingerprint = compute_decision_fingerprint_for_approval(
+                repos, scope=scope, approval=decided
+            )
+
             with repos.db.scoped(scope) as cur:
                 cur.execute(
-                    "UPDATE approvals SET state_fingerprint = %s "
+                    "UPDATE approvals SET state_fingerprint = %s, decision_fingerprint = %s "
                     "WHERE approval_id = %s AND organization_id = %s",
-                    (state_fingerprint, approval_id, scope.organization_id),
+                    (state_fingerprint, decision_fingerprint, approval_id, scope.organization_id),
                 )
 
             repos.audit.append(
@@ -214,6 +225,7 @@ def decide_approval(
                          "subject_id": decided.subject_id, "policy_version": policy.version,
                          "reason": reason, "decision_id": str(decision_id),
                          "vote_id": str(vote_id), "state_fingerprint": state_fingerprint,
+                         "decision_fingerprint": decision_fingerprint,
                          "approve_count": approve_count, "quorum_threshold": quorum_threshold,
                          "quorum_met": True},
             )

@@ -229,6 +229,7 @@ class Approval:
     requested_by: str = "ai"
     state_fingerprint: Optional[str] = None  # v0.5.0-rc1 (item 48)
     quorum_threshold: int = 1  # v0.5.0-rc3 (Phase 7)
+    decision_fingerprint: Optional[str] = None  # v0.5.0-rc3 (Phase 6)
 
 
 @dataclass
@@ -265,3 +266,69 @@ class DecisionState:
         if self.next_action:
             data["next_action"] = self.next_action.value
         return data
+
+
+# -- Schedule of values (Phases 15, 16, 17) ---------------------------------
+# Money is carried as Decimal so the progress-billing math never crosses a float
+# boundary before the ERP serialization edge.
+
+@dataclass(frozen=True)
+class Contract:
+    contract_id: str
+    organization_id: str
+    project_id: str
+    company_id: str
+    reference: str
+    name: str = ""
+    base_contract_value: Any = None  # Decimal
+    currency: str = "CAD"
+    status: str = "active"
+
+
+@dataclass(frozen=True)
+class SOVItem:
+    sov_item_id: str
+    organization_id: str
+    contract_id: str
+    reference: str
+    name: str
+    base_value: Any = None  # Decimal
+    currency: str = "CAD"
+    sort_order: int = 0
+
+
+@dataclass(frozen=True)
+class ChangeOrder:
+    change_order_id: str
+    organization_id: str
+    contract_id: str
+    reference: str
+    name: str = ""
+    amount: Any = None  # Decimal, signed
+    currency: str = "CAD"
+    status: str = "approved"
+
+
+@dataclass(frozen=True)
+class InvoiceAllocation:
+    allocation_id: str
+    organization_id: str
+    invoice_id: str
+    sov_item_id: str
+    amount: Any = None  # Decimal
+    currency: str = "CAD"
+
+
+@dataclass(frozen=True)
+class ProgressBillingResult:
+    """Per-SOV-item progress-billing evaluation (Phase 16)."""
+    sov_item_id: str
+    adjusted_contract_value: Any  # Decimal
+    verified_percent_complete: Any  # Decimal 0..100
+    earned_value: Any  # Decimal
+    previously_approved_billing: Any  # Decimal
+    retainage: Any  # Decimal
+    current_billable: Any  # Decimal
+    invoice_amount: Any  # Decimal
+    overbilled: bool
+    currency: str = "CAD"

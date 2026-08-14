@@ -1,0 +1,113 @@
+{
+  "code_fingerprint": "74d48e27dd2fe05a763bb645ec1010cf8ee968ec0a1d991de8c14a08378b5598",
+  "dependencies": {
+    "hypothesis": "6.151.4",
+    "psycopg": "3.3.4",
+    "pytest": "8.4.2",
+    "python": "3.12.0 (main, Apr 26 2026, 15:36:24) [Clang 21.0.0 (clang-2100.0.123.102)]",
+    "redis": "5.3.1",
+    "ruff": "unknown"
+  },
+  "generated_at": "2026-08-14T22:20:07.208892+00:00",
+  "git_branch": "v0.4-hardening",
+  "git_commit": "bb1dccc5ba4f0716ac3c1b3639d609de6c8a1778",
+  "migration_count": 23,
+  "migration_fingerprint": "ad9268dbf7f4fc503b9a450422416762b6dfe6116db48826bccc7680add8130e",
+  "migrations": [
+    {
+      "filename": "001_control_plane.sql",
+      "sha256": "707cf2cfa332c6c9c9404de72f9d59f313d26b6dcc569f417dbc14c196e060d5"
+    },
+    {
+      "filename": "002_runtime_state.sql",
+      "sha256": "8a55a930316cadf067f0e26afecb9877d921a10f20a7328a8e0e674e954a0072"
+    },
+    {
+      "filename": "003_tenancy.sql",
+      "sha256": "730c92bae857de01b1f817af1e09bdbccabebd8d602962f77038ad34e557f956"
+    },
+    {
+      "filename": "004_graph_currency.sql",
+      "sha256": "40acd5c692f9a718615338607c589423efa375469388747ac52ea5afce9defc8"
+    },
+    {
+      "filename": "005_evidence_subject.sql",
+      "sha256": "7618d5d96c878ba7cb99d140565f2e14f8c9f48f7471a21873e1646ffb84cbfd"
+    },
+    {
+      "filename": "006_matching.sql",
+      "sha256": "ab6a4cfa762409049d51002c983bd924a80c388a35423c356a0c3bac975f762c"
+    },
+    {
+      "filename": "007_authority.sql",
+      "sha256": "9e19acf0d960060ace5ed7292ae0522b5516bb1227337ab2803378e2b8488677"
+    },
+    {
+      "filename": "008_identity_bindings_grants.sql",
+      "sha256": "c6f88e6dc761e782eb3cd9272008e8a08a42aa3d452b326dc07a791ed74ea59e"
+    },
+    {
+      "filename": "009_external_entity_mappings.sql",
+      "sha256": "857f3b8aeceb449fb62061a6ae5d3c8dd595e6b4811ce65a25c8eb47ebc86db7"
+    },
+    {
+      "filename": "010_work_confirmations.sql",
+      "sha256": "5834e9cee0c8d0655f428e5f73ac2d6d1f9a3e992435172c105f92ed7da2b8cb"
+    },
+    {
+      "filename": "011_audit_hardening.sql",
+      "sha256": "8f7ced85368f2ff91a29cdfd326c47bfcc3c0d7cec8a41d03d26a1e76e1afbd8"
+    },
+    {
+      "filename": "012_audit_checkpoints.sql",
+      "sha256": "3b467d223d54b0f9c143185c3615165931e442d1c23ab5f9452084966fc51cdf"
+    },
+    {
+      "filename": "013_outbox.sql",
+      "sha256": "f8a3d950dfa1d6ba5d8745fbe6a58c36fb0b1c1842714af0839a00db0d3d6618"
+    },
+    {
+      "filename": "014_job_leases.sql",
+      "sha256": "275beaab37f5f5b09136a1d38b2497d6da5efd5b187f94ef041d1946870c5076"
+    },
+    {
+      "filename": "015_external_actions.sql",
+      "sha256": "a653b3ee508ded111e7a9ba23f66e2ff9d811523506c1c8810bae62e9cdc0ecd"
+    },
+    {
+      "filename": "016_document_blobs.sql",
+      "sha256": "2b2fe3092ddb0c36a448321b1b98413b5886e5abd7c8bde7515809d8273e09f2"
+    },
+    {
+      "filename": "017_decision_fingerprints.sql",
+      "sha256": "c706f4a6cb418d0ed95c62a78002e879f243dca10356602fd7eb1db76aef23f5"
+    },
+    {
+      "filename": "018_approval_state_fingerprints.sql",
+      "sha256": "5e49dd9e8728ded4ec4fca502ba2ab1253ef467bf2adfea2ad7b1086e91213c1"
+    },
+    {
+      "filename": "019_external_action_state_machine.sql",
+      "sha256": "3262d38a6810884f2c4a1e20428aac0eb47b537afa9229cb109d0acafe6e4b2a"
+    },
+    {
+      "filename": "020_approval_quorum.sql",
+      "sha256": "6477be5d0a6ea15aa0ec457ee68877b5d95c86b02727adeb4a90457d5b372302"
+    },
+    {
+      "filename": "021_schedule_of_values.sql",
+      "sha256": "0c5c54871830892b5b8ed75ef98a27c7a8b6840542b139191e1734627f785ce1"
+    },
+    {
+      "filename": "022_verification_packet_immutable.sql",
+      "sha256": "6788c572a4ae3c4417816d3fe2279c3925eda041a57b39b886f2a955ec203256"
+    },
+    {
+      "filename": "023_decision_fingerprint.sql",
+      "sha256": "8054faee6e901028db3dfe2d903bd7e39b10fd3433df24b20fcc75bbf60bf433"
+    }
+  ],
+  "schema_fingerprint": "858f950efb721325f3886acb8b7391ad7b71e055b7c038946cfa09735d67421a",
+  "test_fingerprint": "c48fed4b2eeb481bd6aa70e73f24d1ad66176cf1d91f3db6c7b9135d0c2ce22f",
+  "version": "0.5.0-rc3.dev0"
+}

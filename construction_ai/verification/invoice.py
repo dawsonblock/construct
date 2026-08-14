@@ -19,6 +19,11 @@ from typing import Any
 
 from construction_ai.domain.models import CheckStatus, Invoice, PurchaseOrder, Quote, VerificationResult
 
+# Phase 18: tri-state duplicate status values.
+NOT_DUPLICATE = "NOT_DUPLICATE"
+POSSIBLE_DUPLICATE = "POSSIBLE_DUPLICATE"
+CONFIRMED_DUPLICATE = "CONFIRMED_DUPLICATE"
+
 VERIFIER_VERSION = "2"
 #: Per-currency comparison precision. CAD/USD cents; extend as currencies are added.
 CURRENCY_PRECISION = {"CAD": Decimal("0.01"), "USD": Decimal("0.01"), "EUR": Decimal("0.01")}
@@ -33,6 +38,8 @@ _CHECK_EXCEPTION = {
     "currency_match": "CURRENCY_MISMATCH",
     "not_duplicate": "DUPLICATE_INVOICE",
     "work_confirmed": "WORK_NOT_CONFIRMED",
+    "work_scope_match": "WORK_SCOPE_MISMATCH",  # Phase 15
+    "progress_billing": "OVERBILLING",  # Phase 16
 }
 
 
@@ -71,6 +78,9 @@ def verify_invoice(
     duplicate: bool,
     work_confirmed: bool,
     require_vendor_identity: bool = False,
+    work_scope_confirmed: bool | None = None,
+    progress_billing_overbilled: bool | None = None,
+    duplicate_status: str | None = None,
 ) -> VerificationResult:
     """Run every required check and return a tri-state result.
 
@@ -78,6 +88,16 @@ def verify_invoice(
     replaces it with `work_confirmations` records so a caller cannot declare
     physical completion. Until then, an unconfirmed job reads UNAVAILABLE, not
     PASS.
+
+    v0.5.0-rc3 (Phase 15/16): two new checks are evaluated when the caller
+    supplies SOV-derived inputs (the pipeline computes them from persisted
+    records; pure unit callers may omit them):
+
+      - work_scope_match: when an invoice allocates to SOV items, work must be
+        confirmed for those specific scopes. UNAVAILABLE when no SOV allocations.
+      - progress_billing: quantitative overbilling check. PASS when within the
+        earned-value ceiling; REVIEW_REQUIRED when overbilled; UNAVAILABLE when
+        no SOV allocations exist to evaluate against.
     """
     checks: dict[str, CheckStatus] = {}
     details: dict[str, dict[str, Any]] = {}
@@ -164,14 +184,47 @@ def verify_invoice(
     checks["tax_math"] = status
     details["tax_math"] = _check(status, observed=(invoice.subtotal, invoice.tax), expected=invoice.total)
 
-    # not_duplicate
-    checks["not_duplicate"] = CheckStatus.PASS if not duplicate else CheckStatus.FAIL
-    details["not_duplicate"] = _check(checks["not_duplicate"], observed=duplicate, expected=False)
+    # not_duplicate (Phase 18) — tri-state. A caller may pass duplicate_status
+    # (NOT_DUPLICATE / POSSIBLE_DUPLICATE / CONFIRMED_DUPLICATE) computed by the
+    # duplicate detection service; otherwise the legacy boolean is mapped:
+    # True → CONFIRMED_DUPLICATE, False → NOT_DUPLICATE. A possible duplicate is
+    # REVIEW_REQUIRED (HOLD), not an automatic rejection; a confirmed duplicate
+    # is a hard FAIL.
+    if duplicate_status is None:
+        duplicate_status = CONFIRMED_DUPLICATE if duplicate else NOT_DUPLICATE
+    if duplicate_status == NOT_DUPLICATE:
+        checks["not_duplicate"] = CheckStatus.PASS
+    elif duplicate_status == POSSIBLE_DUPLICATE:
+        checks["not_duplicate"] = CheckStatus.REVIEW_REQUIRED
+    else:
+        checks["not_duplicate"] = CheckStatus.FAIL
+    details["not_duplicate"] = _check(checks["not_duplicate"], observed=duplicate_status, expected=NOT_DUPLICATE)
 
     # work_confirmed — UNAVAILABLE when not confirmed (item 12 will source this
     # from work_confirmations records; a caller cannot declare completion).
     checks["work_confirmed"] = CheckStatus.PASS if work_confirmed else CheckStatus.UNAVAILABLE
     details["work_confirmed"] = _check(checks["work_confirmed"], observed=work_confirmed, expected=True)
+
+    # work_scope_match (Phase 15) — scope-specific work confirmation. Only
+    # evaluated when the caller supplies SOV-derived state (None = no SOV
+    # allocations, so this check does not apply and the project-level
+    # work_confirmed check above governs). When the invoice bills a specific
+    # scope, work must be confirmed for that exact scope.
+    if work_scope_confirmed is not None:
+        checks["work_scope_match"] = CheckStatus.PASS if work_scope_confirmed else CheckStatus.FAIL
+        details["work_scope_match"] = _check(
+            checks["work_scope_match"], observed=work_scope_confirmed, expected=True,
+        )
+
+    # progress_billing (Phase 16) — quantitative overbilling. Only evaluated
+    # when SOV allocations exist (None = not applicable). True = overbilled.
+    if progress_billing_overbilled is not None:
+        checks["progress_billing"] = (
+            CheckStatus.REVIEW_REQUIRED if progress_billing_overbilled else CheckStatus.PASS
+        )
+        details["progress_billing"] = _check(
+            checks["progress_billing"], observed=progress_billing_overbilled, expected=False,
+        )
 
     exceptions = [_CHECK_EXCEPTION[name] for name, status in checks.items() if status != CheckStatus.PASS]
     return VerificationResult(invoice.invoice_id, checks, exceptions, [], details)

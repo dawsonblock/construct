@@ -246,6 +246,33 @@ class InvoicePipeline:
                 work_confirmed = WorkConfirmationService(self.repos.work_confirmations).is_work_confirmed(
                     scope=working, project_id=project_id, invoice_id=invoice_id
                 )
+            # Phase 15/16: scope-specific work confirmation + quantitative progress
+            # billing, derived from persisted SOV allocations. Both are None
+            # (UNAVAILABLE) when the invoice has no SOV allocations.
+            work_scope_confirmed: bool | None = None
+            progress_billing_overbilled: bool | None = None
+            allocations = self.repos.invoice_allocations.for_invoice(scope=working, invoice_id=invoice_id)
+            if allocations:
+                from construction_ai.work.confirmation import WorkConfirmationService
+                from construction_ai.verification.progress_billing import evaluate_progress_billing
+
+                sov_item_ids = [UUID(a.sov_item_id) for a in allocations]
+                work_scope_confirmed = WorkConfirmationService(
+                    self.repos.work_confirmations
+                ).is_work_confirmed_for_sov_items(scope=working, sov_item_ids=sov_item_ids)
+                progress = evaluate_progress_billing(self.repos, scope=working, invoice_id=invoice_id)
+                progress_billing_overbilled = progress.overbilled if progress.evaluated else None
+            # Phase 18: tri-state duplicate detection. A pre-insert find_duplicate
+            # match (vendor+invoice number) is itself a CONFIRMED_DUPLICATE — the
+            # submission duplicates an existing invoice. For a fresh invoice, run
+            # the broader signal set (ERP supplier, content hash, weak signals).
+            from construction_ai.verification.duplicate import CONFIRMED_DUPLICATE, detect_duplicates
+
+            if duplicate is not None:
+                duplicate_status = CONFIRMED_DUPLICATE
+            else:
+                dup_result = detect_duplicates(self.repos, scope=organization_scope, invoice_id=invoice_id)
+                duplicate_status = dup_result.status
             verification = verify_invoice(
                 invoice,
                 purchase_order,
@@ -253,6 +280,9 @@ class InvoicePipeline:
                 duplicate=duplicate is not None,
                 work_confirmed=work_confirmed,
                 require_vendor_identity=True,
+                work_scope_confirmed=work_scope_confirmed,
+                progress_billing_overbilled=progress_billing_overbilled,
+                duplicate_status=duplicate_status,
             )
             recommended = "APPROVE" if verification.passed else "HOLD"
 
@@ -304,6 +334,14 @@ class InvoicePipeline:
                     approval_id=UUID(approval.approval_id),
                     reference=f"APKT-{uuid4().hex[:12]}",
                     payload=packet_payload,
+                    verifier_version=verification.check_details.get("vendor_match", {}).get("verifier_version")
+                    if verification.check_details else None,
+                    policy_inputs={
+                        "checks": list(verification.checks.keys()),
+                        "duplicate_status": duplicate_status,
+                        "work_scope_confirmed": work_scope_confirmed,
+                        "progress_billing_overbilled": progress_billing_overbilled,
+                    },
                 )
 
                 # Project the invoice and everything it now relates to into typed nodes

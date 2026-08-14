@@ -17,3 +17,4 @@ class WorkConfirmation:
     status: str
     percent_complete: float | None
     occurred_at: datetime
+    sov_item_id: UUID | None = None  # Phase 15: scope-specific binding

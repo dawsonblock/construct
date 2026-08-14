@@ -20,6 +20,7 @@ def _to_confirmation(row: dict[str, Any]) -> WorkConfirmation:
         status=row["status"],
         percent_complete=float(row["percent_complete"]) if row.get("percent_complete") is not None else None,
         occurred_at=row["occurred_at"],
+        sov_item_id=row.get("sov_item_id"),
     )
 
 
@@ -40,6 +41,7 @@ class WorkConfirmationRepository:
         quantity: float | None = None,
         occurred_at: datetime | None = None,
         evidence_ids: list[UUID] | None = None,
+        sov_item_id: UUID | None = None,
         created_by: str = "system",
     ) -> WorkConfirmation:
         from decimal import Decimal
@@ -48,10 +50,10 @@ class WorkConfirmationRepository:
             cur.execute(
                 """INSERT INTO work_confirmations(
                        organization_id, project_id, scope_id, invoice_id, confirmed_by_user_id,
-                       confirmation_type, percent_complete, quantity, occurred_at, evidence_ids, created_by)
-                   VALUES(%s,%s,%s,%s,%s,%s,%s,%s,COALESCE(%s, now()),%s,%s)
+                       confirmation_type, percent_complete, quantity, occurred_at, evidence_ids, sov_item_id, created_by)
+                   VALUES(%s,%s,%s,%s,%s,%s,%s,%s,COALESCE(%s, now()),%s,%s,%s)
                    RETURNING confirmation_id, organization_id, project_id, scope_id, invoice_id,
-                             confirmed_by_user_id, confirmation_type, status, percent_complete, occurred_at""",
+                             confirmed_by_user_id, confirmation_type, status, percent_complete, occurred_at, sov_item_id""",
                 (
                     scope.organization_id, project_id, scope_id, invoice_id, confirmed_by_user_id,
                     confirmation_type,
@@ -59,6 +61,7 @@ class WorkConfirmationRepository:
                     Decimal(str(quantity)) if quantity is not None else None,
                     occurred_at,
                     list(evidence_ids or []),
+                    sov_item_id,
                     created_by,
                 ),
             )
@@ -68,7 +71,7 @@ class WorkConfirmationRepository:
         with self.db.scoped(scope) as cur:
             cur.execute(
                 """SELECT confirmation_id, organization_id, project_id, scope_id, invoice_id,
-                          confirmed_by_user_id, confirmation_type, status, percent_complete, occurred_at
+                          confirmed_by_user_id, confirmation_type, status, percent_complete, occurred_at, sov_item_id
                    FROM work_confirmations
                    WHERE organization_id = %s AND project_id = %s AND status = 'confirmed'
                    ORDER BY occurred_at DESC""",
@@ -82,11 +85,26 @@ class WorkConfirmationRepository:
         with self.db.scoped(scope) as cur:
             cur.execute(
                 """SELECT confirmation_id, organization_id, project_id, scope_id, invoice_id,
-                          confirmed_by_user_id, confirmation_type, status, percent_complete, occurred_at
+                          confirmed_by_user_id, confirmation_type, status, percent_complete, occurred_at, sov_item_id
                    FROM work_confirmations
                    WHERE organization_id = %s AND invoice_id = %s AND status = 'confirmed'
                    ORDER BY occurred_at DESC""",
                 (scope.organization_id, invoice_id),
+            )
+            from construction_ai.persistence.db import rows_to_dicts
+
+            return [_to_confirmation(r) for r in rows_to_dicts(cur)]
+
+    def for_sov_item(self, *, scope: Scope, sov_item_id: UUID) -> list[WorkConfirmation]:
+        """Phase 15: scope-specific confirmations bound to a SOV item."""
+        with self.db.scoped(scope) as cur:
+            cur.execute(
+                """SELECT confirmation_id, organization_id, project_id, scope_id, invoice_id,
+                          confirmed_by_user_id, confirmation_type, status, percent_complete, occurred_at, sov_item_id
+                   FROM work_confirmations
+                   WHERE organization_id = %s AND sov_item_id = %s AND status = 'confirmed'
+                   ORDER BY occurred_at DESC""",
+                (scope.organization_id, sov_item_id),
             )
             from construction_ai.persistence.db import rows_to_dicts
 

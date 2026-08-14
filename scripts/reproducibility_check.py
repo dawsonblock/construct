@@ -27,10 +27,31 @@ class CheckResult:
     name: str
     passed: bool
     detail: str = ""
+    skipped: bool = False
 
 
 def _owner_dsn() -> str:
     return os.getenv("DATABASE_URL", "postgresql://construction:construction@localhost:5432/construction_ai")
+
+
+def _db_available() -> bool:
+    """True if a PostgreSQL is reachable at the owner DSN.
+
+    Mirrors the conftest convention: DB-backed checks skip when no database is
+    reachable, unless REQUIRE_INTEGRATION=1 turns that skip into a failure.
+    """
+    try:
+        import psycopg
+        with psycopg.connect(_owner_dsn(), connect_timeout=2) as conn:
+            with conn.cursor() as cur:
+                cur.execute("SELECT 1")
+                return cur.fetchone() is not None
+    except Exception:
+        return False
+
+
+def _require_integration() -> bool:
+    return os.getenv("REQUIRE_INTEGRATION") == "1"
 
 
 def check_manifest_is_stable() -> CheckResult:
@@ -56,6 +77,16 @@ def check_manifest_is_stable() -> CheckResult:
 
 def check_migration_idempotent() -> CheckResult:
     """Re-running migrations is a no-op (all already applied)."""
+    # migrate.py requires DATABASE_URL to be explicitly set; a reachable but
+    # unconfigured local postgres is not a safe target. Skip unless the user
+    # has pointed DATABASE_URL at the project database (or REQUIRE_INTEGRATION=1).
+    configured_dsn = (os.getenv("DATABASE_URL") or "").strip()
+    if not configured_dsn or not _db_available():
+        if _require_integration():
+            return CheckResult("migration_idempotent", False, "DATABASE_URL not configured / no database reachable (REQUIRE_INTEGRATION=1)")
+        return CheckResult(
+            "migration_idempotent", True, "skipped: DATABASE_URL not configured", skipped=True,
+        )
     result = subprocess.run(
         [sys.executable, str(Path(__file__).parent / "migrate.py")],
         capture_output=True, text=True, timeout=30,
@@ -156,16 +187,23 @@ def main() -> int:
     results = run_all_checks()
     all_passed = True
     for r in results:
-        status = "PASS" if r.passed else "FAIL"
+        if r.skipped:
+            status = "SKIP"
+        elif r.passed:
+            status = "PASS"
+        else:
+            status = "FAIL"
         print(f"  [{status}] {r.name}: {r.detail}")
-        if not r.passed:
+        if not r.passed and not r.skipped:
             all_passed = False
     print()
     if all_passed:
-        print(f"All {len(results)} reproducibility checks passed.")
+        skipped = sum(1 for r in results if r.skipped)
+        note = f" ({skipped} skipped: no database)" if skipped else ""
+        print(f"All {len(results)} reproducibility checks passed.{note}")
         return 0
     else:
-        failed = sum(1 for r in results if not r.passed)
+        failed = sum(1 for r in results if not r.passed and not r.skipped)
         print(f"{failed}/{len(results)} reproducibility checks FAILED.")
         return 1
 

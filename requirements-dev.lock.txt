@@ -1,10 +1,11 @@
-# Dev/test lock. Install on top of requirements.lock.txt.
-# Regenerate with `make lock`, never hand-edit.
+# Dev/test lock. Install on top of requirements.lock.txt. Regenerate with 'make lock'; never hand-edit.
 Pygments==2.20.0
 coverage==7.15.4
+hypothesis==6.151.4
 iniconfig==2.3.0
 packaging==26.3
 pluggy==1.6.0
-pytest==8.4.2
 pytest-cov==7.0.0
+pytest==8.4.2
 ruff==0.16.0
+sortedcontainers==2.4.0

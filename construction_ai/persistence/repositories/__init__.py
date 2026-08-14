@@ -29,6 +29,12 @@ from construction_ai.persistence.repositories.jobs import JobRepository
 from construction_ai.persistence.repositories.organizations import OrganizationRepository
 from construction_ai.persistence.repositories.outbox import OutboxRepository
 from construction_ai.persistence.repositories.projects import CompanyRepository, ProjectRepository
+from construction_ai.persistence.repositories.sov import (
+    ChangeOrderRepository,
+    ContractRepository,
+    InvoiceAllocationRepository,
+    SOVItemRepository,
+)
 
 __all__ = [
     "ApprovalAuthorityRepository",
@@ -36,8 +42,10 @@ __all__ = [
     "ApprovalPacketRepository",
     "ApprovalRepository",
     "AuditRepository",
+    "ChangeOrderRepository",
     "CommunicationRepository",
     "CompanyRepository",
+    "ContractRepository",
     "Database",
     "DecisionRepository",
     "DocumentBlobRepository",
@@ -45,6 +53,7 @@ __all__ = [
     "EntityRepository",
     "ExternalActionRepository",
     "EvidenceRepository",
+    "InvoiceAllocationRepository",
     "InvoiceRepository",
     "JobRepository",
     "OrganizationRepository",
@@ -54,6 +63,7 @@ __all__ = [
     "PurchaseOrderRepository",
     "QuoteRepository",
     "Repositories",
+    "SOVItemRepository",
     "Scope",
     "ScopeError",
     "SessionRepository",
@@ -174,6 +184,22 @@ class Repositories:
         from construction_ai.work.repository import WorkConfirmationRepository
 
         return WorkConfirmationRepository(self.db)
+
+    @cached_property
+    def contracts(self) -> ContractRepository:
+        return ContractRepository(self.db)
+
+    @cached_property
+    def sov_items(self) -> SOVItemRepository:
+        return SOVItemRepository(self.db)
+
+    @cached_property
+    def change_orders(self) -> ChangeOrderRepository:
+        return ChangeOrderRepository(self.db)
+
+    @cached_property
+    def invoice_allocations(self) -> InvoiceAllocationRepository:
+        return InvoiceAllocationRepository(self.db)
 
     @cached_property
     def reconstruction(self):

@@ -83,16 +83,22 @@ class ExternalActionTerminal(ExecutionError):
 
 
 def check_approval_staleness(repos: Repositories, *, scope: Scope, approval) -> None:
-    """Verify the approval is not stale (item 48).
+    """Verify the approval is not stale (item 48, Phase 6).
 
-    Reconstructs the current project state and compares its fingerprint to the
-    state_fingerprint recorded at approval time. If they differ, the state has
-    drifted and the approval is stale — the human approved a different state
-    than the one we'd execute against.
+    Two complementary checks:
 
-    v0.5.0-rc3 (Phase 4): The fingerprint is now mandatory. If
-    state_fingerprint is None, execution is refused — fail closed.
-    Invariant: NoFingerprint ⇒ ERPExecution is forbidden.
+    1. Project-wide state_fingerprint (Phase 4/5): reconstructs the current
+       project state and compares its fingerprint to the one recorded at
+       approval time. If they differ, the state has drifted and the approval is
+       stale. Mandatory — NoFingerprint ⇒ ERPExecution is forbidden.
+
+    2. Decision fingerprint (Phase 6): recomputes the exact
+       InvoiceSnapshot||VerificationPacket||EvidenceSet||PolicyVersion||
+       ApprovalRequirements hash from current authoritative rows. If it differs
+       from the approved one, the specific state the human approved has changed
+       — even if the broad project fingerprint happens to match. This catches
+       drift in the invoice, evidence, or verification packet without false
+       positives from unrelated project changes.
     """
     if not approval.state_fingerprint:
         raise ApprovalStale(
@@ -118,6 +124,22 @@ def check_approval_staleness(repos: Repositories, *, scope: Scope, approval) -> 
             f"approval is stale: state fingerprint changed from {approval.state_fingerprint[:16]}... "
             f"to {current_fp[:16]}... since approval"
         )
+
+    # Phase 6: decision fingerprint — the precise, decision-specific check.
+    if approval.decision_fingerprint:
+        from construction_ai.approvals.decision_fingerprint import (
+            compute_decision_fingerprint_for_approval,
+        )
+
+        current_decision_fp = compute_decision_fingerprint_for_approval(
+            repos, scope=scope, approval=approval
+        )
+        if current_decision_fp != approval.decision_fingerprint:
+            raise ApprovalStale(
+                f"approval is stale: decision fingerprint changed from "
+                f"{approval.decision_fingerprint[:16]}... to {current_decision_fp[:16]}... "
+                f"since approval (invoice/evidence/verification packet drifted)"
+            )
 
 
 @dataclass(frozen=True)
@@ -189,8 +211,26 @@ def execute_approved_invoice(
     if approval.status.value != "approved":
         raise ApprovalNotApproved(f"approval is {approval.status.value}, not approved")
 
-    # 2. Check staleness.
+    # 2. Check staleness (Phase 4/5/6: project-wide + decision fingerprints).
     check_approval_staleness(repos, scope=org_scope, approval=approval)
+
+    # 2b. Phase 22: Evidence freshness precondition. Every piece of evidence the
+    # approval rests on must be within its freshness policy. Stale evidence
+    # requires refresh → reverify → fingerprint comparison; until then, execution
+    # is refused (fail closed).
+    if approval.evidence_ids:
+        from construction_ai.verification.freshness import evaluate_freshness_for_approval
+
+        freshness = evaluate_freshness_for_approval(
+            repos, scope=org_scope,
+            evidence_ids=[UUID(eid) for eid in approval.evidence_ids],
+        )
+        if not freshness.fresh:
+            stale_fields = [s.field for s in freshness.stale]
+            raise ExecutionError(
+                f"approval {approval_id} rests on stale evidence ({stale_fields}) — "
+                f"refresh and reverify before execution"
+            )
 
     # 3. Load the invoice to build the ERP payload.
     invoice_id = UUID(approval.subject_id)
@@ -289,6 +329,7 @@ def execute_approved_invoice(
     _check_crash("before_erp_create")
 
     # 8. Create the draft in ERP.
+    request_hash = _hash_json(payload)
     try:
         draft_response = adapter.create_purchase_invoice_draft(payload)
     except Exception as e:
@@ -301,17 +342,33 @@ def execute_approved_invoice(
         _mark_failed_retryable(repos, org_scope, updated.action_id, "ERP did not return a document name", invoice_id)
         raise ExecutionError("ERP did not return a document name")
 
+    # Phase 23: audit the draft creation with request/response hashes.
+    _audit_transition(
+        repos, org_scope, updated.action_id, "executing", "executing", invoice_id,
+        request_hash=request_hash, response_hash=_hash_json(draft_response),
+        detail={"step": "draft_created", "docname": docname},
+    )
+
     _check_crash("after_erp_create")
 
     # 9. Submit the draft.
     _check_crash("before_erp_submit")
+    submit_request = {"doctype": "Purchase Invoice", "name": docname}
+    submit_request_hash = _hash_json(submit_request)
     try:
-        adapter.submit_purchase_invoice(docname)
+        submit_response = adapter.submit_purchase_invoice(docname)
     except Exception as e:
         # After ERP create, a submit failure is potentially ambiguous — the
         # document may exist as a draft. Mark as UNKNOWN for reconciliation.
         _mark_unknown(repos, org_scope, updated.action_id, f"submit failed: {e}", docname, invoice_id)
         raise
+
+    # Phase 23: audit the submit with request/response hashes.
+    _audit_transition(
+        repos, org_scope, updated.action_id, "executing", "executing", invoice_id,
+        request_hash=submit_request_hash, response_hash=_hash_json(submit_response),
+        detail={"step": "submitted", "docname": docname},
+    )
 
     _check_crash("after_erp_submit")
 
@@ -336,6 +393,13 @@ def execute_approved_invoice(
         )
         raise ReadbackMismatch(f"ERP readback fields do not match: {mismatches}")
 
+    # Phase 23: audit the readback with response hash.
+    _audit_transition(
+        repos, org_scope, updated.action_id, "executing", "executing", invoice_id,
+        response_hash=_hash_json(readback_data),
+        detail={"step": "readback_verified", "docname": docname, "docstatus": docstatus},
+    )
+
     _check_crash("after_readback")
 
     # 11. Transition to CONFIRMED.
@@ -353,9 +417,12 @@ def execute_approved_invoice(
         # Lost the race or state changed unexpectedly.
         raise ExecutionError(f"could not transition {updated.action_id} from executing to confirmed")
 
-    _audit_transition(repos, org_scope, updated.action_id, "executing", "confirmed", invoice_id)
+    _audit_transition(
+        repos, org_scope, updated.action_id, "executing", "confirmed", invoice_id,
+        detail={"step": "confirmed", "docname": docname},
+    )
 
-    # 12. Audit the execution.
+    # 12. Audit the execution (Phase 23: include request/response hashes).
     _check_crash("before_audit")
     repos.audit.append(
         scope=org_scope,
@@ -369,6 +436,8 @@ def execute_approved_invoice(
             "erp_docstatus": docstatus,
             "action_id": str(confirmed.action_id),
             "idempotent": False,
+            "request_hash": request_hash,
+            "response_hash": _hash_json(readback_data),
         },
     )
 
@@ -402,22 +471,45 @@ def _mark_unknown(repos: Repositories, scope: Scope, action_id: UUID, error: str
     _audit_transition(repos, scope, action_id, "executing", "unknown", invoice_id)
 
 
-def _audit_transition(repos: Repositories, scope: Scope, action_id: UUID, from_status: str, to_status: str, invoice_id: UUID) -> None:
-    """Audit an external-action state transition (Phase 23)."""
+def _audit_transition(repos: Repositories, scope: Scope, action_id: UUID, from_status: str, to_status: str, invoice_id: UUID, *, request_hash: str | None = None, response_hash: str | None = None, detail: dict | None = None) -> None:
+    """Audit an external-action state transition (Phase 23).
+
+    Phase 23: the audit event now carries request_hash and response_hash —
+    SHA-256 over the canonical JSON of the ERP request payload and response
+    data. This binds the audit trail to the exact bytes sent to and received
+    from the external system, making post-incident forensics deterministic.
+    """
+    payload: dict[str, Any] = {
+        "action_id": str(action_id),
+        "from_status": from_status,
+        "to_status": to_status,
+        "subject_type": "invoice",
+        "subject_id": str(invoice_id),
+    }
+    if request_hash is not None:
+        payload["request_hash"] = request_hash
+    if response_hash is not None:
+        payload["response_hash"] = response_hash
+    if detail:
+        payload.update(detail)
     repos.audit.append(
         scope=scope,
         event_type="EXTERNAL_ACTION_TRANSITION",
         actor="system",
         object_type="external_action",
         object_id=action_id,
-        payload={
-            "action_id": str(action_id),
-            "from_status": from_status,
-            "to_status": to_status,
-            "subject_type": "invoice",
-            "subject_id": str(invoice_id),
-        },
+        payload=payload,
     )
+
+
+def _hash_json(value: Any) -> str:
+    """SHA-256 over the canonical JSON rendering of a value (Phase 23)."""
+    import hashlib
+    import json
+
+    return hashlib.sha256(
+        json.dumps(value, sort_keys=True, default=str, separators=(",", ":")).encode()
+    ).hexdigest()
 
 
 def _compare_readback(expected: dict[str, Any], actual: dict[str, Any]) -> list[str]:
