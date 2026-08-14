@@ -59,6 +59,21 @@ class ExternalAction:
     last_attempt_at: datetime | None = None
     confirmed_at: datetime | None = None
     last_error: str | None = None
+    # rc4 Phase 1: Lease fields.
+    execution_owner: str | None = None
+    lease_acquired_at: datetime | None = None
+    lease_expires_at: datetime | None = None
+    heartbeat_at: datetime | None = None
+    recovery_attempts: int = 0
+    # rc4 Phase 3: Remote state.
+    remote_state: str = "no_remote_effect"
+    # rc4 Phase 5: ERP-visible idempotency key.
+    erp_idempotency_key: str | None = None
+    # rc4 Phase 8: Readback hash.
+    readback_hash: str | None = None
+    # rc4 Phase 16: Final audit completion.
+    final_audit_event_id: UUID | None = None
+    finalized_at: datetime | None = None
 
 
 def hash_request(payload: dict[str, Any]) -> str:
@@ -106,9 +121,9 @@ class ExternalActionRepository(Repository):
                        organization_id, action_type, operation, target_system,
                        idempotency_key, request_hash, status,
                        subject_type, subject_id, remote_system,
-                       reserved_at
+                       remote_state, reserved_at
                    )
-                   VALUES(%s, %s, %s, %s, %s, %s, 'pending', %s, %s, %s, now())
+                   VALUES(%s, %s, %s, %s, %s, %s, 'pending', %s, %s, %s, 'no_remote_effect', now())
                    ON CONFLICT (organization_id, action_type, idempotency_key) DO NOTHING
                    RETURNING action_id""",
                 (
@@ -176,6 +191,10 @@ class ExternalActionRepository(Repository):
         remote_document_id: str | None = None,
         result: dict[str, Any] | None = None,
         last_error: str | None = None,
+        remote_state: str | None = None,
+        erp_idempotency_key: str | None = None,
+        readback_hash: str | None = None,
+        final_audit_event_id: UUID | None = None,
     ) -> ExternalAction | None:
         """Transition an external action to a new status.
 
@@ -194,10 +213,16 @@ class ExternalActionRepository(Repository):
         sets = ["status = %s", "last_attempt_at = now()"]
         params: list[Any] = [to_status]
 
-        if to_status == "executing":
+        if to_status == "executing" and from_status != "executing":
             sets.append("attempt_count = attempt_count + 1")
+        if from_status == "executing" and to_status != "executing":
+            sets.append("execution_owner = NULL")
+            sets.append("lease_acquired_at = NULL")
+            sets.append("lease_expires_at = NULL")
+            sets.append("heartbeat_at = NULL")
         if to_status == "confirmed":
             sets.append("confirmed_at = now()")
+            sets.append("finalized_at = now()")
         if remote_document_id is not None:
             sets.append("remote_document_id = %s")
             params.append(remote_document_id)
@@ -207,6 +232,18 @@ class ExternalActionRepository(Repository):
         if last_error is not None:
             sets.append("last_error = %s")
             params.append(last_error)
+        if remote_state is not None:
+            sets.append("remote_state = %s")
+            params.append(remote_state)
+        if erp_idempotency_key is not None:
+            sets.append("erp_idempotency_key = %s")
+            params.append(erp_idempotency_key)
+        if readback_hash is not None:
+            sets.append("readback_hash = %s")
+            params.append(readback_hash)
+        if final_audit_event_id is not None:
+            sets.append("final_audit_event_id = %s")
+            params.append(final_audit_event_id)
 
         clause, clause_params = self._tenant_clause(scope)
         params.extend(clause_params)
@@ -224,6 +261,187 @@ class ExternalActionRepository(Repository):
                 return None
             columns = [c.name for c in cur.description]
             return _to_action(dict(zip(columns, row, strict=True)))
+
+    # -- rc4 Phase 1: Lease management ---------------------------------------
+
+    def acquire(
+        self,
+        *,
+        scope: Scope,
+        action_id: UUID,
+        owner: str,
+        lease_duration_seconds: int = 120,
+        from_status: str = "pending",
+    ) -> ExternalAction | None:
+        """Atomically acquire the execution lease for an action.
+
+        Transitions the action from `from_status` (default PENDING) to EXECUTING
+        and sets the lease owner, acquisition time, and expiry. Only one worker
+        can hold the lease at a time.
+
+        Returns the updated action if this worker won the lease, or None if
+        another worker already holds it (or the status didn't match).
+        """
+        from datetime import timedelta
+
+        with self.db.scoped(scope) as cur:
+            cur.execute(
+                f"""UPDATE external_actions
+                    SET status = 'executing',
+                        execution_owner = %s,
+                        lease_acquired_at = now(),
+                        lease_expires_at = now() + %s::interval,
+                        heartbeat_at = now(),
+                        attempt_count = attempt_count + 1,
+                        last_attempt_at = now()
+                    WHERE {self._tenant_clause(scope)[0]} AND action_id = %s AND status = %s
+                    RETURNING {self._columns()}""",  # noqa: S608
+                [owner, timedelta(seconds=lease_duration_seconds)]
+                + self._tenant_clause(scope)[1]
+                + [action_id, from_status],
+            )
+            row = cur.fetchone()
+            if row is None:
+                return None
+            columns = [c.name for c in cur.description]
+            return _to_action(dict(zip(columns, row, strict=True)))
+
+    def heartbeat(
+        self,
+        *,
+        scope: Scope,
+        action_id: UUID,
+        owner: str,
+        lease_duration_seconds: int = 120,
+    ) -> ExternalAction | None:
+        """Extend the lease on an EXECUTING action.
+
+        Only the current lease owner may heartbeat. Returns the updated action,
+        or None if the action is not EXECUTING, the owner doesn't match, or the
+        lease has already expired.
+        """
+        from datetime import timedelta
+
+        with self.db.scoped(scope) as cur:
+            cur.execute(
+                f"""UPDATE external_actions
+                    SET heartbeat_at = now(),
+                        lease_expires_at = now() + %s::interval
+                    WHERE {self._tenant_clause(scope)[0]}
+                      AND action_id = %s
+                      AND status = 'executing'
+                      AND execution_owner = %s
+                      AND lease_expires_at > now()
+                    RETURNING {self._columns()}""",  # noqa: S608
+                [timedelta(seconds=lease_duration_seconds)]
+                + self._tenant_clause(scope)[1]
+                + [action_id, owner],
+            )
+            row = cur.fetchone()
+            if row is None:
+                return None
+            columns = [c.name for c in cur.description]
+            return _to_action(dict(zip(columns, row, strict=True)))
+
+    def release(
+        self,
+        *,
+        scope: Scope,
+        action_id: UUID,
+        owner: str,
+        to_status: str = "failed_retryable",
+        last_error: str | None = None,
+    ) -> ExternalAction | None:
+        """Release the lease on an EXECUTING action.
+
+        Only the current lease owner may release. Transitions to `to_status`
+        (default FAILED_RETRYABLE) and clears the lease fields.
+        """
+        sets = [
+            "status = %s", "execution_owner = NULL",
+            "lease_acquired_at = NULL", "lease_expires_at = NULL",
+            "heartbeat_at = NULL", "last_attempt_at = now()",
+        ]
+        params: list[Any] = [to_status]
+        if last_error is not None:
+            sets.append("last_error = %s")
+            params.append(last_error)
+
+        clause, clause_params = self._tenant_clause(scope)
+        params.extend(clause_params)
+        params.extend([action_id, owner])
+
+        with self.db.scoped(scope) as cur:
+            cur.execute(
+                f"""UPDATE external_actions SET {', '.join(sets)}
+                    WHERE {clause} AND action_id = %s AND status = 'executing'
+                      AND execution_owner = %s
+                    RETURNING {self._columns()}""",  # noqa: S608
+                params,
+            )
+            row = cur.fetchone()
+            if row is None:
+                return None
+            columns = [c.name for c in cur.description]
+            return _to_action(dict(zip(columns, row, strict=True)))
+
+    def reap_expired(self, *, scope: Scope, batch_limit: int = 100) -> list[ExternalAction]:
+        """rc4 Phase 1: Reap EXECUTING actions whose leases have expired.
+
+        Transitions expired EXECUTING actions to UNKNOWN with remote_state
+        REMOTE_UNKNOWN. This is the automatic recovery that the recovery daemon
+        calls — it happens in production code, not manually in tests.
+
+        Returns the list of reaped actions.
+        """
+        clause, clause_params = self._tenant_clause(scope)
+        with self.db.scoped(scope) as cur:
+            cur.execute(
+                f"""UPDATE external_actions
+                    SET status = 'unknown',
+                        remote_state = 'remote_unknown',
+                        last_error = COALESCE(last_error, '') || 'lease expired; ',
+                        recovery_attempts = recovery_attempts + 1,
+                        execution_owner = NULL,
+                        lease_acquired_at = NULL,
+                        lease_expires_at = NULL,
+                        heartbeat_at = NULL
+                    WHERE {clause}
+                      AND status = 'executing'
+                      AND lease_expires_at < now()
+                      AND action_id IN (
+                        SELECT action_id FROM external_actions
+                        WHERE {clause}
+                          AND status = 'executing'
+                          AND lease_expires_at < now()
+                        LIMIT %s FOR UPDATE SKIP LOCKED
+                      )
+                    RETURNING {self._columns()}""",  # noqa: S608
+                clause_params + clause_params + [batch_limit],
+            )
+            rows = cur.fetchall()
+            if not rows:
+                return []
+            columns = [c.name for c in cur.description]
+            return [_to_action(dict(zip(columns, row, strict=True))) for row in rows]
+
+    def find_missing_final_audit(self, *, scope: Scope, batch_limit: int = 100) -> list[ExternalAction]:
+        """rc4 Phase 16: Find CONFIRMED actions missing their final audit event.
+
+        These actions need audit repair — a deterministic repair audit event
+        must be appended.
+        """
+        clause, clause_params = self._tenant_clause(scope)
+        with self.db.scoped(scope) as cur:
+            cur.execute(
+                self._select_sql() + f" WHERE {clause} AND status = 'confirmed' AND final_audit_event_id IS NULL LIMIT %s",
+                clause_params + [batch_limit],
+            )
+            rows = cur.fetchall()
+            if not rows:
+                return []
+            columns = [c.name for c in cur.description]
+            return [_to_action(dict(zip(columns, row, strict=True))) for row in rows]
 
     # -- Legacy methods (backward compatibility) -----------------------------
 
@@ -256,12 +474,13 @@ class ExternalActionRepository(Repository):
         req_hash = hash_request(request_payload) if request_payload else None
         # Map legacy 'completed' to 'confirmed' for new rows.
         new_status = "confirmed" if status == "completed" else status
+        new_remote_state = "remote_submitted" if new_status == "confirmed" else "no_remote_effect"
         with self.db.scoped(scope) as cur:
             cur.execute(
                 """INSERT INTO external_actions(organization_id, action_type, operation,
                        target_system, target_id, idempotency_key, request_hash, result, status,
-                       remote_system, remote_document_id, reserved_at, confirmed_at)
-                   VALUES(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, now(), now())
+                       remote_system, remote_document_id, remote_state, reserved_at, confirmed_at)
+                   VALUES(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, now(), now())
                    ON CONFLICT (organization_id, action_type, idempotency_key) DO NOTHING
                    RETURNING action_id""",
                 (
@@ -276,6 +495,7 @@ class ExternalActionRepository(Repository):
                     new_status,
                     target_system,
                     target_id,
+                    new_remote_state,
                 ),
             )
             row = cur.fetchone()
@@ -315,7 +535,10 @@ class ExternalActionRepository(Repository):
             "organization_id, action_id, action_type, operation, target_system, target_id, "
             "idempotency_key, request_hash, result, status, created_at, "
             "subject_type, subject_id, remote_system, remote_document_id, "
-            "attempt_count, reserved_at, last_attempt_at, confirmed_at, last_error"
+            "attempt_count, reserved_at, last_attempt_at, confirmed_at, last_error, "
+            "execution_owner, lease_acquired_at, lease_expires_at, heartbeat_at, "
+            "recovery_attempts, remote_state, erp_idempotency_key, readback_hash, "
+            "final_audit_event_id, finalized_at"
         )
 
     def _select_sql(self) -> str:
@@ -344,4 +567,14 @@ def _to_action(row: dict[str, Any]) -> ExternalAction:
         last_attempt_at=row.get("last_attempt_at"),
         confirmed_at=row.get("confirmed_at"),
         last_error=row.get("last_error"),
+        execution_owner=row.get("execution_owner"),
+        lease_acquired_at=row.get("lease_acquired_at"),
+        lease_expires_at=row.get("lease_expires_at"),
+        heartbeat_at=row.get("heartbeat_at"),
+        recovery_attempts=row.get("recovery_attempts") or 0,
+        remote_state=row.get("remote_state") or "no_remote_effect",
+        erp_idempotency_key=row.get("erp_idempotency_key"),
+        readback_hash=row.get("readback_hash"),
+        final_audit_event_id=row["final_audit_event_id"] if isinstance(row.get("final_audit_event_id"), UUID) else (UUID(str(row["final_audit_event_id"])) if row.get("final_audit_event_id") else None),
+        finalized_at=row.get("finalized_at"),
     )

@@ -1,0 +1,12 @@
+{
+  "error": 0,
+  "exit_code": 0,
+  "failed": 0,
+  "git_commit": "cc9f64f55c358aca641d6e824a5667ec22fb00fe",
+  "passed": 522,
+  "skipped": 5,
+  "summary": "522 passed, 5 skipped in 25.75s",
+  "timestamp": "2026-08-14T23:43:34.121078+00:00",
+  "total": 527,
+  "version": "0.5.0-rc4.dev0"
+}

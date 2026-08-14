@@ -1,0 +1,9 @@
+{
+  "exit_code": 0,
+  "git_commit": "cc9f64f55c358aca641d6e824a5667ec22fb00fe",
+  "rls_tested": true,
+  "summary": "26 passed in 0.59s",
+  "tenant_isolation_tested": true,
+  "timestamp": "2026-08-14T23:43:44.415473+00:00",
+  "version": "0.5.0-rc4.dev0"
+}

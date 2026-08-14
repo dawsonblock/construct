@@ -1,0 +1,11 @@
+{
+  "all_applied": true,
+  "applied_migrations": 24,
+  "git_commit": "cc9f64f55c358aca641d6e824a5667ec22fb00fe",
+  "migration_count": 24,
+  "migration_fingerprint": "fbf99a2c5b56b3ab0f98082e6e60866af18198660d88cfeeae81546aff6646ac",
+  "pending_migrations": 0,
+  "schema_fingerprint": "9b6f8347bcddb59e9b070d80421c07a335d99b958e78b5e1d5b5ada7fa6ca3a4",
+  "timestamp": "2026-08-14T23:43:44.452245+00:00",
+  "version": "0.5.0-rc4.dev0"
+}

@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""v0.4.7 — release manifest (item 42).
+"""v0.5.0-rc4 — release manifest with offline degradation.
 
 Generates a release manifest that captures the exact state of the system:
 - Version
@@ -14,8 +14,16 @@ This manifest is the qualification artifact: a release is qualified only if
 the manifest matches what was tested. The manifest is deterministic — same
 code + same migrations = same manifest.
 
+rc4 Phase 19: The manifest now supports two modes:
+- --artifact-only: Static artifact fingerprinting without psycopg or a live
+  database. Works offline. The schema_fingerprint will be "offline".
+- --with-database: Full manifest including live schema verification. Requires
+  psycopg and a running PostgreSQL. This is the mode used for qualification.
+
 Usage:
-    python scripts/release_manifest.py [--output manifest.json]
+    python scripts/release_manifest.py --artifact-only [--output manifest.json]
+    python scripts/release_manifest.py --with-database [--output manifest.json]
+    python scripts/release_manifest.py [--output manifest.json]  # defaults to --with-database
 """
 from __future__ import annotations
 
@@ -110,8 +118,14 @@ def _dependency_versions() -> dict[str, str]:
 
 
 def _schema_fingerprint() -> str:
-    """SHA-256 over the database schema (DDL)."""
-    import psycopg
+    """SHA-256 over the database schema (DDL).
+
+    Returns "offline" if psycopg is not installed or the database is unreachable.
+    """
+    try:
+        import psycopg
+    except ImportError:
+        return "offline"
 
     dsn = os.getenv("DATABASE_URL", "postgresql://construction:construction@localhost:5432/construction_ai")
     try:
@@ -132,29 +146,50 @@ def _schema_fingerprint() -> str:
         return "unavailable"
 
 
-def generate_manifest() -> dict:
+def _schema_fingerprint_artifact_only() -> str:
+    """Artifact-only mode: no database access, return 'offline'."""
+    return "offline"
+
+
+def generate_manifest(*, artifact_only: bool = False) -> dict:
+    """Generate a release manifest.
+
+    Args:
+        artifact_only: If True, skip database access (schema_fingerprint will
+            be "offline"). If False, attempt live schema verification.
+    """
     return {
         "version": _version(),
         "git_commit": _git_commit(),
         "git_branch": _git_branch(),
         "generated_at": datetime.now(timezone.utc).isoformat(),
+        "mode": "artifact-only" if artifact_only else "with-database",
         "migration_count": len(_migration_checksums()),
         "migration_fingerprint": _migration_fingerprint(),
         "code_fingerprint": _code_fingerprint(),
         "test_fingerprint": _test_fingerprint(),
-        "schema_fingerprint": _schema_fingerprint(),
+        "schema_fingerprint": _schema_fingerprint_artifact_only() if artifact_only else _schema_fingerprint(),
         "dependencies": _dependency_versions(),
         "migrations": _migration_checksums(),
     }
 
 
 def main() -> int:
+    artifact_only = "--artifact-only" in sys.argv
+    with_database = "--with-database" in sys.argv
+    if artifact_only and with_database:
+        print("error: --artifact-only and --with-database are mutually exclusive", file=sys.stderr)
+        return 2
+    # Default to --with-database if neither is specified.
+    if not artifact_only and not with_database:
+        with_database = True
+
     output = sys.argv[sys.argv.index("--output") + 1] if "--output" in sys.argv else None
-    manifest = generate_manifest()
+    manifest = generate_manifest(artifact_only=artifact_only)
     manifest_json = json.dumps(manifest, indent=2, sort_keys=True, default=str)
     if output:
         Path(output).write_text(manifest_json)
-        print(f"manifest written to {output}")
+        print(f"manifest written to {output} (mode: {manifest['mode']})")
     else:
         print(manifest_json)
     return 0

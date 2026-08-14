@@ -22,7 +22,7 @@ from fastapi import FastAPI, HTTPException, Query
 
 FIXTURES = json.loads((Path(__file__).parent / "fixtures.json").read_text())
 
-app = FastAPI(title="ERPNext stub", version="0.5.0-rc3.dev0")
+app = FastAPI(title="ERPNext stub", version="0.5.0-rc4.dev0")
 
 # In-memory store for created documents. Mirrors the fixture shape so reads
 # work identically. Initialized at module load time so TestClient works without

@@ -2,42 +2,56 @@
   "adversarial": {
     "exit_code": 0,
     "passed": true,
-    "summary": "49 passed in 1.85s"
+    "summary": "49 passed in 2.13s"
   },
   "crash_recovery": {
     "exit_code": 0,
     "passed": true,
-    "summary": "23 passed in 1.13s"
+    "summary": "42 passed in 8.09s"
   },
+  "critical_skips_allowed": 5,
   "dependency_lock_hash": "655f8e2135e560a60defc0264a9a88c8b7ceda3585142e733f087e89149e8ea0",
   "external_effect": {
     "exit_code": 0,
     "passed": true,
-    "summary": "63 passed in 2.37s"
+    "summary": "80 passed in 3.74s"
   },
-  "generated_at": "2026-08-14T22:28:42.194592+00:00",
+  "gates": {
+    "CRASH_RECOVERY_PASS": true,
+    "EXTERNAL_EFFECT_PASS": true,
+    "INTEGRATION_PASS": true,
+    "RELEASE_INTEGRITY_PASS": true,
+    "SECURITY_PASS": true,
+    "UNIT_PASS": true
+  },
+  "generated_at": "2026-08-14T23:43:44.469824+00:00",
   "git_branch": "v0.4-hardening",
-  "git_commit": "bb1dccc5ba4f0716ac3c1b3639d609de6c8a1778",
+  "git_commit": "cc9f64f55c358aca641d6e824a5667ec22fb00fe",
   "manifest_sha": "581baecff1a48024a944577f1fa920b499c78d0ae4a5034684df5d5a50a0acc2",
   "qualified": true,
   "release_integrity": {
     "exit_code": 0,
     "passed": true,
-    "summary": "20 passed in 0.50s"
+    "summary": "20 passed in 0.48s"
   },
   "schema": {
-    "migration_count": 23,
-    "migration_fingerprint": "ad9268dbf7f4fc503b9a450422416762b6dfe6116db48826bccc7680add8130e"
+    "migration_count": 24,
+    "migration_fingerprint": "fbf99a2c5b56b3ab0f98082e6e60866af18198660d88cfeeae81546aff6646ac"
+  },
+  "security": {
+    "exit_code": 0,
+    "passed": true,
+    "summary": "26 passed in 0.47s"
   },
   "test_suite": {
     "error": 0,
     "exit_code": 0,
     "failed": 0,
-    "passed": 491,
+    "passed": 522,
     "run": true,
-    "skipped": 0,
-    "summary": "491 passed in 16.07s",
-    "total": 491
+    "skipped": 5,
+    "summary": "522 passed, 5 skipped in 28.13s",
+    "total": 527
   },
-  "version": "0.5.0-rc3.dev0"
+  "version": "0.5.0-rc4.dev0"
 }

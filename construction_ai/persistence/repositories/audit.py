@@ -37,6 +37,7 @@ class AuditEvent:
     prev_hash: str | None
     project_id: UUID | None
     payload: dict[str, Any]
+    audit_event_id: UUID | None = None  # rc4 Phase 16: for final-audit linking
 
 
 @dataclass(frozen=True)
@@ -138,13 +139,16 @@ class AuditRepository(Repository):
             cur.execute(
                 """INSERT INTO audit_events(organization_id, sequence, project_id, event_type, actor,
                        object_type, object_id, payload, occurred_at, prev_hash, entry_hash)
-                   VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
+                   VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                   RETURNING audit_event_id""",
                 (
                     scope.organization_id, sequence, scope.project_id, event_type, actor,
                     object_type, object_id, Jsonb(payload, dumps=dumps), occurred_at, prev_hash, entry_hash,
                 ),
             )
-        return AuditEvent(sequence, event_type, actor, object_type, object_id, occurred_at, entry_hash, prev_hash, scope.project_id, payload)
+            event_id_row = cur.fetchone()
+            audit_event_id = event_id_row[0] if event_id_row else None
+        return AuditEvent(sequence, event_type, actor, object_type, object_id, occurred_at, entry_hash, prev_hash, scope.project_id, payload, audit_event_id=audit_event_id)
 
     def verify_chain(self, *, scope: Scope) -> bool:
         """Recompute this organization's chain from its stored rows."""

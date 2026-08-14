@@ -1,0 +1,23 @@
+{
+  "crash_points_tested": [
+    "after_reservation",
+    "after_lease_acquire",
+    "after_erp_create",
+    "before_erp_submit",
+    "after_erp_submit",
+    "before_readback",
+    "after_readback",
+    "before_confirmed",
+    "before_audit"
+  ],
+  "exit_code": 0,
+  "failed": 0,
+  "git_commit": "cc9f64f55c358aca641d6e824a5667ec22fb00fe",
+  "no_manual_state_mutations": true,
+  "passed": 42,
+  "skipped": 0,
+  "summary": "42 passed in 8.10s",
+  "timestamp": "2026-08-14T23:43:43.012987+00:00",
+  "uses_production_reaper": true,
+  "version": "0.5.0-rc4.dev0"
+}

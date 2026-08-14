@@ -125,21 +125,30 @@ def check_approval_staleness(repos: Repositories, *, scope: Scope, approval) -> 
             f"to {current_fp[:16]}... since approval"
         )
 
-    # Phase 6: decision fingerprint — the precise, decision-specific check.
-    if approval.decision_fingerprint:
-        from construction_ai.approvals.decision_fingerprint import (
-            compute_decision_fingerprint_for_approval,
+    # rc4 Phase 9: Decision fingerprint is MANDATORY, not optional.
+    # Legacy approvals lacking a decision fingerprint must be revalidated, not
+    # silently executed.
+    if not approval.decision_fingerprint:
+        raise ApprovalStale(
+            "approval has no decision fingerprint — cannot verify decision-specific "
+            "staleness. Refusing to execute (rc4: both fingerprints are mandatory). "
+            "REVALIDATION_REQUIRED."
         )
 
-        current_decision_fp = compute_decision_fingerprint_for_approval(
-            repos, scope=scope, approval=approval
+    # Phase 6: decision fingerprint — the precise, decision-specific check.
+    from construction_ai.approvals.decision_fingerprint import (
+        compute_decision_fingerprint_for_approval,
+    )
+
+    current_decision_fp = compute_decision_fingerprint_for_approval(
+        repos, scope=scope, approval=approval
+    )
+    if current_decision_fp != approval.decision_fingerprint:
+        raise ApprovalStale(
+            f"approval is stale: decision fingerprint changed from "
+            f"{approval.decision_fingerprint[:16]}... to {current_decision_fp[:16]}... "
+            f"since approval (invoice/evidence/verification packet drifted)"
         )
-        if current_decision_fp != approval.decision_fingerprint:
-            raise ApprovalStale(
-                f"approval is stale: decision fingerprint changed from "
-                f"{approval.decision_fingerprint[:16]}... to {current_decision_fp[:16]}... "
-                f"since approval (invoice/evidence/verification packet drifted)"
-            )
 
 
 @dataclass(frozen=True)
@@ -253,6 +262,16 @@ def execute_approved_invoice(
         if company and company.erp_supplier_id:
             supplier_id = company.erp_supplier_id
 
+    # rc4 Phase 5: ERP-visible idempotency key — deterministic over the exact
+    # approved intent. This is sent to ERP as a custom field and used for
+    # remote reconciliation.
+    erp_idempotency_key = _compute_erp_idempotency_key(
+        organization_id=str(org_scope.organization_id),
+        invoice_id=str(invoice_id),
+        approval_id=str(approval_id),
+        operation=operation,
+    )
+
     idempotency_key = f"approval:{approval_id}"
     payload = {
         "supplier": supplier_id,
@@ -262,7 +281,15 @@ def execute_approved_invoice(
         "total_taxes": str(_Decimal(str(invoice.tax or 0))),
         "currency": invoice.currency or "CAD",
         "docstatus": 0,  # create as draft
+        # rc4 Phase 5: ERP-visible idempotency key.
+        "construct_idempotency_key": erp_idempotency_key,
     }
+
+    # rc4 Phase 7: Add PO and project linkage to the ERP payload.
+    if invoice.po_number:
+        payload["po_no"] = invoice.po_number
+    if approval.project_id:
+        payload["project"] = str(approval.project_id)
 
     # 5. Reserve the external action atomically.
     #    INSERT ON CONFLICT DO NOTHING, then reload.
@@ -296,14 +323,24 @@ def execute_approved_invoice(
         )
 
     if action.status == "executing":
-        # Another worker may be running. In a full implementation, we'd check
-        # the lease timestamp. For now, refuse to avoid duplicate submission.
+        # rc4 Phase 1: Check if the lease has expired. If so, the reaper should
+        # have moved it to UNKNOWN, but we check here too for safety.
+        if action.lease_expires_at:
+            from datetime import datetime, timezone as _tz
+            now = datetime.now(_tz.utc)
+            if action.lease_expires_at < now:
+                # Lease expired — treat as UNKNOWN, needs reconciliation.
+                raise ExecutionError(
+                    f"external action {action.action_id} has an expired lease "
+                    f"(expired at {action.lease_expires_at}) — reconciliation required"
+                )
         raise ExternalActionInProgress(
-            f"external action {action.action_id} is in EXECUTING state"
+            f"external action {action.action_id} is in EXECUTING state "
+            f"(owner: {action.execution_owner})"
         )
 
     if action.status == "unknown":
-        # Phase 2: reconcile before retry. For now, refuse — the caller must
+        # Phase 2: reconcile before retry. Refuse — the caller must
         # run reconcile_external_action() to resolve the state.
         raise ExecutionError(
             f"external action {action.action_id} is in UNKNOWN state — reconciliation required"
@@ -311,40 +348,70 @@ def execute_approved_invoice(
 
     # Status is PENDING or FAILED_RETRYABLE — proceed to execute.
 
-    # 7. Transition to EXECUTING.
-    updated = repos.external_actions.transition(
+    # 7. rc4 Phase 1: Acquire the execution lease atomically.
+    #    Only one worker can transition from PENDING/FAILED_RETRYABLE to EXECUTING.
+    import os as _os
+    worker_id = _os.environ.get("WORKER_ID", f"worker-{_os.getpid()}")
+
+    _check_crash("before_lease_acquire")
+
+    acquired = repos.external_actions.acquire(
         scope=org_scope,
         action_id=action.action_id,
+        owner=worker_id,
         from_status=action.status,
-        to_status="executing",
     )
-    if updated is None:
-        # Lost the race — another worker transitioned it.
+    if acquired is None:
+        # Lost the race — another worker acquired the lease.
         raise ExternalActionInProgress(
-            f"could not transition {action.action_id} from {action.status} to executing"
+            f"could not acquire lease for {action.action_id} from {action.status}"
         )
 
     _audit_transition(repos, org_scope, action.action_id, action.status, "executing", invoice_id)
 
-    _check_crash("before_erp_create")
+    _check_crash("after_lease_acquire")
 
     # 8. Create the draft in ERP.
     request_hash = _hash_json(payload)
+    _check_crash("before_erp_create")
+
+    # Heartbeat before each ERP call to keep the lease alive.
+    repos.external_actions.heartbeat(
+        scope=org_scope, action_id=acquired.action_id, owner=worker_id,
+    )
+
     try:
         draft_response = adapter.create_purchase_invoice_draft(payload)
     except Exception as e:
-        _mark_failed_retryable(repos, org_scope, updated.action_id, str(e), invoice_id)
+        _mark_failed_retryable(repos, org_scope, acquired.action_id, str(e), invoice_id)
         raise
 
     draft_data = draft_response.get("data", draft_response) if isinstance(draft_response, dict) else {}
     docname = draft_data.get("name", "")
     if not docname:
-        _mark_failed_retryable(repos, org_scope, updated.action_id, "ERP did not return a document name", invoice_id)
+        _mark_failed_retryable(repos, org_scope, acquired.action_id, "ERP did not return a document name", invoice_id)
         raise ExecutionError("ERP did not return a document name")
+
+    # rc4 Phase 2: Persist the remote draft identity IMMEDIATELY after creation.
+    # This gives crash recovery a deterministic remote identifier.
+    draft_persisted = repos.external_actions.transition(
+        scope=org_scope,
+        action_id=acquired.action_id,
+        from_status="executing",
+        to_status="executing",
+        remote_document_id=docname,
+        remote_state="remote_draft",
+        erp_idempotency_key=erp_idempotency_key,
+    )
+    if draft_persisted is None:
+        raise ExecutionError(
+            f"lost lease for {acquired.action_id} during draft "
+            f"persistence — action was reaped"
+        )
 
     # Phase 23: audit the draft creation with request/response hashes.
     _audit_transition(
-        repos, org_scope, updated.action_id, "executing", "executing", invoice_id,
+        repos, org_scope, acquired.action_id, "executing", "executing", invoice_id,
         request_hash=request_hash, response_hash=_hash_json(draft_response),
         detail={"step": "draft_created", "docname": docname},
     )
@@ -355,76 +422,121 @@ def execute_approved_invoice(
     _check_crash("before_erp_submit")
     submit_request = {"doctype": "Purchase Invoice", "name": docname}
     submit_request_hash = _hash_json(submit_request)
+
+    # Heartbeat before submit to keep the lease alive.
+    repos.external_actions.heartbeat(
+        scope=org_scope, action_id=acquired.action_id, owner=worker_id,
+    )
+
     try:
         submit_response = adapter.submit_purchase_invoice(docname)
     except Exception as e:
-        # After ERP create, a submit failure is potentially ambiguous — the
-        # document may exist as a draft. Mark as UNKNOWN for reconciliation.
-        _mark_unknown(repos, org_scope, updated.action_id, f"submit failed: {e}", docname, invoice_id)
+        # rc4 Phase 3: After draft creation, a submit failure means the draft
+        # exists remotely. Mark as UNKNOWN with remote_state=REMOTE_DRAFT.
+        _mark_unknown(
+            repos, org_scope, acquired.action_id,
+            f"submit failed: {e}", docname, invoice_id,
+            remote_state="remote_draft",
+        )
         raise
+
+    # rc4 Phase 3: Update remote_state to REMOTE_SUBMITTED after submit.
+    submit_persisted = repos.external_actions.transition(
+        scope=org_scope,
+        action_id=acquired.action_id,
+        from_status="executing",
+        to_status="executing",
+        remote_state="remote_submitted",
+    )
+    if submit_persisted is None:
+        raise ExecutionError(
+            f"lost lease for {acquired.action_id} during submit "
+            f"persistence — action was reaped"
+        )
 
     # Phase 23: audit the submit with request/response hashes.
     _audit_transition(
-        repos, org_scope, updated.action_id, "executing", "executing", invoice_id,
+        repos, org_scope, acquired.action_id, "executing", "executing", invoice_id,
         request_hash=submit_request_hash, response_hash=_hash_json(submit_response),
         detail={"step": "submitted", "docname": docname},
     )
 
     _check_crash("after_erp_submit")
 
-    # 10. Readback verification — compare all financial fields (Phase 11).
+    # 10. rc4 Phase 8: Canonical readback verification.
     _check_crash("before_readback")
+
+    # Heartbeat before readback to keep the lease alive.
+    repos.external_actions.heartbeat(
+        scope=org_scope, action_id=acquired.action_id, owner=worker_id,
+    )
+
     from urllib.parse import quote
-    from decimal import Decimal as _Decimal
 
     readback = erp_read_transport.get(f"/api/resource/{quote('Purchase Invoice')}/{quote(docname)}")
     readback_data = readback.get("data", readback) if isinstance(readback, dict) else {}
     docstatus = readback_data.get("docstatus", 0)
+
+    # rc4 Phase 3: docstatus=0 is a draft, not a confirmed financial effect.
     if docstatus != 1:
-        _mark_unknown(repos, org_scope, updated.action_id, f"readback docstatus={docstatus}, expected 1", docname, invoice_id)
+        _mark_unknown(
+            repos, org_scope, acquired.action_id,
+            f"readback docstatus={docstatus}, expected 1", docname, invoice_id,
+            remote_state="remote_draft" if docstatus == 0 else "remote_unknown",
+        )
         raise ReadbackFailed(f"ERP readback shows docstatus={docstatus}, expected 1 (submitted)")
 
-    # Compare financial fields: supplier, bill_no, currency, totals.
-    mismatches = _compare_readback(payload, readback_data)
+    # rc4 Phase 6: Fail-closed readback — expected-but-missing = mismatch.
+    # rc4 Phase 8: Build canonical representations and compare.
+    canonical_expected = _canonical_erp_invoice(payload)
+    canonical_actual = _canonical_erp_invoice(readback_data)
+    mismatches = _compare_canonical(canonical_expected, canonical_actual)
     if mismatches:
         _mark_unknown(
-            repos, org_scope, updated.action_id,
+            repos, org_scope, acquired.action_id,
             f"readback mismatch: {mismatches}", docname, invoice_id,
+            remote_state="remote_mismatch",
         )
         raise ReadbackMismatch(f"ERP readback fields do not match: {mismatches}")
 
+    # rc4 Phase 8: Store the readback hash.
+    readback_hash = _hash_json(canonical_actual)
+
     # Phase 23: audit the readback with response hash.
     _audit_transition(
-        repos, org_scope, updated.action_id, "executing", "executing", invoice_id,
-        response_hash=_hash_json(readback_data),
+        repos, org_scope, acquired.action_id, "executing", "executing", invoice_id,
+        response_hash=readback_hash,
         detail={"step": "readback_verified", "docname": docname, "docstatus": docstatus},
     )
 
     _check_crash("after_readback")
 
-    # 11. Transition to CONFIRMED.
+    # 11. Transition to CONFIRMED with remote_state=REMOTE_SUBMITTED.
     result_payload = {"docname": docname, "docstatus": docstatus}
     _check_crash("before_confirmed")
     confirmed = repos.external_actions.transition(
         scope=org_scope,
-        action_id=updated.action_id,
+        action_id=acquired.action_id,
         from_status="executing",
         to_status="confirmed",
         remote_document_id=docname,
+        remote_state="remote_submitted",
         result=result_payload,
+        readback_hash=readback_hash,
     )
     if confirmed is None:
         # Lost the race or state changed unexpectedly.
-        raise ExecutionError(f"could not transition {updated.action_id} from executing to confirmed")
+        raise ExecutionError(f"could not transition {acquired.action_id} from executing to confirmed")
 
     _audit_transition(
-        repos, org_scope, updated.action_id, "executing", "confirmed", invoice_id,
+        repos, org_scope, acquired.action_id, "executing", "confirmed", invoice_id,
         detail={"step": "confirmed", "docname": docname},
     )
 
     # 12. Audit the execution (Phase 23: include request/response hashes).
+    # rc4 Phase 16: Record the final audit event ID on the action.
     _check_crash("before_audit")
-    repos.audit.append(
+    audit_event = repos.audit.append(
         scope=org_scope,
         event_type="ERP_INVOICE_SUBMITTED",
         actor=approval.approved_by or "system",
@@ -437,9 +549,20 @@ def execute_approved_invoice(
             "action_id": str(confirmed.action_id),
             "idempotent": False,
             "request_hash": request_hash,
-            "response_hash": _hash_json(readback_data),
+            "response_hash": readback_hash,  # legacy name for backward compat
+            "readback_hash": readback_hash,
         },
     )
+
+    # rc4 Phase 16: Link the final audit event to the action.
+    if audit_event.audit_event_id is not None:
+        repos.external_actions.transition(
+            scope=org_scope,
+            action_id=confirmed.action_id,
+            from_status="confirmed",
+            to_status="confirmed",
+            final_audit_event_id=audit_event.audit_event_id,
+        )
 
     return ExecutionResult(
         action_id=confirmed.action_id,
@@ -457,7 +580,7 @@ def _mark_failed_retryable(repos: Repositories, scope: Scope, action_id: UUID, e
     _audit_transition(repos, scope, action_id, "executing", "failed_retryable", invoice_id)
 
 
-def _mark_unknown(repos: Repositories, scope: Scope, action_id: UUID, error: str, docname: str, invoice_id: UUID) -> None:
+def _mark_unknown(repos: Repositories, scope: Scope, action_id: UUID, error: str, docname: str, invoice_id: UUID, *, remote_state: str = "remote_unknown") -> None:
     """Transition an action to UNKNOWN and audit.
 
     Used when the external call returned an ambiguous result (e.g. submit
@@ -466,7 +589,7 @@ def _mark_unknown(repos: Repositories, scope: Scope, action_id: UUID, error: str
     """
     repos.external_actions.transition(
         scope=scope, action_id=action_id, from_status="executing", to_status="unknown",
-        remote_document_id=docname, last_error=error,
+        remote_document_id=docname, last_error=error, remote_state=remote_state,
     )
     _audit_transition(repos, scope, action_id, "executing", "unknown", invoice_id)
 
@@ -512,34 +635,98 @@ def _hash_json(value: Any) -> str:
     ).hexdigest()
 
 
-def _compare_readback(expected: dict[str, Any], actual: dict[str, Any]) -> list[str]:
-    """Compare expected ERP payload fields against readback data (Phase 11).
+def _compute_erp_idempotency_key(*, organization_id: str, invoice_id: str, approval_id: str, operation: str) -> str:
+    """rc4 Phase 5: Deterministic ERP-visible idempotency key.
 
-    Returns a list of mismatch descriptions. Empty list means all fields match.
-    Compares: supplier, bill_no, currency, grand_total, net_total, total_taxes.
+    K = H(organization || invoice || approval || operation)
+
+    This key is sent to ERP as a custom field and used for remote reconciliation.
+    """
+    import hashlib
+    h = hashlib.sha256()
+    h.update(organization_id.encode())
+    h.update(b"\x00")
+    h.update(invoice_id.encode())
+    h.update(b"\x00")
+    h.update(approval_id.encode())
+    h.update(b"\x00")
+    h.update(operation.encode())
+    return f"construct-{h.hexdigest()[:32]}"
+
+
+def _canonical_erp_invoice(data: dict[str, Any]) -> dict[str, Any]:
+    """rc4 Phase 8: Build a canonical ERP invoice representation.
+
+    This normalized form is used for both the intended local action and the ERP
+    readback. Confirmation requires:
+
+        CanonicalExpected = CanonicalActual
     """
     from decimal import Decimal as _Decimal
 
+    def _norm_decimal(v: Any) -> str:
+        if v is None:
+            return ""
+        return str(_Decimal(str(v)).quantize(_Decimal("0.01")))
+
+    def _norm_str(v: Any) -> str:
+        if v is None:
+            return ""
+        return str(v).strip()
+
+    def _first(*keys):
+        """Return the first non-None value from the given keys in data."""
+        for k in keys:
+            v = data.get(k)
+            if v is not None:
+                return v
+        return None
+
+    return {
+        "supplier": _norm_str(data.get("supplier")),
+        "invoice_number": _norm_str(_first("bill_no", "invoice_number")),
+        "currency": _norm_str(data.get("currency")),
+        "grand_total": _norm_decimal(data.get("grand_total")),
+        "net_total": _norm_decimal(data.get("net_total")),
+        "total_tax": _norm_decimal(_first("total_taxes", "total_tax", "tax_amount")),
+        "purchase_order_id": _norm_str(_first("po_no", "purchase_order_id", "po_reference")),
+        "project_id": _norm_str(_first("project", "project_id")),
+        "docstatus": int(data.get("docstatus", 0)),
+        "idempotency_key": _norm_str(_first("construct_idempotency_key", "idempotency_key")),
+    }
+
+
+def _compare_canonical(expected: dict[str, Any], actual: dict[str, Any]) -> list[str]:
+    """rc4 Phase 6/8: Fail-closed comparison of canonical ERP invoice fields.
+
+    If a field is expected (present in the expected dict), it must also be
+    present in the actual dict and match exactly. Expected-but-missing is a
+    mismatch, not a silent pass.
+
+    Note: docstatus is NOT compared here — the payload sends docstatus=0 (create
+    as draft) while the readback should show docstatus=1 (submitted). The
+    docstatus check is done separately in the executor before this comparison.
+    """
     mismatches: list[str] = []
-
-    # String fields — exact match.
-    for field in ("supplier", "bill_no", "currency"):
+    for field in ("supplier", "invoice_number", "currency", "grand_total",
+                  "net_total", "total_tax", "purchase_order_id", "project_id",
+                  "idempotency_key"):
         exp = expected.get(field)
         act = actual.get(field)
-        if exp is not None and act is not None and str(exp) != str(act):
+        if exp is None or exp == "":
+            # Expected field not provided — skip (can't verify what we didn't send).
+            continue
+        if act is None or act == "":
+            # rc4 Phase 6: Expected-but-missing = mismatch.
+            mismatches.append(f"{field}: expected {exp!r}, got MISSING")
+        elif str(exp) != str(act):
             mismatches.append(f"{field}: expected {exp!r}, got {act!r}")
-
-    # Numeric fields — compare as Decimal for precision.
-    for field in ("grand_total", "net_total", "total_taxes"):
-        exp = expected.get(field)
-        act = actual.get(field)
-        if exp is not None and act is not None:
-            try:
-                exp_d = _Decimal(str(exp))
-                act_d = _Decimal(str(act))
-                if exp_d != act_d:
-                    mismatches.append(f"{field}: expected {exp}, got {act}")
-            except Exception:
-                mismatches.append(f"{field}: could not compare {exp!r} vs {act!r}")
-
     return mismatches
+
+
+def _compare_readback(expected: dict[str, Any], actual: dict[str, Any]) -> list[str]:
+    """Legacy readback comparison — delegates to canonical comparison.
+
+    Kept for backward compatibility with existing tests.
+    """
+    return _compare_canonical(_canonical_erp_invoice(expected), _canonical_erp_invoice(actual))
