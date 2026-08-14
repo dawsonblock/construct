@@ -79,16 +79,64 @@ class JobQueue:
                 raise
         self._group_ensured = True
 
-    def enqueue(self, *, scope: Scope, job_type: str, payload: dict) -> Job:
+    def enqueue(self, *, scope: Scope, job_type: str, payload: dict, idempotency_key: str | None = None) -> Job:
         """Write the job row and an outbox row in one transaction.
 
         The relay (relay_outbox) pushes to the Redis Stream after the
         transaction commits.
+
+        If idempotency_key is provided, the enqueue is idempotent: a second
+        call with the same key returns the original job instead of creating
+        a duplicate. This enforces:
+          RepeatedExecution ⇒ NoDuplicateFinancialEffect
         """
+        if idempotency_key:
+            # Check for an existing job with this idempotency key.
+            existing = self._lookup_idempotent(scope=scope, key=idempotency_key)
+            if existing is not None:
+                return existing
+
         with self.repos.db.transaction():
             job = self.repos.jobs.create(scope=scope, job_type=job_type, payload=payload)
             self.repos.outbox.create(scope=scope, job_id=job.job_id)
+            if idempotency_key:
+                self._record_idempotent(scope=scope, key=idempotency_key, job_id=job.job_id)
         return job
+
+    def _lookup_idempotent(self, *, scope: Scope, key: str) -> Job | None:
+        """Look up a previously enqueued job by idempotency key."""
+
+        with self.repos.db.scoped(scope) as cur:
+            cur.execute(
+                "SELECT result FROM idempotency_keys WHERE organization_id = %s AND scope = %s AND key = %s",
+                (scope.organization_id, "job_enqueue", key),
+            )
+            row = cur.fetchone()
+        if row is None or row[0] is None:
+            return None
+        result = row[0] if isinstance(row[0], dict) else (row[0] or {})
+        job_id_str = result.get("job_id")
+        if not job_id_str:
+            return None
+        try:
+            job = self.repos.jobs.get(scope=scope, job_id=UUID(job_id_str))
+            return job
+        except (ValueError, Exception):
+            return None
+
+    def _record_idempotent(self, *, scope: Scope, key: str, job_id: UUID) -> None:
+        """Record an idempotency key → job_id mapping."""
+        from psycopg.types.json import Jsonb
+
+        from construction_ai.persistence.serialization import dumps
+
+        with self.repos.db.scoped(scope) as cur:
+            cur.execute(
+                """INSERT INTO idempotency_keys(organization_id, scope, key, result)
+                   VALUES(%s, %s, %s, %s)
+                   ON CONFLICT (organization_id, scope, key) DO NOTHING""",
+                (scope.organization_id, "job_enqueue", key, Jsonb({"job_id": str(job_id)}, dumps=dumps)),
+            )
 
     def relay_outbox(self, *, scope: Scope | None = None, limit: int = 100) -> int:
         """Push unpublished outbox rows to the Redis Stream and mark published."""

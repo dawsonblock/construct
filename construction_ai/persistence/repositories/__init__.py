@@ -20,6 +20,7 @@ from construction_ai.persistence.repositories.auth import (
 from construction_ai.persistence.repositories.communications import CommunicationRepository
 from construction_ai.persistence.repositories.commercial import InvoiceRepository, PurchaseOrderRepository, QuoteRepository
 from construction_ai.persistence.repositories.documents import DocumentRepository
+from construction_ai.persistence.repositories.external_actions import ExternalActionRepository
 from construction_ai.persistence.repositories.evidence import EvidenceRepository
 from construction_ai.persistence.repositories.graph import EntityRepository, RelationshipRepository
 from construction_ai.persistence.repositories.jobs import JobRepository
@@ -38,6 +39,7 @@ __all__ = [
     "Database",
     "DocumentRepository",
     "EntityRepository",
+    "ExternalActionRepository",
     "EvidenceRepository",
     "InvoiceRepository",
     "JobRepository",
@@ -124,6 +126,10 @@ class Repositories:
     @cached_property
     def outbox(self) -> OutboxRepository:
         return OutboxRepository(self.db)
+
+    @cached_property
+    def external_actions(self) -> ExternalActionRepository:
+        return ExternalActionRepository(self.db)
 
     @cached_property
     def audit(self) -> AuditRepository:
