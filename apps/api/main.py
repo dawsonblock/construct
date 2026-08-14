@@ -14,8 +14,9 @@ from pathlib import Path
 from uuid import UUID
 
 try:
-    from fastapi import Depends, FastAPI, Header, HTTPException
+    from fastapi import Depends, FastAPI, Header, HTTPException, Request, Response
     from fastapi.responses import HTMLResponse
+    from fastapi.staticfiles import StaticFiles
     from pydantic import BaseModel
 except Exception:  # pragma: no cover - import guard for tooling without FastAPI
     FastAPI = None
@@ -39,6 +40,42 @@ app = FastAPI(title="Construction AI Ops", version=VERSION) if FastAPI else None
 repos = Repositories.from_env() if app else None
 _queue = None
 _queue_lock = threading.Lock()
+
+# -- security headers (v0.4.3 item 21) -------------------------------------
+# Every response gets a baseline set of hardening headers. The CSP is split:
+# HTML pages get a policy that allows self-sourced scripts/styles and same-origin
+# API calls; JSON/API responses get default-src 'none' since they are never
+# rendered as documents. Inline scripts and handlers are blocked everywhere.
+_API_CSP = "default-src 'none'; frame-ancestors 'none'"
+_HTML_CSP = (
+    "default-src 'self'; "
+    "script-src 'self'; "
+    "style-src 'self'; "
+    "connect-src 'self'; "
+    "img-src 'self'; "
+    "frame-ancestors 'none'; "
+    "base-uri 'self'; "
+    "form-action 'self'"
+)
+
+if app:
+    @app.middleware("http")
+    async def security_headers(request: Request, call_next):
+        response: Response = await call_next(request)
+        ct = response.headers.get("content-type", "")
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["Referrer-Policy"] = "no-referrer"
+        response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
+        if "text/html" in ct:
+            response.headers["Content-Security-Policy"] = _HTML_CSP
+        else:
+            response.headers["Content-Security-Policy"] = _API_CSP
+        return response
+
+    # Serve the approval UI's static assets (JS/CSS) from /static.
+    _web_dir = Path(__file__).resolve().parent.parent / "web"
+    app.mount("/static", StaticFiles(directory=str(_web_dir)), name="static")
 
 
 def get_queue():
