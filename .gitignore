@@ -25,3 +25,4 @@ vendor/upstream_sources/
 
 # OS
 .DS_Store
+.hypothesis/
