@@ -37,14 +37,24 @@ class OrganizationRepository:
         self.db = db
 
     def create(self, *, slug: str, name: str) -> Organization:
+        # INSERT-only: the app role cannot UPDATE organizations (migration 011
+        # revoked it — the security boundary is immutable from the runtime role).
+        # ON CONFLICT DO NOTHING avoids the UPDATE privilege that DO UPDATE
+        # requires; we SELECT back the existing row if the slug already exists.
         with self.db.unscoped_auth() as cur:
             cur.execute(
                 """INSERT INTO organizations(slug, name) VALUES(%s, %s)
-                   ON CONFLICT (slug) DO UPDATE SET name = EXCLUDED.name
+                   ON CONFLICT (slug) DO NOTHING
                    RETURNING organization_id, slug, name""",
                 (slug, name),
             )
             row = row_to_dict(cur)
+            if row is None:
+                cur.execute(
+                    "SELECT organization_id, slug, name FROM organizations WHERE slug = %s",
+                    (slug,),
+                )
+                row = row_to_dict(cur)
         return Organization(row["organization_id"], row["slug"], row["name"])
 
     def get_by_slug(self, slug: str) -> Organization | None:

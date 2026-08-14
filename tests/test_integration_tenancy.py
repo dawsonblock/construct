@@ -197,11 +197,21 @@ def test_tampering_with_a_payload_breaks_the_chain(repos, org_a):
     repos.audit.append(scope=org_a["scope"], event_type="TEST", actor="ai", object_type="test", payload={"amount": 100})
     repos.audit.append(scope=org_a["scope"], event_type="TEST", actor="ai", object_type="test", payload={"amount": 200})
     assert repos.audit.verify_chain(scope=org_a["scope"]) is True
-    with repos.db.scoped(org_a["scope"]) as cur:
-        cur.execute(
-            "UPDATE audit_events SET payload = '{\"amount\": 999}'::jsonb WHERE organization_id = %s AND sequence = 1",
-            (org_a["organization_id"],),
-        )
+    # v0.4.3: the app role can no longer UPDATE audit_events (append-only), so
+    # the tampering simulation uses the owner connection — the threat model is
+    # an attacker who somehow gets owner-level DB access, not the app role.
+    import os
+
+    import psycopg
+
+    owner_dsn = os.getenv("DATABASE_URL", "postgresql://construction:construction@localhost:5432/construction_ai")
+    with psycopg.connect(owner_dsn) as owner:
+        with owner.cursor() as cur:
+            cur.execute(
+                "UPDATE audit_events SET payload = '{\"amount\": 999}'::jsonb WHERE organization_id = %s AND sequence = 1",
+                (org_a["organization_id"],),
+            )
+        owner.commit()
     assert repos.audit.verify_chain(scope=org_a["scope"]) is False
 
 
