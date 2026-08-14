@@ -225,7 +225,27 @@ class JobQueue:
         self.ack(job, msg_id)
 
     def fail(self, job: Job, error: str, msg_id: str | None = None) -> None:
-        self.repos.jobs.fail(scope=Scope(job.organization_id), job_id=job.job_id, error=error)
+        """Handle a job failure with retry logic.
+
+        If attempt_count < max_attempts, requeue the job for retry and push a
+        new stream message. Otherwise, move it to dead_letter status.
+        Either way, XACK the original stream message.
+        """
+        scope = Scope(job.organization_id)
+        if job.attempt_count < job.max_attempts:
+            self.repos.jobs.requeue(scope=scope, job_id=job.job_id, error=error)
+            # Push a new stream message for the retried job.
+            self.redis.xadd(self.stream_name, {"token": self._token(job)})
+            log.info(
+                "job %s requeued for retry (attempt %d/%d)",
+                job.job_id, job.attempt_count, job.max_attempts,
+            )
+        else:
+            self.repos.jobs.dead_letter(scope=scope, job_id=job.job_id, error=error)
+            log.warning(
+                "job %s dead-lettered after %d attempts: %s",
+                job.job_id, job.attempt_count, error,
+            )
         self.ack(job, msg_id)
 
     def get(self, *, scope: Scope, job_id: UUID) -> Job | None:

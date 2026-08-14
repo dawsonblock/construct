@@ -263,7 +263,17 @@ def test_worker_records_a_handler_exception_rather_than_crashing(queue, org_a, m
     job = queue.enqueue(scope=org_a["scope"], job_type="invoice_document", payload={})
     run_worker(queue, once=True, timeout=0)
     record = queue.get(scope=org_a["scope"], job_id=job.job_id)
-    assert record.status == "failed"
+    # v0.4.4: first failure requeues for retry (not 'failed').
+    assert record.status == "queued"
+    assert "ValueError: extraction exploded" in record.error
+    # Run all retry cycles to reach dead_letter.
+    for _ in range(job.max_attempts):
+        record = queue.get(scope=org_a["scope"], job_id=job.job_id)
+        if record.status in ("completed", "dead_letter", "failed"):
+            break
+        run_worker(queue, once=True, timeout=0)
+    record = queue.get(scope=org_a["scope"], job_id=job.job_id)
+    assert record.status == "dead_letter"
     assert "ValueError: extraction exploded" in record.error
 
 
@@ -271,7 +281,16 @@ def test_worker_fails_a_job_with_no_handler(queue, org_a):
     job = queue.enqueue(scope=org_a["scope"], job_type="unknown_type", payload={})
     assert run_worker(queue, once=True, timeout=0) == 1
     record = queue.get(scope=org_a["scope"], job_id=job.job_id)
-    assert record.status == "failed" and "no handler" in record.error
+    # v0.4.4: first failure requeues for retry.
+    assert record.status == "queued" and "no handler" in record.error
+    # Run all retry cycles to reach dead_letter.
+    for _ in range(job.max_attempts):
+        record = queue.get(scope=org_a["scope"], job_id=job.job_id)
+        if record.status in ("completed", "dead_letter", "failed"):
+            break
+        run_worker(queue, once=True, timeout=0)
+    record = queue.get(scope=org_a["scope"], job_id=job.job_id)
+    assert record.status == "dead_letter" and "no handler" in record.error
 
 
 def test_unextractable_document_asks_for_a_human(queue, org_a, monkeypatch):

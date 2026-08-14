@@ -150,7 +150,27 @@ class JobRepository(Repository):
     def fail(self, *, scope: Scope, job_id: UUID, error: str) -> None:
         with self.db.scoped(scope) as cur:
             cur.execute(
-                "UPDATE jobs SET status = 'failed', error = %s WHERE organization_id = %s AND job_id = %s",
+                "UPDATE jobs SET status = 'failed', error = %s, lease_expires_at = NULL "
+                "WHERE organization_id = %s AND job_id = %s",
+                (error, scope.organization_id, job_id),
+            )
+
+    def requeue(self, *, scope: Scope, job_id: UUID, error: str) -> None:
+        """Set a failed job back to queued for retry. Preserves attempt_count
+        and records the last error."""
+        with self.db.scoped(scope) as cur:
+            cur.execute(
+                "UPDATE jobs SET status = 'queued', error = %s, lease_expires_at = NULL, claimed_by = NULL "
+                "WHERE organization_id = %s AND job_id = %s",
+                (error, scope.organization_id, job_id),
+            )
+
+    def dead_letter(self, *, scope: Scope, job_id: UUID, error: str) -> None:
+        """Move a job to dead_letter status — terminal, no more retries."""
+        with self.db.scoped(scope) as cur:
+            cur.execute(
+                "UPDATE jobs SET status = 'dead_letter', error = %s, lease_expires_at = NULL "
+                "WHERE organization_id = %s AND job_id = %s",
                 (error, scope.organization_id, job_id),
             )
 
