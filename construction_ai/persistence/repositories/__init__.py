@@ -24,6 +24,7 @@ from construction_ai.persistence.repositories.evidence import EvidenceRepository
 from construction_ai.persistence.repositories.graph import EntityRepository, RelationshipRepository
 from construction_ai.persistence.repositories.jobs import JobRepository
 from construction_ai.persistence.repositories.organizations import OrganizationRepository
+from construction_ai.persistence.repositories.outbox import OutboxRepository
 from construction_ai.persistence.repositories.projects import CompanyRepository, ProjectRepository
 
 __all__ = [
@@ -41,6 +42,7 @@ __all__ = [
     "InvoiceRepository",
     "JobRepository",
     "OrganizationRepository",
+    "OutboxRepository",
     "ProjectRepository",
     "RelationshipRepository",
     "PurchaseOrderRepository",
@@ -118,6 +120,10 @@ class Repositories:
     @cached_property
     def jobs(self) -> JobRepository:
         return JobRepository(self.db)
+
+    @cached_property
+    def outbox(self) -> OutboxRepository:
+        return OutboxRepository(self.db)
 
     @cached_property
     def audit(self) -> AuditRepository:

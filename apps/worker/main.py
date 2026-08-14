@@ -4,6 +4,10 @@ Reserves jobs from Redis, dispatches to a handler, records the outcome on the
 job record. A handler that raises fails the job — it never leaves a half-written
 decision behind, and it never retries automatically, because a silent retry of a
 financial preparation step is not safe by default.
+
+v0.4.4: the worker also runs the outbox relay before each reserve cycle. This
+ensures jobs enqueued via the transactional outbox are pushed to Redis even if
+the enqueuing process didn't run the relay itself.
 """
 from __future__ import annotations
 
@@ -32,9 +36,15 @@ def _stop(signum, _frame):
     _running = False
 
 
-def run(queue: JobQueue, *, once: bool = False, timeout: int = 5) -> int:
+def run(queue: JobQueue, *, once: bool = False, timeout: int = 5, relay: bool = True) -> int:
     processed = 0
     while _running:
+        # Relay unpublished outbox rows to Redis before trying to reserve.
+        if relay:
+            try:
+                queue.relay_outbox(limit=50)
+            except Exception:
+                log.exception("outbox relay failed — continuing to reserve")
         job = queue.reserve(timeout=timeout)
         if job is None:
             if once:

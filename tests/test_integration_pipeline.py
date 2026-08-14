@@ -164,6 +164,9 @@ def queue(repos):
 
 def test_the_queue_carries_only_ids_and_the_row_carries_the_scope(queue, org_a):
     job = queue.enqueue(scope=org_a["scope"], job_type="invoice_document", payload={"text": "hello"})
+    # v0.4.4: enqueue writes to the outbox, not directly to Redis. The relay
+    # pushes unpublished outbox rows to Redis.
+    queue.relay_outbox(limit=10)
     assert queue.redis.lists["test:jobs"] == [f"{org_a['organization_id']}:{job.job_id}"]
     assert queue.get(scope=org_a["scope"], job_id=job.job_id).payload == {"text": "hello"}
 
