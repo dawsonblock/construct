@@ -52,10 +52,12 @@ class InvoicePipeline:
         return UUID(project.project_id) if project else None
 
     def _resolve_vendor(self, scope: Scope, vendor_name: str) -> UUID | None:
-        """ERP supplier identity → a company in *this* tenant, or nothing.
+        """Invoice vendor name → a company in *this* tenant, or nothing.
 
-        A vendor the tenant does not know is not silently created. The verifier
-        then finds no vendor identity and holds, which is the intended outcome.
+        This resolves the *invoice's* vendor independently. The purchase order's
+        supplier is resolved separately by `_resolve_erp_supplier` so that
+        vendor_match compares two independent resolutions, never a value copied
+        from one side to the other (item 6).
         """
         if not self.erp or not vendor_name:
             return None
@@ -64,6 +66,22 @@ class InvoicePipeline:
             return None
         company = self.repos.companies.find_by_erp_supplier(scope=scope, erp_supplier_id=supplier.get("name"))
         return UUID(company.company_id) if company else None
+
+    def _resolve_erp_supplier(self, scope: Scope, erp_supplier_id: str | None) -> UUID | None:
+        """ERP PO/quote supplier → a local company, independent of the invoice.
+
+        The ERP record carries the supplier ERP actually returned; that is the
+        authoritative input. This path must never borrow the invoice's resolved
+        vendor — doing so made vendor_match tautological in v0.3.
+        """
+        if not erp_supplier_id:
+            return None
+        from construction_ai.erp import resolve_supplier_to_company
+
+        resolution = resolve_supplier_to_company(
+            self.repos, scope, erp_supplier_id=erp_supplier_id, supplier_name=erp_supplier_id
+        )
+        return resolution.company_id
 
     def _persist_evidence(
         self, scope: Scope, candidates: list[Evidence], *, source_version_id: UUID | None,
@@ -163,15 +181,20 @@ class InvoicePipeline:
             # The PO is stored under the project ERPNext says it belongs to, not
             # under the project we resolved. Writing our own answer into the record
             # we are about to check it against would make project_match tautological.
+            #
+            # The PO/quote vendor is resolved INDEPENDENTLY from the supplier ERP
+            # actually returned (item 6). It is never copied from the invoice's
+            # resolved vendor — that destroyed vendor_match independence in v0.3.
             purchase_order = quote = None
             if self.erp and invoice.po_number:
                 erp_po, _ = self.erp.resolve_purchase_order(invoice.po_number)
                 if erp_po:
                     erp_project_id = self._project_id_for_reference(organization_scope, erp_po.project_id)
+                    po_vendor_company_id = self._resolve_erp_supplier(working, erp_po.vendor_company_id)
                     purchase_order = self.repos.purchase_orders.upsert(
                         scope=organization_scope.for_project(erp_project_id),
                         reference=erp_po.po_number,
-                        vendor_company_id=vendor_company_id,
+                        vendor_company_id=po_vendor_company_id,
                         amount=erp_po.amount,
                         quote_reference=erp_po.quote_number,
                         erp_docname=erp_po.po_number,
@@ -180,10 +203,11 @@ class InvoicePipeline:
                 erp_quote, _ = self.erp.resolve_quote(invoice.quote_number)
                 if erp_quote:
                     erp_project_id = self._project_id_for_reference(organization_scope, erp_quote.project_id)
+                    quote_vendor_company_id = self._resolve_erp_supplier(working, erp_quote.vendor_company_id)
                     quote = self.repos.quotes.upsert(
                         scope=organization_scope.for_project(erp_project_id),
                         reference=erp_quote.quote_number,
-                        vendor_company_id=vendor_company_id,
+                        vendor_company_id=quote_vendor_company_id,
                         amount=erp_quote.amount,
                         approved=erp_quote.approved,
                         erp_docname=erp_quote.quote_number,
