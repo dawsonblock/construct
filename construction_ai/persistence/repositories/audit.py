@@ -39,6 +39,32 @@ class AuditEvent:
     payload: dict[str, Any]
 
 
+@dataclass(frozen=True)
+class AuditCheckpoint:
+    checkpoint_id: UUID
+    sequence: int
+    entry_hash: str
+    event_count: int
+    checkpoint_hash: str
+    exported_by: str
+    created_at: datetime
+
+
+def checkpoint_hash(
+    *,
+    organization_id: UUID,
+    sequence: int,
+    entry_hash: str,
+    event_count: int,
+    created_at: datetime,
+) -> str:
+    """Bind the chain state into a single tamper-evident hash."""
+    material = CHAIN_SEPARATOR.join(
+        [str(organization_id), str(sequence), entry_hash, str(event_count), created_at.isoformat()]
+    )
+    return hashlib.sha256(material.encode()).hexdigest()
+
+
 def chain_hash(
     *,
     prev_hash: str | None,
@@ -156,4 +182,92 @@ class AuditRepository(Repository):
             f"""SELECT sequence, event_type, actor, object_type, object_id, payload, occurred_at, entry_hash
                 FROM audit_events WHERE {clause} AND object_type = %s AND object_id = %s ORDER BY sequence""",
             [*params, object_type, object_id],
+        )
+
+    # -- external checkpointing (v0.4.3 item 20) ---------------------------
+
+    def create_checkpoint(self, *, scope: Scope, exported_by: str) -> AuditCheckpoint:
+        """Capture the current chain head as a tamper-evident checkpoint.
+
+        The checkpoint binds (organization, last sequence, last entry_hash,
+        event count, timestamp) into a single hash. Stored append-only in
+        audit_checkpoints AND returned to the caller for external anchoring.
+        """
+        created_at = datetime.now(timezone.utc)
+        with self.db.scoped(scope) as cur:
+            cur.execute(
+                "SELECT sequence, entry_hash, count(*) OVER () AS total "
+                "FROM audit_events WHERE organization_id = %s ORDER BY sequence DESC LIMIT 1",
+                (scope.organization_id,),
+            )
+            head = cur.fetchone()
+            if head is None:
+                sequence, entry_hash, event_count = 0, "", 0
+            else:
+                sequence, entry_hash, event_count = head[0], head[1], head[2]
+            cp_hash = checkpoint_hash(
+                organization_id=scope.organization_id,
+                sequence=sequence,
+                entry_hash=entry_hash,
+                event_count=event_count,
+                created_at=created_at,
+            )
+            cur.execute(
+                """INSERT INTO audit_checkpoints(organization_id, sequence, entry_hash, event_count,
+                       checkpoint_hash, exported_by, created_at)
+                   VALUES(%s,%s,%s,%s,%s,%s,%s) RETURNING checkpoint_id""",
+                (scope.organization_id, sequence, entry_hash, event_count, cp_hash, exported_by, created_at),
+            )
+            row = cur.fetchone()
+        return AuditCheckpoint(
+            checkpoint_id=row[0],
+            sequence=sequence,
+            entry_hash=entry_hash,
+            event_count=event_count,
+            checkpoint_hash=cp_hash,
+            exported_by=exported_by,
+            created_at=created_at,
+        )
+
+    def verify_checkpoint(self, *, scope: Scope, checkpoint: AuditCheckpoint) -> bool:
+        """Verify a previously exported checkpoint against the current chain.
+
+        Returns True only if:
+        1. The chain head matches the checkpoint — same last sequence, same
+           last entry_hash, same event count.
+        2. The chain is internally consistent (verify_chain passes) — no event
+           has been tampered with, since recomputing the chain would detect a
+           changed payload even if the stored hash column was left alone.
+
+        A rewritten chain (even by someone with owner access) will fail one or
+        both checks if the original checkpoint was anchored externally.
+        """
+        # Check 1: chain integrity — recompute all hashes.
+        if not self.verify_chain(scope=scope):
+            return False
+        # Check 2: head matches the checkpoint.
+        with self.db.scoped(scope) as cur:
+            cur.execute(
+                "SELECT sequence, entry_hash, count(*) OVER () AS total "
+                "FROM audit_events WHERE organization_id = %s ORDER BY sequence DESC LIMIT 1",
+                (scope.organization_id,),
+            )
+            head = cur.fetchone()
+        if head is None:
+            current_seq, current_hash, current_count = 0, "", 0
+        else:
+            current_seq, current_hash, current_count = head[0], head[1], head[2]
+        return (
+            current_seq == checkpoint.sequence
+            and current_hash == checkpoint.entry_hash
+            and current_count == checkpoint.event_count
+        )
+
+    def list_checkpoints(self, *, scope: Scope) -> list[dict[str, Any]]:
+        return self._fetch_all(
+            scope,
+            """SELECT checkpoint_id, sequence, entry_hash, event_count, checkpoint_hash,
+                      exported_by, created_at
+               FROM audit_checkpoints WHERE organization_id = %s ORDER BY created_at""",
+            [scope.organization_id],
         )

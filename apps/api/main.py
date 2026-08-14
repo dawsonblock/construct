@@ -10,6 +10,7 @@ which is enough to enumerate another tenant's ids. See docs/TENANCY.md §5.
 from __future__ import annotations
 
 import threading
+from datetime import datetime
 from pathlib import Path
 from uuid import UUID
 
@@ -440,6 +441,56 @@ if app:
         if repos.invoices.get(scope=scope, invoice_id=invoice_uuid) is None:
             raise HTTPException(404, "invoice not found")
         return repos.audit.for_object(scope=scope, object_type="invoice", object_id=invoice_uuid)
+
+    # -- external audit checkpointing (v0.4.3 item 20) ----------------------
+
+    @app.post("/audit/checkpoint")
+    def create_audit_checkpoint(scope: Scope = Depends(current_scope)):
+        """Capture the current chain head as a tamper-evident checkpoint.
+
+        The checkpoint binds (organization, last sequence, last entry_hash,
+        event count, timestamp) into a single hash. It is stored append-only
+        in audit_checkpoints AND returned to the caller for external anchoring
+        (e.g. to a separate log, object storage, or a notarization service).
+        """
+        cp = repos.audit.create_checkpoint(scope=scope, exported_by="api")
+        return {
+            "checkpoint_id": str(cp.checkpoint_id),
+            "sequence": cp.sequence,
+            "entry_hash": cp.entry_hash,
+            "event_count": cp.event_count,
+            "checkpoint_hash": cp.checkpoint_hash,
+            "exported_by": cp.exported_by,
+            "created_at": cp.created_at.isoformat(),
+        }
+
+    @app.get("/audit/checkpoints")
+    def list_audit_checkpoints(scope: Scope = Depends(current_scope)):
+        return repos.audit.list_checkpoints(scope=scope)
+
+    @app.post("/audit/verify-checkpoint")
+    def verify_audit_checkpoint(body: dict, scope: Scope = Depends(current_scope)):
+        """Verify a previously exported checkpoint against the current chain.
+
+        Returns whether the chain head matches the checkpoint. A rewritten
+        chain (even by someone with owner-level DB access) will fail this check
+        if the original checkpoint was anchored externally.
+        """
+        from construction_ai.persistence.repositories.audit import AuditCheckpoint
+
+        try:
+            cp = AuditCheckpoint(
+                checkpoint_id=UUID(body["checkpoint_id"]),
+                sequence=int(body["sequence"]),
+                entry_hash=body["entry_hash"],
+                event_count=int(body["event_count"]),
+                checkpoint_hash=body["checkpoint_hash"],
+                exported_by=body.get("exported_by", ""),
+                created_at=datetime.fromisoformat(body["created_at"]),
+            )
+        except (KeyError, ValueError, TypeError) as e:
+            raise HTTPException(422, f"invalid checkpoint: {e}") from None
+        return {"matches": repos.audit.verify_checkpoint(scope=scope, checkpoint=cp)}
 
     # -- web UI -------------------------------------------------------------
 
