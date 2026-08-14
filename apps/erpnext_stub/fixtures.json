@@ -1,0 +1,14 @@
+{
+  "Supplier": [
+    {"name": "ABC Electric", "supplier_name": "ABC Electric", "tax_id": "GST-100200300"},
+    {"name": "Northline Drywall", "supplier_name": "Northline Drywall", "tax_id": "GST-400500600"}
+  ],
+  "Purchase Order": [
+    {"name": "PO-1042-17", "supplier": "ABC Electric", "project": "PRJ-0042", "grand_total": 4760.00, "status": "To Receive and Bill"},
+    {"name": "PO-1077-02", "supplier": "Northline Drywall", "project": "PRJ-0063", "grand_total": 8210.00, "status": "To Receive and Bill"}
+  ],
+  "Supplier Quotation": [
+    {"name": "Q-8821", "supplier": "ABC Electric", "project": "PRJ-0042", "grand_total": 4760.00, "status": "Ordered"},
+    {"name": "Q-9014", "supplier": "Northline Drywall", "project": "PRJ-0063", "grand_total": 8210.00, "status": "Draft"}
+  ]
+}

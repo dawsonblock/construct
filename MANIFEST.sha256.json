@@ -1,0 +1,376 @@
+{
+  "files": [
+    {
+      "path": ".env.example",
+      "sha256": "cc7e6c44ff6d5390d3ac65d9c294f2d4ee32c3dc12369395cd7753c2846e8c9a",
+      "size": 288
+    },
+    {
+      "path": ".pytest_cache/.gitignore",
+      "sha256": "3ed731b65d06150c138e2dadb0be0697550888a6b47eb8c45ecc9adba8b8e9bd",
+      "size": 37
+    },
+    {
+      "path": ".pytest_cache/CACHEDIR.TAG",
+      "sha256": "37dc88ef9a0abeddbe81053a6dd8fdfb13afb613045ea1eb4a5c815a74a3bde4",
+      "size": 191
+    },
+    {
+      "path": ".pytest_cache/README.md",
+      "sha256": "73fd6fccdd802c419a6b2d983d6c3173b7da97558ac4b589edec2dfe443db9ad",
+      "size": 302
+    },
+    {
+      "path": ".pytest_cache/v/cache/lastfailed",
+      "sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+      "size": 2
+    },
+    {
+      "path": ".pytest_cache/v/cache/nodeids",
+      "sha256": "c4d6372beec1516a0186341a0373036ad5164cb197f9a00cb05c6d2878d9b47d",
+      "size": 1295
+    },
+    {
+      "path": "README.md",
+      "sha256": "46d79d7f90e98cd6c8b5334c629790e398b1be7f69e81037b000a667bdc99ae4",
+      "size": 868
+    },
+    {
+      "path": "VERSION",
+      "sha256": "d915cc95d6ca8f47ae297713ed46d4e5c5d99ddd29fc3c61e263bdf305f2b5b0",
+      "size": 6
+    },
+    {
+      "path": "apps/api/main.py",
+      "sha256": "df086d88e3f7551ea4b50428e7cfbfb6a7b2f1831f671d5f22f00d558ffb99dd",
+      "size": 3386
+    },
+    {
+      "path": "apps/web/approval.html",
+      "sha256": "f92a7367140de2a66c8467bc9d66328a7531bc6333e743117f1cb4cc0d72a0fb",
+      "size": 2328
+    },
+    {
+      "path": "construction_ai/__init__.py",
+      "sha256": "56b5e91c3bb77ab933c25fd65eba883419bdc5691cc94cb9dc840e8f4e3674eb",
+      "size": 22
+    },
+    {
+      "path": "construction_ai/approvals/__init__.py",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "size": 0
+    },
+    {
+      "path": "construction_ai/approvals/packet.py",
+      "sha256": "1841f2a1f576a34183092b7c11d11c7c6978aeb78c05dbf56dbbfe9922a9163c",
+      "size": 761
+    },
+    {
+      "path": "construction_ai/approvals/service.py",
+      "sha256": "0e6d64dd979caf51a56a9a3d213790341e4f8f8629cdb33f4e06426aff383e7b",
+      "size": 1064
+    },
+    {
+      "path": "construction_ai/audit/__init__.py",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "size": 0
+    },
+    {
+      "path": "construction_ai/audit/log.py",
+      "sha256": "01e2701025f6cbf1bc64d8b1447a6868d18d94da24fa3eac2282a6f3bd38261a",
+      "size": 642
+    },
+    {
+      "path": "construction_ai/documents/extract.py",
+      "sha256": "ecee2bcd7017fc85fdefc114d9db3f7fa5592873570b25b1f6f40c4bdc99a821",
+      "size": 4263
+    },
+    {
+      "path": "construction_ai/domain/__init__.py",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "size": 0
+    },
+    {
+      "path": "construction_ai/domain/models.py",
+      "sha256": "a4dcd00f204393eaa2c522602cf9bc76d14df03a35faff0a9d84de2e06b9d5e8",
+      "size": 5508
+    },
+    {
+      "path": "construction_ai/evaluation/adversarial.py",
+      "sha256": "d6d9d9cca7a562d65207dd4688f56d13f77b7ec29bf58bc7913fbff6f6e05384",
+      "size": 1317
+    },
+    {
+      "path": "construction_ai/evaluation/benchmark.py",
+      "sha256": "cff875e8e4baff9b5e1929b8bdae66d0a80eccc8e45975df3b8dc550a8927b7b",
+      "size": 2068
+    },
+    {
+      "path": "construction_ai/executive/__init__.py",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "size": 0
+    },
+    {
+      "path": "construction_ai/executive/controller.py",
+      "sha256": "eef40113c4908ea1c8532e015156ef744ccc49115d8d54505fec5e74af9ba603",
+      "size": 835
+    },
+    {
+      "path": "construction_ai/executive/invoice_pipeline.py",
+      "sha256": "1c86b8fdbc07060c4f7fb0898c94479da4fc08c20223b62658c1a307e62ad044",
+      "size": 2473
+    },
+    {
+      "path": "construction_ai/executive/vertical_slice.py",
+      "sha256": "6601590d39a3135f4d83476d0b9be64aab81eabffef9c28fa8f13acaee5dc48e",
+      "size": 1238
+    },
+    {
+      "path": "construction_ai/extraction/__init__.py",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "size": 0
+    },
+    {
+      "path": "construction_ai/extraction/invoice.py",
+      "sha256": "81263d42778aedd220103eb5ccc07b79200a340ea206de499763239ab65b85df",
+      "size": 2169
+    },
+    {
+      "path": "construction_ai/ingestion/__init__.py",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "size": 0
+    },
+    {
+      "path": "construction_ai/ingestion/attachments.py",
+      "sha256": "c8491793eb05bb02c579b38e5266181bcd6fb44d97d4685fe6aa38f274d5c7db",
+      "size": 1547
+    },
+    {
+      "path": "construction_ai/ingestion/connectors.py",
+      "sha256": "16feae3eb8592fa8e5ef8e6186b090aebac17a5cd042751754b5d3763fe9e6ae",
+      "size": 4984
+    },
+    {
+      "path": "construction_ai/ingestion/email.py",
+      "sha256": "14ab7054e4cbc7d6960776e8d99e1457ca8ce2b498be6433d6aef035cd3e5059",
+      "size": 2382
+    },
+    {
+      "path": "construction_ai/ingestion/oauth.py",
+      "sha256": "1ecaf455943dd7e6e20b63ac729f545d08151c72699b67e4093ff03440528221",
+      "size": 1915
+    },
+    {
+      "path": "construction_ai/ingestion/sync.py",
+      "sha256": "fa6922fde5836176b46bd2f3116d9104c11bc805295cff736770af3db139eb05",
+      "size": 1318
+    },
+    {
+      "path": "construction_ai/integrations/__init__.py",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "size": 0
+    },
+    {
+      "path": "construction_ai/integrations/erpnext.py",
+      "sha256": "07f6ec2504de92d59432edbb01da784408a7c52a3fb15dadb764595ba1b31b8d",
+      "size": 3858
+    },
+    {
+      "path": "construction_ai/integrations/frappe_hr.py",
+      "sha256": "515386cbd284a9065c63fbd597cba414e4e6e20b126cda0c379e6b4c64a6f519",
+      "size": 704
+    },
+    {
+      "path": "construction_ai/memory/__init__.py",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "size": 0
+    },
+    {
+      "path": "construction_ai/persistence/factory.py",
+      "sha256": "111b0dad488a45f9df34243fe4f31b0cfa05c6ee447ac73eef531a12e8c40959",
+      "size": 501
+    },
+    {
+      "path": "construction_ai/persistence/postgres.py",
+      "sha256": "7055b612921e184ddb033f76605a4a6741707d9c37b7a1c2d57a9789e377503b",
+      "size": 6881
+    },
+    {
+      "path": "construction_ai/persistence/store.py",
+      "sha256": "5ccee71cf9614807017ec9d1168a98367756b85f02a080da24530a872343737f",
+      "size": 7257
+    },
+    {
+      "path": "construction_ai/policy/__init__.py",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "size": 0
+    },
+    {
+      "path": "construction_ai/policy/engine.py",
+      "sha256": "b026cb9466cd0d8658a564d30bb56b8326c373851c4b509d682152fb206fef68",
+      "size": 1102
+    },
+    {
+      "path": "construction_ai/resolution/__init__.py",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "size": 0
+    },
+    {
+      "path": "construction_ai/resolution/identity.py",
+      "sha256": "4cb5bda44ca7ea8ee702396fb2394e73f951fb406314a603ed1f9b156a43e93a",
+      "size": 954
+    },
+    {
+      "path": "construction_ai/resolution/project.py",
+      "sha256": "6ce74e586f75d38e7fba3bac0cb2550952a122a0d577840a3b205bb4be6ff9e6",
+      "size": 3404
+    },
+    {
+      "path": "construction_ai/retrieval/__init__.py",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "size": 0
+    },
+    {
+      "path": "construction_ai/verification/__init__.py",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "size": 0
+    },
+    {
+      "path": "construction_ai/verification/invoice.py",
+      "sha256": "896d39dce49e295cabec2d48ec3c1d5059521cfb187a0c0fb7e2ce5351ca08b1",
+      "size": 1716
+    },
+    {
+      "path": "construction_ai_ops.db",
+      "sha256": "93ecd85653771154f8657ccf2447aec68d7d3bc29fcea5563727fc747bfa98c7",
+      "size": 57344
+    },
+    {
+      "path": "demo_vertical_slice.py",
+      "sha256": "6996553721a53e8d7f83b0b6de1e533a6b9e0f5ef33f439848a7452bc27d7e2d",
+      "size": 1283
+    },
+    {
+      "path": "docs/ARCHITECTURE.md",
+      "sha256": "1df927cbfaec77658978947f4bc2fe0bd6e5c81dfeabfbf99c079a82962c91b2",
+      "size": 1780
+    },
+    {
+      "path": "docs/BUILD_REPORT.md",
+      "sha256": "fa8388bbfa849bf3091498027f19cfc69077bc1e29f87f2d668f4fa0bdca03e5",
+      "size": 2115
+    },
+    {
+      "path": "docs/UPSTREAM_SELECTION.md",
+      "sha256": "853040ed84fcce33ffd27133500e51fba302bd07d530557d6d4e282025993b88",
+      "size": 911
+    },
+    {
+      "path": "docs/V0.2.0_UPGRADE.md",
+      "sha256": "ee327ceea2a52c22ad9f8e99fd7fecce086f2ef7dce66684ddcdb9ca1e2fa18a",
+      "size": 822
+    },
+    {
+      "path": "docs/V0.3.0_UPGRADE.md",
+      "sha256": "b2c70ca7e58482a503591e7c3dbbe3b3718d0ab2974c036c0beaebccb4dd8727",
+      "size": 1330
+    },
+    {
+      "path": "evaluation/datasets/project_resolution_adversarial.json",
+      "sha256": "cdde01778f3e45af7139915976f323b4c0a302396254e5a58af3837178534ab3",
+      "size": 604
+    },
+    {
+      "path": "evaluation/datasets/project_resolution_v030_300.json",
+      "sha256": "9f692e75b80429e5b7a15cad8e556bb55350ce57eea7dc0a2aaa1147efca669d",
+      "size": 80330
+    },
+    {
+      "path": "evaluation/generate_benchmark.py",
+      "sha256": "0ab0fc694c720443b04c9c09fda5896348645555e70e6a2dd4859fc698f6d4e4",
+      "size": 252
+    },
+    {
+      "path": "infra/docker-compose.yml",
+      "sha256": "34a53e87a49e7d04d07e2318691685d29462261850f1f962e8fb9c15f5baa38a",
+      "size": 401
+    },
+    {
+      "path": "migrations/001_control_plane.sql",
+      "sha256": "707cf2cfa332c6c9c9404de72f9d59f313d26b6dcc569f417dbc14c196e060d5",
+      "size": 978
+    },
+    {
+      "path": "migrations/002_runtime_state.sql",
+      "sha256": "8a55a930316cadf067f0e26afecb9877d921a10f20a7328a8e0e674e954a0072",
+      "size": 2363
+    },
+    {
+      "path": "pyproject.toml",
+      "sha256": "11ecb6ed07bbed803229f4a35144ed6ab57303e9c434662c801c2b2ec398a9e8",
+      "size": 658
+    },
+    {
+      "path": "tests/test_identity_and_policy.py",
+      "sha256": "f480f891b803484528faf1eaf7c4b7296c35cffaf68c7706ca8b91bbf92d37ad",
+      "size": 616
+    },
+    {
+      "path": "tests/test_v020_upgrade.py",
+      "sha256": "4e2b58ec2e7f6d561d2d091a10064501ae892990f3fbd8e7ea6884d236f421a0",
+      "size": 2738
+    },
+    {
+      "path": "tests/test_v030_upgrade.py",
+      "sha256": "84d71482a62ded4d85ffa21b8178b7231993b1e6822e711edb676b8c3b92a870",
+      "size": 5630
+    },
+    {
+      "path": "tests/test_vertical_slice.py",
+      "sha256": "89c39d34331325ea1d4f1a0c52777ed768c9b8251e1f87c05521830593684007",
+      "size": 2786
+    },
+    {
+      "path": "vendor/NOTICE.md",
+      "sha256": "4d489a3ba3c03b64d87c684f4d9b96cb07c5c55690f1f57d5fe29f395d695b52",
+      "size": 461
+    },
+    {
+      "path": "vendor/upstream_sources/erpnext-develop.zip",
+      "sha256": "6c89620edd7017a09ddeea2849374cea5efa5889955ce7b0ab39f3cd4ee0ca7d",
+      "size": 28160415
+    },
+    {
+      "path": "vendor/upstream_sources/frappe-develop.zip",
+      "sha256": "cfc53737ffbfc9148bcaa3b1ecc68a6e0d4e21cdfd23b89a9432b185b64759e6",
+      "size": 27566453
+    },
+    {
+      "path": "vendor/upstream_sources/hrms-develop.zip",
+      "sha256": "4707adfc43e1f5223278fe7a024fab5c784ac2f3a47c8286cedc3ce722cc6706",
+      "size": 13748073
+    },
+    {
+      "path": "vendor/upstream_sources/langgraph-main.zip",
+      "sha256": "ec6e49c1f5df286853df963ead27c10a3e2db5cf59fa6248b870b4cb88b259e0",
+      "size": 4528721
+    }
+  ],
+  "generated_at": "2026-08-13T20:39:35.006886+00:00",
+  "name": "construction-ai-ops",
+  "qualification": {
+    "benchmark_auto_coverage": 0.167,
+    "benchmark_auto_precision": 1.0,
+    "benchmark_cases": 1000,
+    "benchmark_top1_accuracy": 1.0,
+    "tests": "17/17 PASS",
+    "unsafe_auto_assignments": 0
+  },
+  "retained_upstream_sha256": {
+    "vendor/upstream_sources/erpnext-develop.zip": "6c89620edd7017a09ddeea2849374cea5efa5889955ce7b0ab39f3cd4ee0ca7d",
+    "vendor/upstream_sources/frappe-develop.zip": "cfc53737ffbfc9148bcaa3b1ecc68a6e0d4e21cdfd23b89a9432b185b64759e6",
+    "vendor/upstream_sources/hrms-develop.zip": "4707adfc43e1f5223278fe7a024fab5c784ac2f3a47c8286cedc3ce722cc6706",
+    "vendor/upstream_sources/langgraph-main.zip": "ec6e49c1f5df286853df963ead27c10a3e2db5cf59fa6248b870b4cb88b259e0"
+  },
+  "version": "0.3.0"
+}

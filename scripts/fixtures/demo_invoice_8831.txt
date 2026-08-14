@@ -1,0 +1,22 @@
+ABC Electric
+1450 Industrial Way, Saskatoon SK S7K 1M3
+GST: 100200300 RT0001
+
+INVOICE
+
+Invoice Number: 8831
+Date: 2026-08-10
+
+Bill To: Blackrock Construction Ltd.
+Site: 421 8th St E
+PO Number: PO-1042-17
+Quote Number: Q-8821
+
+Description                                  Amount
+Electrical rough-in, main floor            4,533.33
+
+Subtotal: $4,533.33
+GST: $226.67
+Total Due: $4,760.00
+
+Terms: Net 30. Please reference the PO number on remittance.

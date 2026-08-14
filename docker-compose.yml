@@ -1,0 +1,124 @@
+# Full local stack for the v0.3.0 frozen baseline.
+#   cp .env.example .env && docker compose up
+# Images are pinned by digest — see docs/PINNED_VERSIONS.md.
+#
+# The web UI is served by the api service at /approval-ui. It uses same-origin
+# relative fetches, so a separate static server would only add a proxy hop.
+
+name: construction-ai-ops
+
+x-app: &app
+  build:
+    context: .
+    dockerfile: Dockerfile
+    args:
+      INSTALL_DEV: "${INSTALL_DEV:-0}"
+  env_file: .env
+  environment:
+    DATABASE_URL: postgresql://${POSTGRES_USER:-construction}:${POSTGRES_PASSWORD:-construction}@postgres:5432/${POSTGRES_DB:-construction_ai}
+    # The app connects as a non-superuser role so row-level security applies to
+    # it. Superusers bypass RLS even when it is forced.
+    APP_DATABASE_URL: postgresql://construction_app:${APP_DB_PASSWORD:-construction_app}@postgres:5432/${POSTGRES_DB:-construction_ai}
+    APP_DB_PASSWORD: ${APP_DB_PASSWORD:-construction_app}
+    REDIS_URL: redis://redis:6379/0
+    OBJECT_STORE_BACKEND: s3
+    S3_ENDPOINT_URL: http://minio:9000
+    S3_BUCKET: ${S3_BUCKET:-construction-ai-documents}
+    AWS_ACCESS_KEY_ID: ${MINIO_ROOT_USER:-minioadmin}
+    AWS_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin}
+    AWS_DEFAULT_REGION: us-east-1
+    ERP_NEXT_URL: http://erpnext-stub:8000
+  volumes:
+    - ./:/app
+  working_dir: /app
+
+services:
+  postgres:
+    image: postgres:16.10-bookworm@sha256:38471f330eb885e04de130b768d6db4e10469e2311879c7e5c699f6d2d8a1c74
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-construction_ai}
+      POSTGRES_USER: ${POSTGRES_USER:-construction}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-construction}
+    ports: ["${POSTGRES_PORT:-5432}:5432"]
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-construction} -d ${POSTGRES_DB:-construction_ai}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  redis:
+    image: redis:7.4.6-alpine@sha256:3b73847e72874be07e6657b129a94761662b79bc0f679273757d4218573b2a98
+    ports: ["${REDIS_PORT:-6379}:6379"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  minio:
+    image: minio/minio:RELEASE.2025-09-07T16-13-09Z@sha256:14cea493d9a34af32f524e538b8346cf79f3321eff8e708c1e2960462bd8936e
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+    ports:
+      - "${MINIO_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  # One-shot. Everything that touches the database waits for this to succeed.
+  migrate:
+    <<: *app
+    command: ["sh", "-c", "python scripts/migrate.py && python scripts/bootstrap_app_role.py"]
+    restart: "no"
+    healthcheck:
+      disable: true
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  erpnext-stub:
+    <<: *app
+    command: ["uvicorn", "apps.erpnext_stub.main:app", "--host", "0.0.0.0", "--port", "8000"]
+    ports: ["${ERPNEXT_STUB_PORT:-8100}:8000"]
+
+  api:
+    <<: *app
+    command: ["uvicorn", "apps.api.main:app", "--host", "0.0.0.0", "--port", "8000"]
+    ports: ["${API_PORT:-8000}:8000"]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      erpnext-stub:
+        condition: service_healthy
+
+  worker:
+    <<: *app
+    command: ["python", "-m", "apps.worker.main"]
+    healthcheck:
+      disable: true
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      erpnext-stub:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
+  minio_data:

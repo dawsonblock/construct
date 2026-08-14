@@ -1,0 +1,8 @@
+# SUPERSEDED — do not use.
+#
+# The authoritative stack is ../docker-compose.yml at the repository root:
+# it starts postgres, redis, minio, migrate, erpnext-stub, api and worker with
+# every image pinned by digest. This file only ever started an unpinned
+# postgres + redis pair and is kept as a stub so nothing points at it silently.
+#
+#   cd .. && cp .env.example .env && docker compose up -d --wait

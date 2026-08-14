@@ -1,0 +1,3478 @@
+{
+  "cases": [
+    {
+      "automatic_expected": true,
+      "case_id": "case-0000",
+      "expected_project": "PRJ-0003",
+      "signals": {
+        "address": "103 Test St",
+        "po_number": "PO-0003",
+        "vendor_company_id": "COMP-3"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0001",
+      "expected_project": "PRJ-0000",
+      "signals": {
+        "address": "100 Test St",
+        "thread_id": "THR-0000",
+        "vendor_company_id": "COMP-0"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0002",
+      "expected_project": "PRJ-0008",
+      "signals": {
+        "person_active_projects": [
+          "PRJ-0008"
+        ],
+        "vendor_company_id": "COMP-3"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0003",
+      "expected_project": "PRJ-0007",
+      "signals": {
+        "semantic_scores": {
+          "PRJ-0007": 0.95
+        },
+        "vendor_company_id": "COMP-2"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0004",
+      "expected_project": "PRJ-0007",
+      "signals": {
+        "address": "107 Test St",
+        "vendor_company_id": "COMP-2"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0005",
+      "expected_project": "PRJ-0004",
+      "signals": {
+        "person_active_projects": [
+          "PRJ-0004"
+        ],
+        "po_number": "TYPO-PO-0004",
+        "vendor_company_id": "COMP-4"
+      }
+    },
+    {
+      "automatic_expected": true,
+      "case_id": "case-0006",
+      "expected_project": "PRJ-0003",
+      "signals": {
+        "address": "103 Test St",
+        "po_number": "PO-0003",
+        "vendor_company_id": "COMP-3"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0007",
+      "expected_project": "PRJ-0017",
+      "signals": {
+        "address": "117 Test St",
+        "thread_id": "THR-0017",
+        "vendor_company_id": "COMP-2"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0008",
+      "expected_project": "PRJ-0002",
+      "signals": {
+        "person_active_projects": [
+          "PRJ-0002"
+        ],
+        "vendor_company_id": "COMP-2"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0009",
+      "expected_project": "PRJ-0018",
+      "signals": {
+        "semantic_scores": {
+          "PRJ-0018": 0.95
+        },
+        "vendor_company_id": "COMP-3"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0010",
+      "expected_project": "PRJ-0013",
+      "signals": {
+        "address": "113 Test St",
+        "vendor_company_id": "COMP-3"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0011",
+      "expected_project": "PRJ-0001",
+      "signals": {
+        "person_active_projects": [
+          "PRJ-0001"
+        ],
+        "po_number": "TYPO-PO-0001",
+        "vendor_company_id": "COMP-1"
+      }
+    },
+    {
+      "automatic_expected": true,
+      "case_id": "case-0012",
+      "expected_project": "PRJ-0000",
+      "signals": {
+        "address": "100 Test St",
+        "po_number": "PO-0000",
+        "vendor_company_id": "COMP-0"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0013",
+      "expected_project": "PRJ-0002",
+      "signals": {
+        "address": "102 Test St",
+        "thread_id": "THR-0002",
+        "vendor_company_id": "COMP-2"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0014",
+      "expected_project": "PRJ-0006",
+      "signals": {
+        "person_active_projects": [
+          "PRJ-0006"
+        ],
+        "vendor_company_id": "COMP-1"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0015",
+      "expected_project": "PRJ-0007",
+      "signals": {
+        "semantic_scores": {
+          "PRJ-0007": 0.95
+        },
+        "vendor_company_id": "COMP-2"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0016",
+      "expected_project": "PRJ-0016",
+      "signals": {
+        "address": "116 Test St",
+        "vendor_company_id": "COMP-1"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0017",
+      "expected_project": "PRJ-0019",
+      "signals": {
+        "person_active_projects": [
+          "PRJ-0019"
+        ],
+        "po_number": "TYPO-PO-0019",
+        "vendor_company_id": "COMP-4"
+      }
+    },
+    {
+      "automatic_expected": true,
+      "case_id": "case-0018",
+      "expected_project": "PRJ-0000",
+      "signals": {
+        "address": "100 Test St",
+        "po_number": "PO-0000",
+        "vendor_company_id": "COMP-0"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0019",
+      "expected_project": "PRJ-0017",
+      "signals": {
+        "address": "117 Test St",
+        "thread_id": "THR-0017",
+        "vendor_company_id": "COMP-2"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0020",
+      "expected_project": "PRJ-0006",
+      "signals": {
+        "person_active_projects": [
+          "PRJ-0006"
+        ],
+        "vendor_company_id": "COMP-1"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0021",
+      "expected_project": "PRJ-0017",
+      "signals": {
+        "semantic_scores": {
+          "PRJ-0017": 0.95
+        },
+        "vendor_company_id": "COMP-2"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0022",
+      "expected_project": "PRJ-0013",
+      "signals": {
+        "address": "113 Test St",
+        "vendor_company_id": "COMP-3"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0023",
+      "expected_project": "PRJ-0007",
+      "signals": {
+        "person_active_projects": [
+          "PRJ-0007"
+        ],
+        "po_number": "TYPO-PO-0007",
+        "vendor_company_id": "COMP-2"
+      }
+    },
+    {
+      "automatic_expected": true,
+      "case_id": "case-0024",
+      "expected_project": "PRJ-0014",
+      "signals": {
+        "address": "114 Test St",
+        "po_number": "PO-0014",
+        "vendor_company_id": "COMP-4"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0025",
+      "expected_project": "PRJ-0018",
+      "signals": {
+        "address": "118 Test St",
+        "thread_id": "THR-0018",
+        "vendor_company_id": "COMP-3"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0026",
+      "expected_project": "PRJ-0008",
+      "signals": {
+        "person_active_projects": [
+          "PRJ-0008"
+        ],
+        "vendor_company_id": "COMP-3"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0027",
+      "expected_project": "PRJ-0000",
+      "signals": {
+        "semantic_scores": {
+          "PRJ-0000": 0.95
+        },
+        "vendor_company_id": "COMP-0"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0028",
+      "expected_project": "PRJ-0005",
+      "signals": {
+        "address": "105 Test St",
+        "vendor_company_id": "COMP-0"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0029",
+      "expected_project": "PRJ-0013",
+      "signals": {
+        "person_active_projects": [
+          "PRJ-0013"
+        ],
+        "po_number": "TYPO-PO-0013",
+        "vendor_company_id": "COMP-3"
+      }
+    },
+    {
+      "automatic_expected": true,
+      "case_id": "case-0030",
+      "expected_project": "PRJ-0010",
+      "signals": {
+        "address": "110 Test St",
+        "po_number": "PO-0010",
+        "vendor_company_id": "COMP-0"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0031",
+      "expected_project": "PRJ-0008",
+      "signals": {
+        "address": "108 Test St",
+        "thread_id": "THR-0008",
+        "vendor_company_id": "COMP-3"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0032",
+      "expected_project": "PRJ-0004",
+      "signals": {
+        "person_active_projects": [
+          "PRJ-0004"
+        ],
+        "vendor_company_id": "COMP-4"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0033",
+      "expected_project": "PRJ-0006",
+      "signals": {
+        "semantic_scores": {
+          "PRJ-0006": 0.95
+        },
+        "vendor_company_id": "COMP-1"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0034",
+      "expected_project": "PRJ-0010",
+      "signals": {
+        "address": "110 Test St",
+        "vendor_company_id": "COMP-0"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0035",
+      "expected_project": "PRJ-0003",
+      "signals": {
+        "person_active_projects": [
+          "PRJ-0003"
+        ],
+        "po_number": "TYPO-PO-0003",
+        "vendor_company_id": "COMP-3"
+      }
+    },
+    {
+      "automatic_expected": true,
+      "case_id": "case-0036",
+      "expected_project": "PRJ-0002",
+      "signals": {
+        "address": "102 Test St",
+        "po_number": "PO-0002",
+        "vendor_company_id": "COMP-2"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0037",
+      "expected_project": "PRJ-0012",
+      "signals": {
+        "address": "112 Test St",
+        "thread_id": "THR-0012",
+        "vendor_company_id": "COMP-2"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0038",
+      "expected_project": "PRJ-0003",
+      "signals": {
+        "person_active_projects": [
+          "PRJ-0003"
+        ],
+        "vendor_company_id": "COMP-3"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0039",
+      "expected_project": "PRJ-0011",
+      "signals": {
+        "semantic_scores": {
+          "PRJ-0011": 0.95
+        },
+        "vendor_company_id": "COMP-1"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0040",
+      "expected_project": "PRJ-0011",
+      "signals": {
+        "address": "111 Test St",
+        "vendor_company_id": "COMP-1"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0041",
+      "expected_project": "PRJ-0019",
+      "signals": {
+        "person_active_projects": [
+          "PRJ-0019"
+        ],
+        "po_number": "TYPO-PO-0019",
+        "vendor_company_id": "COMP-4"
+      }
+    },
+    {
+      "automatic_expected": true,
+      "case_id": "case-0042",
+      "expected_project": "PRJ-0008",
+      "signals": {
+        "address": "108 Test St",
+        "po_number": "PO-0008",
+        "vendor_company_id": "COMP-3"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0043",
+      "expected_project": "PRJ-0001",
+      "signals": {
+        "address": "101 Test St",
+        "thread_id": "THR-0001",
+        "vendor_company_id": "COMP-1"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0044",
+      "expected_project": "PRJ-0014",
+      "signals": {
+        "person_active_projects": [
+          "PRJ-0014"
+        ],
+        "vendor_company_id": "COMP-4"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0045",
+      "expected_project": "PRJ-0017",
+      "signals": {
+        "semantic_scores": {
+          "PRJ-0017": 0.95
+        },
+        "vendor_company_id": "COMP-2"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0046",
+      "expected_project": "PRJ-0003",
+      "signals": {
+        "address": "103 Test St",
+        "vendor_company_id": "COMP-3"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0047",
+      "expected_project": "PRJ-0012",
+      "signals": {
+        "person_active_projects": [
+          "PRJ-0012"
+        ],
+        "po_number": "TYPO-PO-0012",
+        "vendor_company_id": "COMP-2"
+      }
+    },
+    {
+      "automatic_expected": true,
+      "case_id": "case-0048",
+      "expected_project": "PRJ-0002",
+      "signals": {
+        "address": "102 Test St",
+        "po_number": "PO-0002",
+        "vendor_company_id": "COMP-2"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0049",
+      "expected_project": "PRJ-0017",
+      "signals": {
+        "address": "117 Test St",
+        "thread_id": "THR-0017",
+        "vendor_company_id": "COMP-2"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0050",
+      "expected_project": "PRJ-0009",
+      "signals": {
+        "person_active_projects": [
+          "PRJ-0009"
+        ],
+        "vendor_company_id": "COMP-4"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0051",
+      "expected_project": "PRJ-0019",
+      "signals": {
+        "semantic_scores": {
+          "PRJ-0019": 0.95
+        },
+        "vendor_company_id": "COMP-4"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0052",
+      "expected_project": "PRJ-0011",
+      "signals": {
+        "address": "111 Test St",
+        "vendor_company_id": "COMP-1"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0053",
+      "expected_project": "PRJ-0018",
+      "signals": {
+        "person_active_projects": [
+          "PRJ-0018"
+        ],
+        "po_number": "TYPO-PO-0018",
+        "vendor_company_id": "COMP-3"
+      }
+    },
+    {
+      "automatic_expected": true,
+      "case_id": "case-0054",
+      "expected_project": "PRJ-0006",
+      "signals": {
+        "address": "106 Test St",
+        "po_number": "PO-0006",
+        "vendor_company_id": "COMP-1"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0055",
+      "expected_project": "PRJ-0002",
+      "signals": {
+        "address": "102 Test St",
+        "thread_id": "THR-0002",
+        "vendor_company_id": "COMP-2"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0056",
+      "expected_project": "PRJ-0001",
+      "signals": {
+        "person_active_projects": [
+          "PRJ-0001"
+        ],
+        "vendor_company_id": "COMP-1"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0057",
+      "expected_project": "PRJ-0007",
+      "signals": {
+        "semantic_scores": {
+          "PRJ-0007": 0.95
+        },
+        "vendor_company_id": "COMP-2"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0058",
+      "expected_project": "PRJ-0009",
+      "signals": {
+        "address": "109 Test St",
+        "vendor_company_id": "COMP-4"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0059",
+      "expected_project": "PRJ-0002",
+      "signals": {
+        "person_active_projects": [
+          "PRJ-0002"
+        ],
+        "po_number": "TYPO-PO-0002",
+        "vendor_company_id": "COMP-2"
+      }
+    },
+    {
+      "automatic_expected": true,
+      "case_id": "case-0060",
+      "expected_project": "PRJ-0007",
+      "signals": {
+        "address": "107 Test St",
+        "po_number": "PO-0007",
+        "vendor_company_id": "COMP-2"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0061",
+      "expected_project": "PRJ-0003",
+      "signals": {
+        "address": "103 Test St",
+        "thread_id": "THR-0003",
+        "vendor_company_id": "COMP-3"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0062",
+      "expected_project": "PRJ-0012",
+      "signals": {
+        "person_active_projects": [
+          "PRJ-0012"
+        ],
+        "vendor_company_id": "COMP-2"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0063",
+      "expected_project": "PRJ-0008",
+      "signals": {
+        "semantic_scores": {
+          "PRJ-0008": 0.95
+        },
+        "vendor_company_id": "COMP-3"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0064",
+      "expected_project": "PRJ-0014",
+      "signals": {
+        "address": "114 Test St",
+        "vendor_company_id": "COMP-4"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0065",
+      "expected_project": "PRJ-0011",
+      "signals": {
+        "person_active_projects": [
+          "PRJ-0011"
+        ],
+        "po_number": "TYPO-PO-0011",
+        "vendor_company_id": "COMP-1"
+      }
+    },
+    {
+      "automatic_expected": true,
+      "case_id": "case-0066",
+      "expected_project": "PRJ-0005",
+      "signals": {
+        "address": "105 Test St",
+        "po_number": "PO-0005",
+        "vendor_company_id": "COMP-0"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0067",
+      "expected_project": "PRJ-0011",
+      "signals": {
+        "address": "111 Test St",
+        "thread_id": "THR-0011",
+        "vendor_company_id": "COMP-1"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0068",
+      "expected_project": "PRJ-0011",
+      "signals": {
+        "person_active_projects": [
+          "PRJ-0011"
+        ],
+        "vendor_company_id": "COMP-1"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0069",
+      "expected_project": "PRJ-0006",
+      "signals": {
+        "semantic_scores": {
+          "PRJ-0006": 0.95
+        },
+        "vendor_company_id": "COMP-1"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0070",
+      "expected_project": "PRJ-0008",
+      "signals": {
+        "address": "108 Test St",
+        "vendor_company_id": "COMP-3"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0071",
+      "expected_project": "PRJ-0002",
+      "signals": {
+        "person_active_projects": [
+          "PRJ-0002"
+        ],
+        "po_number": "TYPO-PO-0002",
+        "vendor_company_id": "COMP-2"
+      }
+    },
+    {
+      "automatic_expected": true,
+      "case_id": "case-0072",
+      "expected_project": "PRJ-0019",
+      "signals": {
+        "address": "119 Test St",
+        "po_number": "PO-0019",
+        "vendor_company_id": "COMP-4"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0073",
+      "expected_project": "PRJ-0005",
+      "signals": {
+        "address": "105 Test St",
+        "thread_id": "THR-0005",
+        "vendor_company_id": "COMP-0"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0074",
+      "expected_project": "PRJ-0017",
+      "signals": {
+        "person_active_projects": [
+          "PRJ-0017"
+        ],
+        "vendor_company_id": "COMP-2"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0075",
+      "expected_project": "PRJ-0007",
+      "signals": {
+        "semantic_scores": {
+          "PRJ-0007": 0.95
+        },
+        "vendor_company_id": "COMP-2"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0076",
+      "expected_project": "PRJ-0005",
+      "signals": {
+        "address": "105 Test St",
+        "vendor_company_id": "COMP-0"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0077",
+      "expected_project": "PRJ-0014",
+      "signals": {
+        "person_active_projects": [
+          "PRJ-0014"
+        ],
+        "po_number": "TYPO-PO-0014",
+        "vendor_company_id": "COMP-4"
+      }
+    },
+    {
+      "automatic_expected": true,
+      "case_id": "case-0078",
+      "expected_project": "PRJ-0012",
+      "signals": {
+        "address": "112 Test St",
+        "po_number": "PO-0012",
+        "vendor_company_id": "COMP-2"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0079",
+      "expected_project": "PRJ-0008",
+      "signals": {
+        "address": "108 Test St",
+        "thread_id": "THR-0008",
+        "vendor_company_id": "COMP-3"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0080",
+      "expected_project": "PRJ-0017",
+      "signals": {
+        "person_active_projects": [
+          "PRJ-0017"
+        ],
+        "vendor_company_id": "COMP-2"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0081",
+      "expected_project": "PRJ-0007",
+      "signals": {
+        "semantic_scores": {
+          "PRJ-0007": 0.95
+        },
+        "vendor_company_id": "COMP-2"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0082",
+      "expected_project": "PRJ-0010",
+      "signals": {
+        "address": "110 Test St",
+        "vendor_company_id": "COMP-0"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0083",
+      "expected_project": "PRJ-0001",
+      "signals": {
+        "person_active_projects": [
+          "PRJ-0001"
+        ],
+        "po_number": "TYPO-PO-0001",
+        "vendor_company_id": "COMP-1"
+      }
+    },
+    {
+      "automatic_expected": true,
+      "case_id": "case-0084",
+      "expected_project": "PRJ-0007",
+      "signals": {
+        "address": "107 Test St",
+        "po_number": "PO-0007",
+        "vendor_company_id": "COMP-2"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0085",
+      "expected_project": "PRJ-0001",
+      "signals": {
+        "address": "101 Test St",
+        "thread_id": "THR-0001",
+        "vendor_company_id": "COMP-1"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0086",
+      "expected_project": "PRJ-0010",
+      "signals": {
+        "person_active_projects": [
+          "PRJ-0010"
+        ],
+        "vendor_company_id": "COMP-0"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0087",
+      "expected_project": "PRJ-0012",
+      "signals": {
+        "semantic_scores": {
+          "PRJ-0012": 0.95
+        },
+        "vendor_company_id": "COMP-2"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0088",
+      "expected_project": "PRJ-0008",
+      "signals": {
+        "address": "108 Test St",
+        "vendor_company_id": "COMP-3"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0089",
+      "expected_project": "PRJ-0002",
+      "signals": {
+        "person_active_projects": [
+          "PRJ-0002"
+        ],
+        "po_number": "TYPO-PO-0002",
+        "vendor_company_id": "COMP-2"
+      }
+    },
+    {
+      "automatic_expected": true,
+      "case_id": "case-0090",
+      "expected_project": "PRJ-0006",
+      "signals": {
+        "address": "106 Test St",
+        "po_number": "PO-0006",
+        "vendor_company_id": "COMP-1"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0091",
+      "expected_project": "PRJ-0018",
+      "signals": {
+        "address": "118 Test St",
+        "thread_id": "THR-0018",
+        "vendor_company_id": "COMP-3"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0092",
+      "expected_project": "PRJ-0010",
+      "signals": {
+        "person_active_projects": [
+          "PRJ-0010"
+        ],
+        "vendor_company_id": "COMP-0"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0093",
+      "expected_project": "PRJ-0006",
+      "signals": {
+        "semantic_scores": {
+          "PRJ-0006": 0.95
+        },
+        "vendor_company_id": "COMP-1"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0094",
+      "expected_project": "PRJ-0015",
+      "signals": {
+        "address": "115 Test St",
+        "vendor_company_id": "COMP-0"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0095",
+      "expected_project": "PRJ-0012",
+      "signals": {
+        "person_active_projects": [
+          "PRJ-0012"
+        ],
+        "po_number": "TYPO-PO-0012",
+        "vendor_company_id": "COMP-2"
+      }
+    },
+    {
+      "automatic_expected": true,
+      "case_id": "case-0096",
+      "expected_project": "PRJ-0014",
+      "signals": {
+        "address": "114 Test St",
+        "po_number": "PO-0014",
+        "vendor_company_id": "COMP-4"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0097",
+      "expected_project": "PRJ-0004",
+      "signals": {
+        "address": "104 Test St",
+        "thread_id": "THR-0004",
+        "vendor_company_id": "COMP-4"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0098",
+      "expected_project": "PRJ-0008",
+      "signals": {
+        "person_active_projects": [
+          "PRJ-0008"
+        ],
+        "vendor_company_id": "COMP-3"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0099",
+      "expected_project": "PRJ-0004",
+      "signals": {
+        "semantic_scores": {
+          "PRJ-0004": 0.95
+        },
+        "vendor_company_id": "COMP-4"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0100",
+      "expected_project": "PRJ-0007",
+      "signals": {
+        "address": "107 Test St",
+        "vendor_company_id": "COMP-2"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0101",
+      "expected_project": "PRJ-0017",
+      "signals": {
+        "person_active_projects": [
+          "PRJ-0017"
+        ],
+        "po_number": "TYPO-PO-0017",
+        "vendor_company_id": "COMP-2"
+      }
+    },
+    {
+      "automatic_expected": true,
+      "case_id": "case-0102",
+      "expected_project": "PRJ-0017",
+      "signals": {
+        "address": "117 Test St",
+        "po_number": "PO-0017",
+        "vendor_company_id": "COMP-2"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0103",
+      "expected_project": "PRJ-0008",
+      "signals": {
+        "address": "108 Test St",
+        "thread_id": "THR-0008",
+        "vendor_company_id": "COMP-3"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0104",
+      "expected_project": "PRJ-0018",
+      "signals": {
+        "person_active_projects": [
+          "PRJ-0018"
+        ],
+        "vendor_company_id": "COMP-3"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0105",
+      "expected_project": "PRJ-0013",
+      "signals": {
+        "semantic_scores": {
+          "PRJ-0013": 0.95
+        },
+        "vendor_company_id": "COMP-3"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0106",
+      "expected_project": "PRJ-0018",
+      "signals": {
+        "address": "118 Test St",
+        "vendor_company_id": "COMP-3"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0107",
+      "expected_project": "PRJ-0012",
+      "signals": {
+        "person_active_projects": [
+          "PRJ-0012"
+        ],
+        "po_number": "TYPO-PO-0012",
+        "vendor_company_id": "COMP-2"
+      }
+    },
+    {
+      "automatic_expected": true,
+      "case_id": "case-0108",
+      "expected_project": "PRJ-0011",
+      "signals": {
+        "address": "111 Test St",
+        "po_number": "PO-0011",
+        "vendor_company_id": "COMP-1"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0109",
+      "expected_project": "PRJ-0007",
+      "signals": {
+        "address": "107 Test St",
+        "thread_id": "THR-0007",
+        "vendor_company_id": "COMP-2"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0110",
+      "expected_project": "PRJ-0004",
+      "signals": {
+        "person_active_projects": [
+          "PRJ-0004"
+        ],
+        "vendor_company_id": "COMP-4"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0111",
+      "expected_project": "PRJ-0016",
+      "signals": {
+        "semantic_scores": {
+          "PRJ-0016": 0.95
+        },
+        "vendor_company_id": "COMP-1"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0112",
+      "expected_project": "PRJ-0015",
+      "signals": {
+        "address": "115 Test St",
+        "vendor_company_id": "COMP-0"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0113",
+      "expected_project": "PRJ-0002",
+      "signals": {
+        "person_active_projects": [
+          "PRJ-0002"
+        ],
+        "po_number": "TYPO-PO-0002",
+        "vendor_company_id": "COMP-2"
+      }
+    },
+    {
+      "automatic_expected": true,
+      "case_id": "case-0114",
+      "expected_project": "PRJ-0001",
+      "signals": {
+        "address": "101 Test St",
+        "po_number": "PO-0001",
+        "vendor_company_id": "COMP-1"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0115",
+      "expected_project": "PRJ-0003",
+      "signals": {
+        "address": "103 Test St",
+        "thread_id": "THR-0003",
+        "vendor_company_id": "COMP-3"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0116",
+      "expected_project": "PRJ-0004",
+      "signals": {
+        "person_active_projects": [
+          "PRJ-0004"
+        ],
+        "vendor_company_id": "COMP-4"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0117",
+      "expected_project": "PRJ-0005",
+      "signals": {
+        "semantic_scores": {
+          "PRJ-0005": 0.95
+        },
+        "vendor_company_id": "COMP-0"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0118",
+      "expected_project": "PRJ-0013",
+      "signals": {
+        "address": "113 Test St",
+        "vendor_company_id": "COMP-3"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0119",
+      "expected_project": "PRJ-0019",
+      "signals": {
+        "person_active_projects": [
+          "PRJ-0019"
+        ],
+        "po_number": "TYPO-PO-0019",
+        "vendor_company_id": "COMP-4"
+      }
+    },
+    {
+      "automatic_expected": true,
+      "case_id": "case-0120",
+      "expected_project": "PRJ-0002",
+      "signals": {
+        "address": "102 Test St",
+        "po_number": "PO-0002",
+        "vendor_company_id": "COMP-2"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0121",
+      "expected_project": "PRJ-0012",
+      "signals": {
+        "address": "112 Test St",
+        "thread_id": "THR-0012",
+        "vendor_company_id": "COMP-2"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0122",
+      "expected_project": "PRJ-0012",
+      "signals": {
+        "person_active_projects": [
+          "PRJ-0012"
+        ],
+        "vendor_company_id": "COMP-2"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0123",
+      "expected_project": "PRJ-0019",
+      "signals": {
+        "semantic_scores": {
+          "PRJ-0019": 0.95
+        },
+        "vendor_company_id": "COMP-4"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0124",
+      "expected_project": "PRJ-0014",
+      "signals": {
+        "address": "114 Test St",
+        "vendor_company_id": "COMP-4"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0125",
+      "expected_project": "PRJ-0016",
+      "signals": {
+        "person_active_projects": [
+          "PRJ-0016"
+        ],
+        "po_number": "TYPO-PO-0016",
+        "vendor_company_id": "COMP-1"
+      }
+    },
+    {
+      "automatic_expected": true,
+      "case_id": "case-0126",
+      "expected_project": "PRJ-0008",
+      "signals": {
+        "address": "108 Test St",
+        "po_number": "PO-0008",
+        "vendor_company_id": "COMP-3"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0127",
+      "expected_project": "PRJ-0017",
+      "signals": {
+        "address": "117 Test St",
+        "thread_id": "THR-0017",
+        "vendor_company_id": "COMP-2"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0128",
+      "expected_project": "PRJ-0000",
+      "signals": {
+        "person_active_projects": [
+          "PRJ-0000"
+        ],
+        "vendor_company_id": "COMP-0"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0129",
+      "expected_project": "PRJ-0003",
+      "signals": {
+        "semantic_scores": {
+          "PRJ-0003": 0.95
+        },
+        "vendor_company_id": "COMP-3"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0130",
+      "expected_project": "PRJ-0017",
+      "signals": {
+        "address": "117 Test St",
+        "vendor_company_id": "COMP-2"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0131",
+      "expected_project": "PRJ-0008",
+      "signals": {
+        "person_active_projects": [
+          "PRJ-0008"
+        ],
+        "po_number": "TYPO-PO-0008",
+        "vendor_company_id": "COMP-3"
+      }
+    },
+    {
+      "automatic_expected": true,
+      "case_id": "case-0132",
+      "expected_project": "PRJ-0010",
+      "signals": {
+        "address": "110 Test St",
+        "po_number": "PO-0010",
+        "vendor_company_id": "COMP-0"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0133",
+      "expected_project": "PRJ-0003",
+      "signals": {
+        "address": "103 Test St",
+        "thread_id": "THR-0003",
+        "vendor_company_id": "COMP-3"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0134",
+      "expected_project": "PRJ-0009",
+      "signals": {
+        "person_active_projects": [
+          "PRJ-0009"
+        ],
+        "vendor_company_id": "COMP-4"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0135",
+      "expected_project": "PRJ-0013",
+      "signals": {
+        "semantic_scores": {
+          "PRJ-0013": 0.95
+        },
+        "vendor_company_id": "COMP-3"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0136",
+      "expected_project": "PRJ-0005",
+      "signals": {
+        "address": "105 Test St",
+        "vendor_company_id": "COMP-0"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0137",
+      "expected_project": "PRJ-0014",
+      "signals": {
+        "person_active_projects": [
+          "PRJ-0014"
+        ],
+        "po_number": "TYPO-PO-0014",
+        "vendor_company_id": "COMP-4"
+      }
+    },
+    {
+      "automatic_expected": true,
+      "case_id": "case-0138",
+      "expected_project": "PRJ-0000",
+      "signals": {
+        "address": "100 Test St",
+        "po_number": "PO-0000",
+        "vendor_company_id": "COMP-0"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0139",
+      "expected_project": "PRJ-0008",
+      "signals": {
+        "address": "108 Test St",
+        "thread_id": "THR-0008",
+        "vendor_company_id": "COMP-3"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0140",
+      "expected_project": "PRJ-0016",
+      "signals": {
+        "person_active_projects": [
+          "PRJ-0016"
+        ],
+        "vendor_company_id": "COMP-1"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0141",
+      "expected_project": "PRJ-0005",
+      "signals": {
+        "semantic_scores": {
+          "PRJ-0005": 0.95
+        },
+        "vendor_company_id": "COMP-0"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0142",
+      "expected_project": "PRJ-0016",
+      "signals": {
+        "address": "116 Test St",
+        "vendor_company_id": "COMP-1"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0143",
+      "expected_project": "PRJ-0003",
+      "signals": {
+        "person_active_projects": [
+          "PRJ-0003"
+        ],
+        "po_number": "TYPO-PO-0003",
+        "vendor_company_id": "COMP-3"
+      }
+    },
+    {
+      "automatic_expected": true,
+      "case_id": "case-0144",
+      "expected_project": "PRJ-0009",
+      "signals": {
+        "address": "109 Test St",
+        "po_number": "PO-0009",
+        "vendor_company_id": "COMP-4"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0145",
+      "expected_project": "PRJ-0016",
+      "signals": {
+        "address": "116 Test St",
+        "thread_id": "THR-0016",
+        "vendor_company_id": "COMP-1"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0146",
+      "expected_project": "PRJ-0019",
+      "signals": {
+        "person_active_projects": [
+          "PRJ-0019"
+        ],
+        "vendor_company_id": "COMP-4"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0147",
+      "expected_project": "PRJ-0006",
+      "signals": {
+        "semantic_scores": {
+          "PRJ-0006": 0.95
+        },
+        "vendor_company_id": "COMP-1"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0148",
+      "expected_project": "PRJ-0004",
+      "signals": {
+        "address": "104 Test St",
+        "vendor_company_id": "COMP-4"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0149",
+      "expected_project": "PRJ-0011",
+      "signals": {
+        "person_active_projects": [
+          "PRJ-0011"
+        ],
+        "po_number": "TYPO-PO-0011",
+        "vendor_company_id": "COMP-1"
+      }
+    },
+    {
+      "automatic_expected": true,
+      "case_id": "case-0150",
+      "expected_project": "PRJ-0005",
+      "signals": {
+        "address": "105 Test St",
+        "po_number": "PO-0005",
+        "vendor_company_id": "COMP-0"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0151",
+      "expected_project": "PRJ-0017",
+      "signals": {
+        "address": "117 Test St",
+        "thread_id": "THR-0017",
+        "vendor_company_id": "COMP-2"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0152",
+      "expected_project": "PRJ-0016",
+      "signals": {
+        "person_active_projects": [
+          "PRJ-0016"
+        ],
+        "vendor_company_id": "COMP-1"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0153",
+      "expected_project": "PRJ-0000",
+      "signals": {
+        "semantic_scores": {
+          "PRJ-0000": 0.95
+        },
+        "vendor_company_id": "COMP-0"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0154",
+      "expected_project": "PRJ-0019",
+      "signals": {
+        "address": "119 Test St",
+        "vendor_company_id": "COMP-4"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0155",
+      "expected_project": "PRJ-0010",
+      "signals": {
+        "person_active_projects": [
+          "PRJ-0010"
+        ],
+        "po_number": "TYPO-PO-0010",
+        "vendor_company_id": "COMP-0"
+      }
+    },
+    {
+      "automatic_expected": true,
+      "case_id": "case-0156",
+      "expected_project": "PRJ-0015",
+      "signals": {
+        "address": "115 Test St",
+        "po_number": "PO-0015",
+        "vendor_company_id": "COMP-0"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0157",
+      "expected_project": "PRJ-0000",
+      "signals": {
+        "address": "100 Test St",
+        "thread_id": "THR-0000",
+        "vendor_company_id": "COMP-0"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0158",
+      "expected_project": "PRJ-0003",
+      "signals": {
+        "person_active_projects": [
+          "PRJ-0003"
+        ],
+        "vendor_company_id": "COMP-3"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0159",
+      "expected_project": "PRJ-0011",
+      "signals": {
+        "semantic_scores": {
+          "PRJ-0011": 0.95
+        },
+        "vendor_company_id": "COMP-1"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0160",
+      "expected_project": "PRJ-0009",
+      "signals": {
+        "address": "109 Test St",
+        "vendor_company_id": "COMP-4"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0161",
+      "expected_project": "PRJ-0007",
+      "signals": {
+        "person_active_projects": [
+          "PRJ-0007"
+        ],
+        "po_number": "TYPO-PO-0007",
+        "vendor_company_id": "COMP-2"
+      }
+    },
+    {
+      "automatic_expected": true,
+      "case_id": "case-0162",
+      "expected_project": "PRJ-0001",
+      "signals": {
+        "address": "101 Test St",
+        "po_number": "PO-0001",
+        "vendor_company_id": "COMP-1"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0163",
+      "expected_project": "PRJ-0007",
+      "signals": {
+        "address": "107 Test St",
+        "thread_id": "THR-0007",
+        "vendor_company_id": "COMP-2"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0164",
+      "expected_project": "PRJ-0018",
+      "signals": {
+        "person_active_projects": [
+          "PRJ-0018"
+        ],
+        "vendor_company_id": "COMP-3"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0165",
+      "expected_project": "PRJ-0002",
+      "signals": {
+        "semantic_scores": {
+          "PRJ-0002": 0.95
+        },
+        "vendor_company_id": "COMP-2"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0166",
+      "expected_project": "PRJ-0002",
+      "signals": {
+        "address": "102 Test St",
+        "vendor_company_id": "COMP-2"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0167",
+      "expected_project": "PRJ-0015",
+      "signals": {
+        "person_active_projects": [
+          "PRJ-0015"
+        ],
+        "po_number": "TYPO-PO-0015",
+        "vendor_company_id": "COMP-0"
+      }
+    },
+    {
+      "automatic_expected": true,
+      "case_id": "case-0168",
+      "expected_project": "PRJ-0002",
+      "signals": {
+        "address": "102 Test St",
+        "po_number": "PO-0002",
+        "vendor_company_id": "COMP-2"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0169",
+      "expected_project": "PRJ-0017",
+      "signals": {
+        "address": "117 Test St",
+        "thread_id": "THR-0017",
+        "vendor_company_id": "COMP-2"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0170",
+      "expected_project": "PRJ-0004",
+      "signals": {
+        "person_active_projects": [
+          "PRJ-0004"
+        ],
+        "vendor_company_id": "COMP-4"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0171",
+      "expected_project": "PRJ-0004",
+      "signals": {
+        "semantic_scores": {
+          "PRJ-0004": 0.95
+        },
+        "vendor_company_id": "COMP-4"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0172",
+      "expected_project": "PRJ-0015",
+      "signals": {
+        "address": "115 Test St",
+        "vendor_company_id": "COMP-0"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0173",
+      "expected_project": "PRJ-0017",
+      "signals": {
+        "person_active_projects": [
+          "PRJ-0017"
+        ],
+        "po_number": "TYPO-PO-0017",
+        "vendor_company_id": "COMP-2"
+      }
+    },
+    {
+      "automatic_expected": true,
+      "case_id": "case-0174",
+      "expected_project": "PRJ-0005",
+      "signals": {
+        "address": "105 Test St",
+        "po_number": "PO-0005",
+        "vendor_company_id": "COMP-0"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0175",
+      "expected_project": "PRJ-0008",
+      "signals": {
+        "address": "108 Test St",
+        "thread_id": "THR-0008",
+        "vendor_company_id": "COMP-3"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0176",
+      "expected_project": "PRJ-0016",
+      "signals": {
+        "person_active_projects": [
+          "PRJ-0016"
+        ],
+        "vendor_company_id": "COMP-1"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0177",
+      "expected_project": "PRJ-0019",
+      "signals": {
+        "semantic_scores": {
+          "PRJ-0019": 0.95
+        },
+        "vendor_company_id": "COMP-4"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0178",
+      "expected_project": "PRJ-0013",
+      "signals": {
+        "address": "113 Test St",
+        "vendor_company_id": "COMP-3"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0179",
+      "expected_project": "PRJ-0006",
+      "signals": {
+        "person_active_projects": [
+          "PRJ-0006"
+        ],
+        "po_number": "TYPO-PO-0006",
+        "vendor_company_id": "COMP-1"
+      }
+    },
+    {
+      "automatic_expected": true,
+      "case_id": "case-0180",
+      "expected_project": "PRJ-0017",
+      "signals": {
+        "address": "117 Test St",
+        "po_number": "PO-0017",
+        "vendor_company_id": "COMP-2"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0181",
+      "expected_project": "PRJ-0006",
+      "signals": {
+        "address": "106 Test St",
+        "thread_id": "THR-0006",
+        "vendor_company_id": "COMP-1"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0182",
+      "expected_project": "PRJ-0009",
+      "signals": {
+        "person_active_projects": [
+          "PRJ-0009"
+        ],
+        "vendor_company_id": "COMP-4"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0183",
+      "expected_project": "PRJ-0012",
+      "signals": {
+        "semantic_scores": {
+          "PRJ-0012": 0.95
+        },
+        "vendor_company_id": "COMP-2"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0184",
+      "expected_project": "PRJ-0011",
+      "signals": {
+        "address": "111 Test St",
+        "vendor_company_id": "COMP-1"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0185",
+      "expected_project": "PRJ-0014",
+      "signals": {
+        "person_active_projects": [
+          "PRJ-0014"
+        ],
+        "po_number": "TYPO-PO-0014",
+        "vendor_company_id": "COMP-4"
+      }
+    },
+    {
+      "automatic_expected": true,
+      "case_id": "case-0186",
+      "expected_project": "PRJ-0016",
+      "signals": {
+        "address": "116 Test St",
+        "po_number": "PO-0016",
+        "vendor_company_id": "COMP-1"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0187",
+      "expected_project": "PRJ-0014",
+      "signals": {
+        "address": "114 Test St",
+        "thread_id": "THR-0014",
+        "vendor_company_id": "COMP-4"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0188",
+      "expected_project": "PRJ-0003",
+      "signals": {
+        "person_active_projects": [
+          "PRJ-0003"
+        ],
+        "vendor_company_id": "COMP-3"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0189",
+      "expected_project": "PRJ-0007",
+      "signals": {
+        "semantic_scores": {
+          "PRJ-0007": 0.95
+        },
+        "vendor_company_id": "COMP-2"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0190",
+      "expected_project": "PRJ-0007",
+      "signals": {
+        "address": "107 Test St",
+        "vendor_company_id": "COMP-2"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0191",
+      "expected_project": "PRJ-0002",
+      "signals": {
+        "person_active_projects": [
+          "PRJ-0002"
+        ],
+        "po_number": "TYPO-PO-0002",
+        "vendor_company_id": "COMP-2"
+      }
+    },
+    {
+      "automatic_expected": true,
+      "case_id": "case-0192",
+      "expected_project": "PRJ-0010",
+      "signals": {
+        "address": "110 Test St",
+        "po_number": "PO-0010",
+        "vendor_company_id": "COMP-0"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0193",
+      "expected_project": "PRJ-0000",
+      "signals": {
+        "address": "100 Test St",
+        "thread_id": "THR-0000",
+        "vendor_company_id": "COMP-0"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0194",
+      "expected_project": "PRJ-0018",
+      "signals": {
+        "person_active_projects": [
+          "PRJ-0018"
+        ],
+        "vendor_company_id": "COMP-3"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0195",
+      "expected_project": "PRJ-0017",
+      "signals": {
+        "semantic_scores": {
+          "PRJ-0017": 0.95
+        },
+        "vendor_company_id": "COMP-2"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0196",
+      "expected_project": "PRJ-0007",
+      "signals": {
+        "address": "107 Test St",
+        "vendor_company_id": "COMP-2"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0197",
+      "expected_project": "PRJ-0018",
+      "signals": {
+        "person_active_projects": [
+          "PRJ-0018"
+        ],
+        "po_number": "TYPO-PO-0018",
+        "vendor_company_id": "COMP-3"
+      }
+    },
+    {
+      "automatic_expected": true,
+      "case_id": "case-0198",
+      "expected_project": "PRJ-0007",
+      "signals": {
+        "address": "107 Test St",
+        "po_number": "PO-0007",
+        "vendor_company_id": "COMP-2"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0199",
+      "expected_project": "PRJ-0000",
+      "signals": {
+        "address": "100 Test St",
+        "thread_id": "THR-0000",
+        "vendor_company_id": "COMP-0"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0200",
+      "expected_project": "PRJ-0002",
+      "signals": {
+        "person_active_projects": [
+          "PRJ-0002"
+        ],
+        "vendor_company_id": "COMP-2"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0201",
+      "expected_project": "PRJ-0001",
+      "signals": {
+        "semantic_scores": {
+          "PRJ-0001": 0.95
+        },
+        "vendor_company_id": "COMP-1"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0202",
+      "expected_project": "PRJ-0007",
+      "signals": {
+        "address": "107 Test St",
+        "vendor_company_id": "COMP-2"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0203",
+      "expected_project": "PRJ-0002",
+      "signals": {
+        "person_active_projects": [
+          "PRJ-0002"
+        ],
+        "po_number": "TYPO-PO-0002",
+        "vendor_company_id": "COMP-2"
+      }
+    },
+    {
+      "automatic_expected": true,
+      "case_id": "case-0204",
+      "expected_project": "PRJ-0001",
+      "signals": {
+        "address": "101 Test St",
+        "po_number": "PO-0001",
+        "vendor_company_id": "COMP-1"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0205",
+      "expected_project": "PRJ-0010",
+      "signals": {
+        "address": "110 Test St",
+        "thread_id": "THR-0010",
+        "vendor_company_id": "COMP-0"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0206",
+      "expected_project": "PRJ-0002",
+      "signals": {
+        "person_active_projects": [
+          "PRJ-0002"
+        ],
+        "vendor_company_id": "COMP-2"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0207",
+      "expected_project": "PRJ-0016",
+      "signals": {
+        "semantic_scores": {
+          "PRJ-0016": 0.95
+        },
+        "vendor_company_id": "COMP-1"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0208",
+      "expected_project": "PRJ-0007",
+      "signals": {
+        "address": "107 Test St",
+        "vendor_company_id": "COMP-2"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0209",
+      "expected_project": "PRJ-0008",
+      "signals": {
+        "person_active_projects": [
+          "PRJ-0008"
+        ],
+        "po_number": "TYPO-PO-0008",
+        "vendor_company_id": "COMP-3"
+      }
+    },
+    {
+      "automatic_expected": true,
+      "case_id": "case-0210",
+      "expected_project": "PRJ-0015",
+      "signals": {
+        "address": "115 Test St",
+        "po_number": "PO-0015",
+        "vendor_company_id": "COMP-0"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0211",
+      "expected_project": "PRJ-0006",
+      "signals": {
+        "address": "106 Test St",
+        "thread_id": "THR-0006",
+        "vendor_company_id": "COMP-1"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0212",
+      "expected_project": "PRJ-0017",
+      "signals": {
+        "person_active_projects": [
+          "PRJ-0017"
+        ],
+        "vendor_company_id": "COMP-2"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0213",
+      "expected_project": "PRJ-0004",
+      "signals": {
+        "semantic_scores": {
+          "PRJ-0004": 0.95
+        },
+        "vendor_company_id": "COMP-4"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0214",
+      "expected_project": "PRJ-0018",
+      "signals": {
+        "address": "118 Test St",
+        "vendor_company_id": "COMP-3"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0215",
+      "expected_project": "PRJ-0018",
+      "signals": {
+        "person_active_projects": [
+          "PRJ-0018"
+        ],
+        "po_number": "TYPO-PO-0018",
+        "vendor_company_id": "COMP-3"
+      }
+    },
+    {
+      "automatic_expected": true,
+      "case_id": "case-0216",
+      "expected_project": "PRJ-0015",
+      "signals": {
+        "address": "115 Test St",
+        "po_number": "PO-0015",
+        "vendor_company_id": "COMP-0"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0217",
+      "expected_project": "PRJ-0007",
+      "signals": {
+        "address": "107 Test St",
+        "thread_id": "THR-0007",
+        "vendor_company_id": "COMP-2"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0218",
+      "expected_project": "PRJ-0015",
+      "signals": {
+        "person_active_projects": [
+          "PRJ-0015"
+        ],
+        "vendor_company_id": "COMP-0"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0219",
+      "expected_project": "PRJ-0013",
+      "signals": {
+        "semantic_scores": {
+          "PRJ-0013": 0.95
+        },
+        "vendor_company_id": "COMP-3"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0220",
+      "expected_project": "PRJ-0006",
+      "signals": {
+        "address": "106 Test St",
+        "vendor_company_id": "COMP-1"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0221",
+      "expected_project": "PRJ-0003",
+      "signals": {
+        "person_active_projects": [
+          "PRJ-0003"
+        ],
+        "po_number": "TYPO-PO-0003",
+        "vendor_company_id": "COMP-3"
+      }
+    },
+    {
+      "automatic_expected": true,
+      "case_id": "case-0222",
+      "expected_project": "PRJ-0003",
+      "signals": {
+        "address": "103 Test St",
+        "po_number": "PO-0003",
+        "vendor_company_id": "COMP-3"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0223",
+      "expected_project": "PRJ-0013",
+      "signals": {
+        "address": "113 Test St",
+        "thread_id": "THR-0013",
+        "vendor_company_id": "COMP-3"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0224",
+      "expected_project": "PRJ-0011",
+      "signals": {
+        "person_active_projects": [
+          "PRJ-0011"
+        ],
+        "vendor_company_id": "COMP-1"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0225",
+      "expected_project": "PRJ-0013",
+      "signals": {
+        "semantic_scores": {
+          "PRJ-0013": 0.95
+        },
+        "vendor_company_id": "COMP-3"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0226",
+      "expected_project": "PRJ-0013",
+      "signals": {
+        "address": "113 Test St",
+        "vendor_company_id": "COMP-3"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0227",
+      "expected_project": "PRJ-0014",
+      "signals": {
+        "person_active_projects": [
+          "PRJ-0014"
+        ],
+        "po_number": "TYPO-PO-0014",
+        "vendor_company_id": "COMP-4"
+      }
+    },
+    {
+      "automatic_expected": true,
+      "case_id": "case-0228",
+      "expected_project": "PRJ-0001",
+      "signals": {
+        "address": "101 Test St",
+        "po_number": "PO-0001",
+        "vendor_company_id": "COMP-1"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0229",
+      "expected_project": "PRJ-0003",
+      "signals": {
+        "address": "103 Test St",
+        "thread_id": "THR-0003",
+        "vendor_company_id": "COMP-3"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0230",
+      "expected_project": "PRJ-0001",
+      "signals": {
+        "person_active_projects": [
+          "PRJ-0001"
+        ],
+        "vendor_company_id": "COMP-1"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0231",
+      "expected_project": "PRJ-0012",
+      "signals": {
+        "semantic_scores": {
+          "PRJ-0012": 0.95
+        },
+        "vendor_company_id": "COMP-2"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0232",
+      "expected_project": "PRJ-0010",
+      "signals": {
+        "address": "110 Test St",
+        "vendor_company_id": "COMP-0"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0233",
+      "expected_project": "PRJ-0003",
+      "signals": {
+        "person_active_projects": [
+          "PRJ-0003"
+        ],
+        "po_number": "TYPO-PO-0003",
+        "vendor_company_id": "COMP-3"
+      }
+    },
+    {
+      "automatic_expected": true,
+      "case_id": "case-0234",
+      "expected_project": "PRJ-0007",
+      "signals": {
+        "address": "107 Test St",
+        "po_number": "PO-0007",
+        "vendor_company_id": "COMP-2"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0235",
+      "expected_project": "PRJ-0006",
+      "signals": {
+        "address": "106 Test St",
+        "thread_id": "THR-0006",
+        "vendor_company_id": "COMP-1"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0236",
+      "expected_project": "PRJ-0006",
+      "signals": {
+        "person_active_projects": [
+          "PRJ-0006"
+        ],
+        "vendor_company_id": "COMP-1"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0237",
+      "expected_project": "PRJ-0017",
+      "signals": {
+        "semantic_scores": {
+          "PRJ-0017": 0.95
+        },
+        "vendor_company_id": "COMP-2"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0238",
+      "expected_project": "PRJ-0014",
+      "signals": {
+        "address": "114 Test St",
+        "vendor_company_id": "COMP-4"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0239",
+      "expected_project": "PRJ-0004",
+      "signals": {
+        "person_active_projects": [
+          "PRJ-0004"
+        ],
+        "po_number": "TYPO-PO-0004",
+        "vendor_company_id": "COMP-4"
+      }
+    },
+    {
+      "automatic_expected": true,
+      "case_id": "case-0240",
+      "expected_project": "PRJ-0013",
+      "signals": {
+        "address": "113 Test St",
+        "po_number": "PO-0013",
+        "vendor_company_id": "COMP-3"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0241",
+      "expected_project": "PRJ-0005",
+      "signals": {
+        "address": "105 Test St",
+        "thread_id": "THR-0005",
+        "vendor_company_id": "COMP-0"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0242",
+      "expected_project": "PRJ-0008",
+      "signals": {
+        "person_active_projects": [
+          "PRJ-0008"
+        ],
+        "vendor_company_id": "COMP-3"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0243",
+      "expected_project": "PRJ-0014",
+      "signals": {
+        "semantic_scores": {
+          "PRJ-0014": 0.95
+        },
+        "vendor_company_id": "COMP-4"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0244",
+      "expected_project": "PRJ-0007",
+      "signals": {
+        "address": "107 Test St",
+        "vendor_company_id": "COMP-2"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0245",
+      "expected_project": "PRJ-0002",
+      "signals": {
+        "person_active_projects": [
+          "PRJ-0002"
+        ],
+        "po_number": "TYPO-PO-0002",
+        "vendor_company_id": "COMP-2"
+      }
+    },
+    {
+      "automatic_expected": true,
+      "case_id": "case-0246",
+      "expected_project": "PRJ-0014",
+      "signals": {
+        "address": "114 Test St",
+        "po_number": "PO-0014",
+        "vendor_company_id": "COMP-4"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0247",
+      "expected_project": "PRJ-0017",
+      "signals": {
+        "address": "117 Test St",
+        "thread_id": "THR-0017",
+        "vendor_company_id": "COMP-2"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0248",
+      "expected_project": "PRJ-0003",
+      "signals": {
+        "person_active_projects": [
+          "PRJ-0003"
+        ],
+        "vendor_company_id": "COMP-3"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0249",
+      "expected_project": "PRJ-0001",
+      "signals": {
+        "semantic_scores": {
+          "PRJ-0001": 0.95
+        },
+        "vendor_company_id": "COMP-1"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0250",
+      "expected_project": "PRJ-0017",
+      "signals": {
+        "address": "117 Test St",
+        "vendor_company_id": "COMP-2"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0251",
+      "expected_project": "PRJ-0000",
+      "signals": {
+        "person_active_projects": [
+          "PRJ-0000"
+        ],
+        "po_number": "TYPO-PO-0000",
+        "vendor_company_id": "COMP-0"
+      }
+    },
+    {
+      "automatic_expected": true,
+      "case_id": "case-0252",
+      "expected_project": "PRJ-0002",
+      "signals": {
+        "address": "102 Test St",
+        "po_number": "PO-0002",
+        "vendor_company_id": "COMP-2"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0253",
+      "expected_project": "PRJ-0007",
+      "signals": {
+        "address": "107 Test St",
+        "thread_id": "THR-0007",
+        "vendor_company_id": "COMP-2"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0254",
+      "expected_project": "PRJ-0005",
+      "signals": {
+        "person_active_projects": [
+          "PRJ-0005"
+        ],
+        "vendor_company_id": "COMP-0"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0255",
+      "expected_project": "PRJ-0013",
+      "signals": {
+        "semantic_scores": {
+          "PRJ-0013": 0.95
+        },
+        "vendor_company_id": "COMP-3"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0256",
+      "expected_project": "PRJ-0015",
+      "signals": {
+        "address": "115 Test St",
+        "vendor_company_id": "COMP-0"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0257",
+      "expected_project": "PRJ-0015",
+      "signals": {
+        "person_active_projects": [
+          "PRJ-0015"
+        ],
+        "po_number": "TYPO-PO-0015",
+        "vendor_company_id": "COMP-0"
+      }
+    },
+    {
+      "automatic_expected": true,
+      "case_id": "case-0258",
+      "expected_project": "PRJ-0006",
+      "signals": {
+        "address": "106 Test St",
+        "po_number": "PO-0006",
+        "vendor_company_id": "COMP-1"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0259",
+      "expected_project": "PRJ-0012",
+      "signals": {
+        "address": "112 Test St",
+        "thread_id": "THR-0012",
+        "vendor_company_id": "COMP-2"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0260",
+      "expected_project": "PRJ-0001",
+      "signals": {
+        "person_active_projects": [
+          "PRJ-0001"
+        ],
+        "vendor_company_id": "COMP-1"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0261",
+      "expected_project": "PRJ-0005",
+      "signals": {
+        "semantic_scores": {
+          "PRJ-0005": 0.95
+        },
+        "vendor_company_id": "COMP-0"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0262",
+      "expected_project": "PRJ-0012",
+      "signals": {
+        "address": "112 Test St",
+        "vendor_company_id": "COMP-2"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0263",
+      "expected_project": "PRJ-0000",
+      "signals": {
+        "person_active_projects": [
+          "PRJ-0000"
+        ],
+        "po_number": "TYPO-PO-0000",
+        "vendor_company_id": "COMP-0"
+      }
+    },
+    {
+      "automatic_expected": true,
+      "case_id": "case-0264",
+      "expected_project": "PRJ-0012",
+      "signals": {
+        "address": "112 Test St",
+        "po_number": "PO-0012",
+        "vendor_company_id": "COMP-2"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0265",
+      "expected_project": "PRJ-0008",
+      "signals": {
+        "address": "108 Test St",
+        "thread_id": "THR-0008",
+        "vendor_company_id": "COMP-3"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0266",
+      "expected_project": "PRJ-0014",
+      "signals": {
+        "person_active_projects": [
+          "PRJ-0014"
+        ],
+        "vendor_company_id": "COMP-4"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0267",
+      "expected_project": "PRJ-0009",
+      "signals": {
+        "semantic_scores": {
+          "PRJ-0009": 0.95
+        },
+        "vendor_company_id": "COMP-4"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0268",
+      "expected_project": "PRJ-0013",
+      "signals": {
+        "address": "113 Test St",
+        "vendor_company_id": "COMP-3"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0269",
+      "expected_project": "PRJ-0017",
+      "signals": {
+        "person_active_projects": [
+          "PRJ-0017"
+        ],
+        "po_number": "TYPO-PO-0017",
+        "vendor_company_id": "COMP-2"
+      }
+    },
+    {
+      "automatic_expected": true,
+      "case_id": "case-0270",
+      "expected_project": "PRJ-0015",
+      "signals": {
+        "address": "115 Test St",
+        "po_number": "PO-0015",
+        "vendor_company_id": "COMP-0"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0271",
+      "expected_project": "PRJ-0004",
+      "signals": {
+        "address": "104 Test St",
+        "thread_id": "THR-0004",
+        "vendor_company_id": "COMP-4"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0272",
+      "expected_project": "PRJ-0006",
+      "signals": {
+        "person_active_projects": [
+          "PRJ-0006"
+        ],
+        "vendor_company_id": "COMP-1"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0273",
+      "expected_project": "PRJ-0009",
+      "signals": {
+        "semantic_scores": {
+          "PRJ-0009": 0.95
+        },
+        "vendor_company_id": "COMP-4"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0274",
+      "expected_project": "PRJ-0006",
+      "signals": {
+        "address": "106 Test St",
+        "vendor_company_id": "COMP-1"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0275",
+      "expected_project": "PRJ-0001",
+      "signals": {
+        "person_active_projects": [
+          "PRJ-0001"
+        ],
+        "po_number": "TYPO-PO-0001",
+        "vendor_company_id": "COMP-1"
+      }
+    },
+    {
+      "automatic_expected": true,
+      "case_id": "case-0276",
+      "expected_project": "PRJ-0018",
+      "signals": {
+        "address": "118 Test St",
+        "po_number": "PO-0018",
+        "vendor_company_id": "COMP-3"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0277",
+      "expected_project": "PRJ-0017",
+      "signals": {
+        "address": "117 Test St",
+        "thread_id": "THR-0017",
+        "vendor_company_id": "COMP-2"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0278",
+      "expected_project": "PRJ-0001",
+      "signals": {
+        "person_active_projects": [
+          "PRJ-0001"
+        ],
+        "vendor_company_id": "COMP-1"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0279",
+      "expected_project": "PRJ-0010",
+      "signals": {
+        "semantic_scores": {
+          "PRJ-0010": 0.95
+        },
+        "vendor_company_id": "COMP-0"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0280",
+      "expected_project": "PRJ-0001",
+      "signals": {
+        "address": "101 Test St",
+        "vendor_company_id": "COMP-1"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0281",
+      "expected_project": "PRJ-0001",
+      "signals": {
+        "person_active_projects": [
+          "PRJ-0001"
+        ],
+        "po_number": "TYPO-PO-0001",
+        "vendor_company_id": "COMP-1"
+      }
+    },
+    {
+      "automatic_expected": true,
+      "case_id": "case-0282",
+      "expected_project": "PRJ-0018",
+      "signals": {
+        "address": "118 Test St",
+        "po_number": "PO-0018",
+        "vendor_company_id": "COMP-3"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0283",
+      "expected_project": "PRJ-0015",
+      "signals": {
+        "address": "115 Test St",
+        "thread_id": "THR-0015",
+        "vendor_company_id": "COMP-0"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0284",
+      "expected_project": "PRJ-0016",
+      "signals": {
+        "person_active_projects": [
+          "PRJ-0016"
+        ],
+        "vendor_company_id": "COMP-1"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0285",
+      "expected_project": "PRJ-0016",
+      "signals": {
+        "semantic_scores": {
+          "PRJ-0016": 0.95
+        },
+        "vendor_company_id": "COMP-1"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0286",
+      "expected_project": "PRJ-0005",
+      "signals": {
+        "address": "105 Test St",
+        "vendor_company_id": "COMP-0"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0287",
+      "expected_project": "PRJ-0001",
+      "signals": {
+        "person_active_projects": [
+          "PRJ-0001"
+        ],
+        "po_number": "TYPO-PO-0001",
+        "vendor_company_id": "COMP-1"
+      }
+    },
+    {
+      "automatic_expected": true,
+      "case_id": "case-0288",
+      "expected_project": "PRJ-0016",
+      "signals": {
+        "address": "116 Test St",
+        "po_number": "PO-0016",
+        "vendor_company_id": "COMP-1"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0289",
+      "expected_project": "PRJ-0002",
+      "signals": {
+        "address": "102 Test St",
+        "thread_id": "THR-0002",
+        "vendor_company_id": "COMP-2"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0290",
+      "expected_project": "PRJ-0005",
+      "signals": {
+        "person_active_projects": [
+          "PRJ-0005"
+        ],
+        "vendor_company_id": "COMP-0"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0291",
+      "expected_project": "PRJ-0002",
+      "signals": {
+        "semantic_scores": {
+          "PRJ-0002": 0.95
+        },
+        "vendor_company_id": "COMP-2"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0292",
+      "expected_project": "PRJ-0019",
+      "signals": {
+        "address": "119 Test St",
+        "vendor_company_id": "COMP-4"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0293",
+      "expected_project": "PRJ-0002",
+      "signals": {
+        "person_active_projects": [
+          "PRJ-0002"
+        ],
+        "po_number": "TYPO-PO-0002",
+        "vendor_company_id": "COMP-2"
+      }
+    },
+    {
+      "automatic_expected": true,
+      "case_id": "case-0294",
+      "expected_project": "PRJ-0007",
+      "signals": {
+        "address": "107 Test St",
+        "po_number": "PO-0007",
+        "vendor_company_id": "COMP-2"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0295",
+      "expected_project": "PRJ-0012",
+      "signals": {
+        "address": "112 Test St",
+        "thread_id": "THR-0012",
+        "vendor_company_id": "COMP-2"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0296",
+      "expected_project": "PRJ-0003",
+      "signals": {
+        "person_active_projects": [
+          "PRJ-0003"
+        ],
+        "vendor_company_id": "COMP-3"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0297",
+      "expected_project": "PRJ-0018",
+      "signals": {
+        "semantic_scores": {
+          "PRJ-0018": 0.95
+        },
+        "vendor_company_id": "COMP-3"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0298",
+      "expected_project": "PRJ-0007",
+      "signals": {
+        "address": "107 Test St",
+        "vendor_company_id": "COMP-2"
+      }
+    },
+    {
+      "automatic_expected": false,
+      "case_id": "case-0299",
+      "expected_project": "PRJ-0018",
+      "signals": {
+        "person_active_projects": [
+          "PRJ-0018"
+        ],
+        "po_number": "TYPO-PO-0018",
+        "vendor_company_id": "COMP-3"
+      }
+    }
+  ],
+  "projects": [
+    {
+      "address": "100 Test St",
+      "company_ids": [
+        "COMP-0"
+      ],
+      "identifiers": {
+        "po": [
+          "PO-0000"
+        ],
+        "thread": [
+          "THR-0000"
+        ]
+      },
+      "name": "Project 0",
+      "project_id": "PRJ-0000"
+    },
+    {
+      "address": "101 Test St",
+      "company_ids": [
+        "COMP-1"
+      ],
+      "identifiers": {
+        "po": [
+          "PO-0001"
+        ],
+        "thread": [
+          "THR-0001"
+        ]
+      },
+      "name": "Project 1",
+      "project_id": "PRJ-0001"
+    },
+    {
+      "address": "102 Test St",
+      "company_ids": [
+        "COMP-2"
+      ],
+      "identifiers": {
+        "po": [
+          "PO-0002"
+        ],
+        "thread": [
+          "THR-0002"
+        ]
+      },
+      "name": "Project 2",
+      "project_id": "PRJ-0002"
+    },
+    {
+      "address": "103 Test St",
+      "company_ids": [
+        "COMP-3"
+      ],
+      "identifiers": {
+        "po": [
+          "PO-0003"
+        ],
+        "thread": [
+          "THR-0003"
+        ]
+      },
+      "name": "Project 3",
+      "project_id": "PRJ-0003"
+    },
+    {
+      "address": "104 Test St",
+      "company_ids": [
+        "COMP-4"
+      ],
+      "identifiers": {
+        "po": [
+          "PO-0004"
+        ],
+        "thread": [
+          "THR-0004"
+        ]
+      },
+      "name": "Project 4",
+      "project_id": "PRJ-0004"
+    },
+    {
+      "address": "105 Test St",
+      "company_ids": [
+        "COMP-0"
+      ],
+      "identifiers": {
+        "po": [
+          "PO-0005"
+        ],
+        "thread": [
+          "THR-0005"
+        ]
+      },
+      "name": "Project 5",
+      "project_id": "PRJ-0005"
+    },
+    {
+      "address": "106 Test St",
+      "company_ids": [
+        "COMP-1"
+      ],
+      "identifiers": {
+        "po": [
+          "PO-0006"
+        ],
+        "thread": [
+          "THR-0006"
+        ]
+      },
+      "name": "Project 6",
+      "project_id": "PRJ-0006"
+    },
+    {
+      "address": "107 Test St",
+      "company_ids": [
+        "COMP-2"
+      ],
+      "identifiers": {
+        "po": [
+          "PO-0007"
+        ],
+        "thread": [
+          "THR-0007"
+        ]
+      },
+      "name": "Project 7",
+      "project_id": "PRJ-0007"
+    },
+    {
+      "address": "108 Test St",
+      "company_ids": [
+        "COMP-3"
+      ],
+      "identifiers": {
+        "po": [
+          "PO-0008"
+        ],
+        "thread": [
+          "THR-0008"
+        ]
+      },
+      "name": "Project 8",
+      "project_id": "PRJ-0008"
+    },
+    {
+      "address": "109 Test St",
+      "company_ids": [
+        "COMP-4"
+      ],
+      "identifiers": {
+        "po": [
+          "PO-0009"
+        ],
+        "thread": [
+          "THR-0009"
+        ]
+      },
+      "name": "Project 9",
+      "project_id": "PRJ-0009"
+    },
+    {
+      "address": "110 Test St",
+      "company_ids": [
+        "COMP-0"
+      ],
+      "identifiers": {
+        "po": [
+          "PO-0010"
+        ],
+        "thread": [
+          "THR-0010"
+        ]
+      },
+      "name": "Project 10",
+      "project_id": "PRJ-0010"
+    },
+    {
+      "address": "111 Test St",
+      "company_ids": [
+        "COMP-1"
+      ],
+      "identifiers": {
+        "po": [
+          "PO-0011"
+        ],
+        "thread": [
+          "THR-0011"
+        ]
+      },
+      "name": "Project 11",
+      "project_id": "PRJ-0011"
+    },
+    {
+      "address": "112 Test St",
+      "company_ids": [
+        "COMP-2"
+      ],
+      "identifiers": {
+        "po": [
+          "PO-0012"
+        ],
+        "thread": [
+          "THR-0012"
+        ]
+      },
+      "name": "Project 12",
+      "project_id": "PRJ-0012"
+    },
+    {
+      "address": "113 Test St",
+      "company_ids": [
+        "COMP-3"
+      ],
+      "identifiers": {
+        "po": [
+          "PO-0013"
+        ],
+        "thread": [
+          "THR-0013"
+        ]
+      },
+      "name": "Project 13",
+      "project_id": "PRJ-0013"
+    },
+    {
+      "address": "114 Test St",
+      "company_ids": [
+        "COMP-4"
+      ],
+      "identifiers": {
+        "po": [
+          "PO-0014"
+        ],
+        "thread": [
+          "THR-0014"
+        ]
+      },
+      "name": "Project 14",
+      "project_id": "PRJ-0014"
+    },
+    {
+      "address": "115 Test St",
+      "company_ids": [
+        "COMP-0"
+      ],
+      "identifiers": {
+        "po": [
+          "PO-0015"
+        ],
+        "thread": [
+          "THR-0015"
+        ]
+      },
+      "name": "Project 15",
+      "project_id": "PRJ-0015"
+    },
+    {
+      "address": "116 Test St",
+      "company_ids": [
+        "COMP-1"
+      ],
+      "identifiers": {
+        "po": [
+          "PO-0016"
+        ],
+        "thread": [
+          "THR-0016"
+        ]
+      },
+      "name": "Project 16",
+      "project_id": "PRJ-0016"
+    },
+    {
+      "address": "117 Test St",
+      "company_ids": [
+        "COMP-2"
+      ],
+      "identifiers": {
+        "po": [
+          "PO-0017"
+        ],
+        "thread": [
+          "THR-0017"
+        ]
+      },
+      "name": "Project 17",
+      "project_id": "PRJ-0017"
+    },
+    {
+      "address": "118 Test St",
+      "company_ids": [
+        "COMP-3"
+      ],
+      "identifiers": {
+        "po": [
+          "PO-0018"
+        ],
+        "thread": [
+          "THR-0018"
+        ]
+      },
+      "name": "Project 18",
+      "project_id": "PRJ-0018"
+    },
+    {
+      "address": "119 Test St",
+      "company_ids": [
+        "COMP-4"
+      ],
+      "identifiers": {
+        "po": [
+          "PO-0019"
+        ],
+        "thread": [
+          "THR-0019"
+        ]
+      },
+      "name": "Project 19",
+      "project_id": "PRJ-0019"
+    }
+  ],
+  "schema_version": "1.0",
+  "seed": 42
+}

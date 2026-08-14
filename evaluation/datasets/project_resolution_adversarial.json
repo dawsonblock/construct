@@ -1,0 +1,6 @@
+[
+ {"name":"shared vendor exact PO","expected":"PRJ-0042","signals":{"po_number":"1042-17","vendor_company_id":"COMP-9"},"expect_auto":false},
+ {"name":"shared vendor ambiguous","expected":"PRJ-0042","signals":{"vendor_company_id":"COMP-9","person_active_projects":["PRJ-0042"]},"expect_auto":false},
+ {"name":"hard address and PO","expected":"PRJ-0042","signals":{"po_number":"1042-17","address":"421 8th St E"},"expect_auto":true},
+ {"name":"semantic must not override PO","expected":"PRJ-0042","signals":{"po_number":"1042-17","semantic_scores":{"PRJ-0063":1.0,"PRJ-0042":0.0}},"expect_auto":false}
+]

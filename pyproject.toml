@@ -1,0 +1,49 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "construction-ai-ops"
+version = "0.4.0.dev0"
+description = "Evidence-first construction operations AI control plane"
+requires-python = ">=3.12,<3.13"
+# Exact pins only. The transitive closure lives in requirements.lock.txt and is
+# what images and CI install; these direct pins exist so the intent is readable.
+dependencies = [
+  "fastapi==0.128.0",
+  "pydantic==2.13.4",
+  "uvicorn[standard]==0.52.1",
+  "httpx==0.28.1",
+  "psycopg[binary]==3.3.4",
+  "redis==5.3.1",
+  "boto3==1.43.71",
+  "pypdf==6.16.0",
+  "pdfplumber==0.11.10",
+  "openpyxl==3.1.5",
+  "python-docx==1.2.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest==8.4.2", "pytest-cov==7.0.0", "ruff==0.16.0"]
+# Reserved for the Phase 35 executive controller. Nothing imports it yet, so it
+# is kept out of the runtime closure rather than pinned into every image.
+graph = ["langgraph==1.2.6"]
+
+[tool.setuptools.packages.find]
+include = ["construction_ai*"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 160
+target-version = "py312"
+
+[tool.ruff.lint]
+# Correctness rules only. The codebase uses a deliberately compact style
+# (multiple imports per line, single-line guards); a Phase 1 freeze is the wrong
+# moment to restyle every file, and a lint gate that fires on formatting teaches
+# people to skip it. Widen to I/UP/E once the v0.4 work settles.
+select = ["F", "E9", "B"]
+ignore = ["B008"]  # FastAPI's Depends()/Query() defaults are the framework idiom

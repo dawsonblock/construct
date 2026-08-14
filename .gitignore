@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+build/
+dist/
+
+# Test / tooling caches
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Local runtime state — never part of the reproducible baseline
+*.db
+object_store/
+.env
+.demo-credentials.json
+
+# Upstream source snapshots (74 MB of zips).
+# Their sha256 digests are pinned in docs/PINNED_VERSIONS.md instead.
+vendor/upstream_sources/
+
+# OS
+.DS_Store
