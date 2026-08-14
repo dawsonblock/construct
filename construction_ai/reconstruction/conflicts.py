@@ -12,7 +12,7 @@ decision, not a silent overwrite.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from typing import Any
 
 HIGH = "high"
@@ -22,6 +22,42 @@ LOW = "low"
 _SEVERITY_ORDER = {HIGH: 0, MEDIUM: 1, LOW: 2}
 
 AMOUNT_TOLERANCE = Decimal("0.02")
+
+
+def _canonical_value_repr(value: Any) -> str:
+    """Canonical representation of an evidence value for comparison (item 32).
+
+    "100.00", 100, and "100" all canonicalize to the same repr so they do not
+    read as a contradiction. Strings are stripped and whitespace-normalized.
+    Numeric strings are normalized via Decimal.
+    """
+    if value is None:
+        return "None"
+    if isinstance(value, bool):
+        return repr(value)
+    if isinstance(value, (int, float)):
+        d = Decimal(str(value))
+        return _format_decimal_repr(d)
+    if isinstance(value, str):
+        stripped = value.strip()
+        if not stripped:
+            return '""'
+        try:
+            return _format_decimal_repr(Decimal(stripped))
+        except (InvalidOperation, ValueError):
+            import re
+            return repr(re.sub(r"\s+", " ", stripped))
+    if isinstance(value, list):
+        return repr([_canonical_value_repr(v) for v in value])
+    if isinstance(value, dict):
+        return repr({k: _canonical_value_repr(v) for k, v in sorted(value.items())})
+    return repr(value)
+
+
+def _format_decimal_repr(d: Decimal) -> str:
+    """Format a Decimal without scientific notation and without trailing zeros."""
+    normalized = d.normalize()
+    return format(normalized, "f")
 
 
 @dataclass(frozen=True)
@@ -237,13 +273,16 @@ def _evidence_conflicts(evidence, document_versions) -> list[Conflict]:
     # Grouping by (subject, field) rather than field alone matters: two invoices
     # each carrying a `total` are not in conflict, they are two invoices. A field
     # is only comparable within the thing it describes.
+    #
+    # v0.4.6 (item 32): values are canonicalized before comparison so that
+    # "100.00" and 100 and "100" do not read as a contradiction.
     by_subject: dict[tuple[str, str, str], list[Any]] = {}
     for item in evidence:
         key = (item.subject_type or "", item.subject_id or "", item.field)
         by_subject.setdefault(key, []).append(item)
     for (subject_type, subject_id, field), group in sorted(by_subject.items()):
         authoritative = [e for e in group if e.authority >= 0.9]
-        values = {repr(e.value) for e in authoritative}
+        values = {_canonical_value_repr(e.value) for e in authoritative}
         if len(values) > 1:
             found.append(Conflict(
                 "EVIDENCE_CONTRADICTION", HIGH, subject_type or "evidence", subject_id or field,

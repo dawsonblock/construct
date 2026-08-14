@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import hashlib
 from dataclasses import asdict, dataclass, field
+from decimal import Decimal
 from typing import Any
 
 from construction_ai.graph.projection import ProjectRows, structural_graph
@@ -144,7 +145,7 @@ def _evidence(item) -> dict[str, Any]:
     return {
         "evidence_id": item.evidence_id,
         "field": item.field,
-        "value": item.value,
+        "value": _canonical_value(item.value),
         "confidence": item.confidence,
         "authority": item.authority,
         "source_type": item.source_type,
@@ -152,7 +153,69 @@ def _evidence(item) -> dict[str, Any]:
         "source_version_id": item.source_version_id,
         "extractor": item.extractor,
         "observed_at": item.observed_at,
+        # v0.4.6 (item 31): subject is part of the reconstructed state, not
+        # just a conflict-detection grouping key. A consumer needs to know what
+        # each piece of evidence is *about* to use it correctly.
+        "subject_type": item.subject_type,
+        "subject_id": item.subject_id,
     }
+
+
+def _canonical_value(value: Any) -> Any:
+    """Canonicalize an evidence value for deterministic comparison (item 32).
+
+    Two pieces of evidence about the same subject and field should compare
+    equal when they carry the same fact, even if the JSON representation
+    differs (e.g., "100.00" vs 100.00 vs "100"). Canonicalization:
+    - Numeric strings that are valid decimals become Decimal strings.
+    - Strings are stripped and whitespace-normalized.
+    - Nested dicts and lists are canonicalized recursively.
+    - None stays None.
+    """
+    from decimal import Decimal, InvalidOperation
+
+    if value is None:
+        return None
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, (int, float)):
+        # Normalize floats to Decimal strings to avoid float comparison issues.
+        # Use a format that avoids scientific notation (Decimal.normalize() can
+        # produce "1E+2" for 100).
+        d = Decimal(str(value))
+        return _format_decimal(d)
+    if isinstance(value, str):
+        stripped = value.strip()
+        if not stripped:
+            return ""
+        # Try to parse as a number — "100.00" and "100" should canonicalize
+        # to the same value.
+        try:
+            d = Decimal(stripped)
+            return _format_decimal(d)
+        except InvalidOperation:
+            pass
+        # Normalize whitespace within strings.
+        import re
+        return re.sub(r"\s+", " ", stripped)
+    if isinstance(value, list):
+        return [_canonical_value(v) for v in value]
+    if isinstance(value, dict):
+        return {k: _canonical_value(v) for k, v in sorted(value.items())}
+    return value
+
+
+def _format_decimal(d: Decimal) -> str:
+    """Format a Decimal without scientific notation and without trailing zeros."""
+    # Normalize to remove trailing zeros, then format without exponent.
+    normalized = d.normalize()
+    sign, digits, exponent = normalized.as_tuple()
+    if exponent < 0:
+        # Has fractional digits — format as plain string.
+        return format(normalized, "f")
+    else:
+        # Integer value — format without exponent.
+        return format(normalized, "f")
 
 
 def reconstruct(repos, scope: Scope) -> ProjectState:
@@ -218,6 +281,12 @@ def reconstruct(repos, scope: Scope) -> ProjectState:
         },
         "evidence_source_types": sorted({e.source_type for e in evidence}),
         "extractors": sorted({e.extractor for e in evidence}),
+        # v0.4.6 (item 31): subject coverage — how many evidence items carry
+        # a subject vs how many are unscoped. Unscoped evidence is weaker
+        # because it cannot be compared safely across records.
+        "evidence_with_subject": sum(1 for e in evidence if e.subject_type and e.subject_id),
+        "evidence_without_subject": sum(1 for e in evidence if not (e.subject_type and e.subject_id)),
+        "evidence_subject_types": sorted({e.subject_type for e in evidence if e.subject_type}),
         # Structural completeness: how much of the graph the records imply is
         # actually stored. Anything below 1.0 means projection is stale, and the
         # matching GRAPH_INCOMPLETE conflicts say exactly which edges.
