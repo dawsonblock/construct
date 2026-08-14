@@ -17,6 +17,7 @@ The dependencies are declared, not discovered:
 """
 from __future__ import annotations
 
+from typing import Any
 from uuid import UUID
 
 from construction_ai.persistence.db import Scope, ScopeError
@@ -38,6 +39,7 @@ class ProjectReconstructor:
         approvals,
         entities,
         relationships,
+        decisions=None,
     ):
         self.projects = projects
         self.companies = companies
@@ -49,6 +51,7 @@ class ProjectReconstructor:
         self.approvals = approvals
         self.entities = entities
         self.relationships = relationships
+        self._decisions = decisions
 
     @classmethod
     def from_repositories(cls, repos) -> ProjectReconstructor:
@@ -63,6 +66,7 @@ class ProjectReconstructor:
             approvals=repos.approvals,
             entities=repos.entities,
             relationships=repos.relationships,
+            decisions=repos.decisions,
         )
 
     def project(self, *, scope: Scope, project_id: UUID | None = None) -> ProjectState:
@@ -79,3 +83,34 @@ class ProjectReconstructor:
                 f"scope is bound to project {scope.project_id} but reconstruction was asked for {project_id}"
             )
         return _reconstruct(self, scope.for_project(project_id))
+
+    def replay(self, *, scope: Scope, project_id: UUID | None = None) -> dict[str, Any]:
+        """Replay reconstruction and verify decision validity (item 35).
+
+        Reconstructs the project from current state, computes the fingerprint,
+        and compares against stored decision state_fingerprints. Returns:
+        - state_fingerprint: the current ProjectState fingerprint
+        - decisions_total: total decisions for this project
+        - decisions_valid: decisions whose state_fingerprint matches current
+        - decisions_stale: decisions whose state_fingerprint differs (state drifted)
+        - decisions_without_fingerprint: decisions made before fingerprinting
+        """
+
+        state = self.project(scope=scope, project_id=project_id)
+        current_fp = state.fingerprint()
+
+        project_scope = scope.for_project(project_id) if project_id else scope
+        decisions = self._decisions.for_project(scope=project_scope)
+
+        valid = [d for d in decisions if d.state_fingerprint == current_fp]
+        stale = [d for d in decisions if d.state_fingerprint is not None and d.state_fingerprint != current_fp]
+        no_fp = [d for d in decisions if d.state_fingerprint is None]
+
+        return {
+            "state_fingerprint": current_fp,
+            "decisions_total": len(decisions),
+            "decisions_valid": len(valid),
+            "decisions_stale": len(stale),
+            "decisions_without_fingerprint": len(no_fp),
+            "stale_decision_ids": [str(d.decision_id) for d in stale],
+        }
