@@ -93,7 +93,7 @@ def decide_approval(
         # Mutate. `decided_by` is a denormalized human-readable snapshot; the
         # authoritative actor lives on the approval_decisions row (actor_id FK).
         decided = repos.approvals.decide(
-            scope=scope, approval_id=approval_id, status=decision, decided_by=actor.display_name
+            scope=scope, approval_id=approval_id, status=decision, decided_by=actor.display_name,
         )
         if decided is None:
             # Lost the race between get_for_update and the conditional UPDATE;
@@ -129,6 +129,37 @@ def decide_approval(
             },
         )
     return DecisionOutcome(approval_id, decision, actor.user_id, decision_id, policy.version)
+
+
+def record_state_fingerprint(
+    repos: Repositories,
+    *,
+    actor: AuthenticatedActor,
+    approval_id: UUID,
+) -> str | None:
+    """Record the project state fingerprint after an approval decision (item 48).
+
+    This is called after decide_approval() commits. The fingerprint is computed
+    from the state *including* the approval decision, so it represents the state
+    the human saw when they approved. The executor compares this fingerprint to
+    the current state to detect staleness.
+
+    Returns the fingerprint, or None if the project cannot be reconstructed.
+    """
+    scope = Scope(actor.organization_id)
+    approval = repos.approvals.get(scope=scope, approval_id=approval_id)
+    if approval is None or not approval.project_id:
+        return None
+    fp = _compute_state_fingerprint(repos, scope, approval)
+    if fp is None:
+        return None
+    # Update the approval with the fingerprint.
+    with repos.db.scoped(scope) as cur:
+        cur.execute(
+            "UPDATE approvals SET state_fingerprint = %s WHERE approval_id = %s AND organization_id = %s",
+            (fp, approval_id, scope.organization_id),
+        )
+    return fp
 
 
 def _validate_actor_strength(actor: AuthenticatedActor, policy: ApprovalPolicy) -> None:
@@ -186,3 +217,29 @@ def _validate_separation_of_duties(repos: Repositories, actor: AuthenticatedActo
     )
     if not result.allowed:
         raise AuthorizationError(result.reason)
+
+
+def _compute_state_fingerprint(repos: Repositories, scope: Scope, approval) -> str | None:
+    """Compute the project state fingerprint at decision time (item 48).
+
+    This enables stale-approval detection: before executing an approved
+    invoice, the executor reconstructs the current state and compares its
+    fingerprint to this value. If they differ, the state has drifted and the
+    approval is stale.
+
+    Returns None if the project cannot be reconstructed (e.g. project_id is
+    NULL), in which case stale-approval checking is skipped.
+    """
+    if not approval.project_id:
+        return None
+    try:
+        from construction_ai.reconstruction.service import ProjectReconstructor
+
+        recon = ProjectReconstructor.from_repositories(repos)
+        project_scope = scope.for_project(UUID(approval.project_id))
+        state = recon.project(scope=project_scope)
+        return state.fingerprint()
+    except Exception:
+        # If reconstruction fails, don't block the approval — the executor
+        # will check staleness and refuse if needed.
+        return None

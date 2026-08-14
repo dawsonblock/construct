@@ -54,6 +54,38 @@ class ReadbackFailed(ExecutionError):
     pass
 
 
+def check_approval_staleness(repos: Repositories, *, scope: Scope, approval) -> None:
+    """Verify the approval is not stale (item 48).
+
+    Reconstructs the current project state and compares its fingerprint to the
+    state_fingerprint recorded at approval time. If they differ, the state has
+    drifted and the approval is stale — the human approved a different state
+    than the one we'd execute against.
+
+    Raises ApprovalStale if the state has drifted.
+    Does nothing if state_fingerprint is None (approval predates fingerprinting
+    or project_id was NULL).
+    """
+    if not approval.state_fingerprint:
+        return  # no fingerprint to check against
+
+    if not approval.project_id:
+        return  # no project to reconstruct
+
+    from construction_ai.reconstruction.service import ProjectReconstructor
+
+    recon = ProjectReconstructor.from_repositories(repos)
+    project_scope = scope.for_project(UUID(approval.project_id))
+    state = recon.project(scope=project_scope)
+    current_fp = state.fingerprint()
+
+    if current_fp != approval.state_fingerprint:
+        raise ApprovalStale(
+            f"approval is stale: state fingerprint changed from {approval.state_fingerprint[:16]}... "
+            f"to {current_fp[:16]}... since approval"
+        )
+
+
 @dataclass(frozen=True)
 class ExecutionResult:
     action_id: UUID
@@ -99,7 +131,11 @@ def execute_approved_invoice(
     if approval.status.value != "approved":
         raise ApprovalNotApproved(f"approval is {approval.status.value}, not approved")
 
-    # 2. Load the invoice to build the ERP payload.
+    # 2. Check staleness — verify the project state hasn't changed since
+    #    the approval was decided (item 48).
+    check_approval_staleness(repos, scope=org_scope, approval=approval)
+
+    # 3. Load the invoice to build the ERP payload.
     invoice_id = UUID(approval.subject_id)
     invoice = repos.invoices.get(scope=org_scope, invoice_id=invoice_id)
     if invoice is None:

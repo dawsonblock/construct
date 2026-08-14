@@ -10,7 +10,8 @@ from construction_ai.persistence.repositories.base import Repository
 
 APPROVAL_COLUMNS = (
     "organization_id, approval_id, project_id, reference, approval_type, subject_type, subject_id, "
-    "recommended_action, amount, currency, status, exceptions, evidence_ids, requested_by, decided_by, decided_at"
+    "recommended_action, amount, currency, status, exceptions, evidence_ids, requested_by, decided_by, decided_at, "
+    "state_fingerprint"
 )
 
 
@@ -31,6 +32,7 @@ def _to_approval(row: dict[str, Any]) -> Approval:
         project_id=str(row["project_id"]) if row.get("project_id") else None,
         currency=row.get("currency") or "CAD",
         requested_by=row.get("requested_by") or "ai",
+        state_fingerprint=row.get("state_fingerprint"),
     )
 
 
@@ -111,12 +113,15 @@ class ApprovalRepository(Repository):
         )
         return _to_approval(row) if row else None
 
-    def decide(self, *, scope: Scope, approval_id: UUID, status: str, decided_by: str) -> Approval | None:
+    def decide(self, *, scope: Scope, approval_id: UUID, status: str, decided_by: str, state_fingerprint: str | None = None) -> Approval | None:
         """Only a pending approval can be decided, and never by 'ai'.
 
         The transition is a single conditional UPDATE so two concurrent approvers
         cannot both observe 'pending' and both write. The database CHECK is the
         backstop; this is the race guard.
+
+        v0.5.0-rc1 (item 48): state_fingerprint records the project state at
+        decision time, enabling stale-approval detection before execution.
         """
         if status not in {"approved", "held", "rejected"}:
             raise ValueError(f"unsupported approval status: {status!r}")
@@ -125,10 +130,10 @@ class ApprovalRepository(Repository):
         clause, params = self._tenant_clause(scope)
         with self.db.scoped(scope) as cur:
             cur.execute(
-                f"""UPDATE approvals SET status = %s, decided_by = %s, decided_at = now()
+                f"""UPDATE approvals SET status = %s, decided_by = %s, decided_at = now(), state_fingerprint = %s
                     WHERE {clause} AND approval_id = %s AND status = 'pending'
                     RETURNING {APPROVAL_COLUMNS}""",  # noqa: S608
-                [status, decided_by, *params, approval_id],
+                [status, decided_by, state_fingerprint, *params, approval_id],
             )
             row = cur.fetchone()
             if row is None:
