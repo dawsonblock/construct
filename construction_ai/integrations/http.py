@@ -9,11 +9,11 @@ import httpx
 
 @dataclass
 class ERPNextHTTPTransport:
-    """Read transport for ERPNext's REST API.
+    """Read/write transport for ERPNext's REST API.
 
-    Satisfies the `ReadTransport` protocol used by `ERPNextEvidenceResolver`.
-    Identical against the in-repo stub and a live Frappe instance; only
-    `base_url` and credentials differ.
+    Satisfies the `ReadTransport` and `Transport` protocols used by
+    `ERPNextEvidenceResolver` and `ERPNextAdapter`. Identical against the in-repo
+    stub and a live Frappe instance; only `base_url` and credentials differ.
     """
 
     base_url: str
@@ -34,6 +34,11 @@ class ERPNextHTTPTransport:
 
     def get(self, path: str, params: dict[str, Any] | None = None) -> Any:
         r = self.client.get(f"{self.base_url}{path}", headers=self._headers(), params=params)
+        r.raise_for_status()
+        return r.json()
+
+    def post(self, path: str, json: dict[str, Any] | None = None) -> Any:
+        r = self.client.post(f"{self.base_url}{path}", headers=self._headers(), json=json)
         r.raise_for_status()
         return r.json()
 
