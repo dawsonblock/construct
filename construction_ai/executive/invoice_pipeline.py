@@ -117,9 +117,16 @@ class InvoicePipeline:
         extracted: Invoice,
         signals: dict[str, Any],
         evidence: list[Evidence] | None = None,
-        work_confirmed: bool = False,
+        work_confirmed: bool | None = None,
         source_version_id: UUID | None = None,
     ) -> dict[str, Any]:
+        """Process an extracted invoice end to end.
+
+        `work_confirmed` is intentionally `None` on the API path (item 12): a
+        caller cannot declare physical work complete. When None, the pipeline
+        derives it from `work_confirmations` records. A non-None value is a test
+        override only and is never set by the HTTP API.
+        """
         with self.repos.db.transaction():
             organization_scope = scope.organization_only
 
@@ -232,6 +239,13 @@ class InvoicePipeline:
             # 4. Verification, then policy. Both unchanged and both deterministic.
             invoice.project_id = str(project_id) if project_id else None
             invoice.vendor_company_id = str(vendor_company_id) if vendor_company_id else None
+            # Item 12: work completion is derived from records, not a request field.
+            if work_confirmed is None:
+                from construction_ai.work.confirmation import WorkConfirmationService
+
+                work_confirmed = WorkConfirmationService(self.repos.work_confirmations).is_work_confirmed(
+                    scope=working, project_id=project_id, invoice_id=invoice_id
+                )
             verification = verify_invoice(
                 invoice,
                 purchase_order,

@@ -97,14 +97,27 @@ def demo_invoice_text(invoice_number: str) -> str:
 
 
 def submit_invoice(client: httpx.Client, token: str, text: str) -> dict:
+    # work_confirmed is intentionally not sent (item 12): a caller cannot declare
+    # physical work complete. Work completion is recorded separately.
     submission = client.post(
         f"{API_BASE}/jobs/invoice-document",
         headers=auth(token),
-        json={"text": text, "filename": DEMO_INVOICE.name, "thread_id": "THR-0042", "work_confirmed": True},
+        json={"text": text, "filename": DEMO_INVOICE.name, "thread_id": "THR-0042"},
         timeout=30,
     )
     submission.raise_for_status()
     return wait_for_job(client, submission.json()["job_id"], token)
+
+
+def record_work_confirmation(client: httpx.Client, token: str, project_id: str) -> bool:
+    """Record that work is complete for the project (the authoritative source)."""
+    response = client.post(
+        f"{API_BASE}/projects/{project_id}/work-confirmations",
+        headers=auth(token),
+        json={"confirmation_type": "superintendent", "percent_complete": 100.0},
+        timeout=10,
+    )
+    return response.status_code == 201
 
 
 def invoice_path(client: httpx.Client, token: str, approver_subject: str) -> dict:
@@ -113,6 +126,13 @@ def invoice_path(client: httpx.Client, token: str, approver_subject: str) -> dic
     health = client.get(f"{API_BASE}/health", timeout=10).json()
     check("financial default is human approval", health.get("financial_default") == "human_approval_required", str(health))
     check("database reachable", health.get("database") == "ok", str(health))
+
+    # The demo invoice resolves to PRJ-0042. Record work completion for it
+    # before submission: a caller cannot declare work_confirmed on the job (item 12).
+    projects = client.get(f"{API_BASE}/projects", headers=auth(token), timeout=10).json()
+    project_id = next((p["project_id"] for p in projects if p["reference"] == "PRJ-0042"), None)
+    if project_id:
+        check("work confirmation recorded", record_work_confirmation(client, token, project_id), project_id)
 
     job = submit_invoice(client, token, text)
     if not check("job completed", job.get("status") == "completed", job.get("error") or job.get("status", "")):

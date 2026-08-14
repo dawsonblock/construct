@@ -82,7 +82,9 @@ def handle_invoice_document(repos, job) -> dict[str, Any]:
         extracted=extracted,
         signals=signals,
         evidence=evidence,
-        work_confirmed=bool(payload.get("work_confirmed", False)),
+        # work_confirmed is intentionally not read from the payload (item 12):
+        # the pipeline derives it from work_confirmations records.
+        work_confirmed=None,
     )
     result["warnings"] = [w for w in warnings if w]
     return result

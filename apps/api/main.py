@@ -93,7 +93,9 @@ if app:
         filename: str = "invoice.txt"
         source_id: str | None = None
         thread_id: str | None = None
-        work_confirmed: bool = False
+        # work_confirmed is intentionally absent (item 12): a caller cannot
+        # declare physical work complete. Work completion is read from
+        # work_confirmations records by the pipeline.
 
     class SessionLogin(BaseModel):
         credential: str
@@ -183,6 +185,29 @@ if app:
             {"invoice_id": i.invoice_id, "reference": i.reference, "invoice_number": i.invoice_number, "total": i.total}
             for i in repos.invoices.for_project(scope=project_scope)
         ]
+
+    class WorkConfirmationRequest(BaseModel):
+        confirmation_type: str
+        percent_complete: float | None = None
+        invoice_id: str | None = None
+
+    @app.post("/projects/{project_id}/work-confirmations", status_code=201)
+    def record_work_confirmation(project_id: str, body: WorkConfirmationRequest, scope: Scope = Depends(current_scope)):
+        """Record that physical work is complete (item 12).
+
+        This is the authoritative source the verifier reads. A caller cannot
+        declare work complete on the invoice job; it must record it here."""
+        project_scope = scope.for_project(_uuid(project_id, "project"))
+        if repos.projects.get(scope=project_scope, project_id=project_scope.project_id) is None:
+            raise HTTPException(404, "project not found")
+        confirmation = repos.work_confirmations.record(
+            scope=project_scope,
+            project_id=project_scope.project_id,
+            invoice_id=_uuid(body.invoice_id, "invoice") if body.invoice_id else None,
+            confirmation_type=body.confirmation_type,
+            percent_complete=body.percent_complete,
+        )
+        return {"confirmation_id": str(confirmation.confirmation_id), "status": confirmation.status}
 
     # -- reconstruction and graph -------------------------------------------
 

@@ -140,6 +140,12 @@ class Repositories:
         return ApprovalDecisionRepository(self.db)
 
     @cached_property
+    def work_confirmations(self):
+        from construction_ai.work.repository import WorkConfirmationRepository
+
+        return WorkConfirmationRepository(self.db)
+
+    @cached_property
     def reconstruction(self):
         """Cross-repository application service — not a repository itself."""
         from construction_ai.reconstruction.service import ProjectReconstructor
