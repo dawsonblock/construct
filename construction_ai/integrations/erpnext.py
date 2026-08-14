@@ -4,7 +4,6 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any, Protocol
 from urllib.parse import quote
-from construction_ai.policy.engine import decide
 from construction_ai.domain.models import Evidence, PurchaseOrder, Quote
 
 ADAPTER_VERSION = "erpnext-adapter:v1"
@@ -64,20 +63,26 @@ def _snapshot_evidence(
 
 @dataclass
 class ERPNextAdapter:
+    """Dumb transport adapter for ERPNext write operations.
+
+    v0.5.0-rc2 (Phase 13): All authorization logic removed. The adapter knows
+    only how to call ERPNext. The ApprovedInvoiceExecutor knows whether it is
+    permitted. This gives one authority boundary instead of two inconsistent ones.
+    """
     transport: Transport
 
-    def create_purchase_invoice_draft(self, payload: dict[str, Any], *, evidence_valid: bool=True, confidence_satisfied: bool=True) -> Any:
-        policy=decide("PREPARE_TRANSACTION",evidence_valid=evidence_valid,confidence_satisfied=confidence_satisfied)
-        if not policy.allowed: raise PermissionError(policy.reason)
-        data=dict(payload); data["docstatus"]=0
+    def create_purchase_invoice_draft(self, payload: dict[str, Any]) -> Any:
+        """Create a Purchase Invoice draft in ERP. No authorization checks."""
+        data = dict(payload)
+        data["docstatus"] = 0
         return self.transport.post("/api/resource/Purchase Invoice", json=data)
 
-    def submit_purchase_invoice(self, *, docname: str, approval_status: str | None = None, approved_by: str|None=None, approved: bool | None = None):
-        if approval_status is None: approval_status = "approved" if approved else "pending"
-        approval_satisfied=approval_status=="approved" and bool(approved_by)
-        policy=decide("SUBMIT_ERP_TRANSACTION",evidence_valid=True,confidence_satisfied=True,approval_satisfied=approval_satisfied)
-        if not policy.allowed: raise PermissionError(policy.reason)
-        return self.transport.post("/api/method/frappe.client.submit", json={"doctype":"Purchase Invoice","name":docname})
+    def submit_purchase_invoice(self, docname: str) -> Any:
+        """Submit a Purchase Invoice draft (docstatus 0 → 1). No authorization checks."""
+        return self.transport.post(
+            "/api/method/frappe.client.submit",
+            json={"doctype": "Purchase Invoice", "name": docname},
+        )
 
 @dataclass
 class ERPNextEvidenceResolver:

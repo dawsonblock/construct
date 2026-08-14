@@ -41,6 +41,7 @@ The executor does NOT:
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Any
 from uuid import UUID
 
 from construction_ai.integrations.erpnext import ERPNextAdapter
@@ -65,6 +66,11 @@ class ApprovalNotFound(ExecutionError):
 
 
 class ReadbackFailed(ExecutionError):
+    pass
+
+
+class ReadbackMismatch(ExecutionError):
+    """ERP readback document exists but financial fields don't match."""
     pass
 
 
@@ -187,13 +193,17 @@ def execute_approved_invoice(
         raise ExecutionError(f"invoice {invoice_id} not found")
 
     # 4. Build the idempotency key and ERP payload.
+    # Phase 14: Keep money as Decimal — convert to string at the serialization
+    # boundary, never to float.
+    from decimal import Decimal as _Decimal
+
     idempotency_key = f"approval:{approval_id}"
     payload = {
         "supplier": invoice.vendor_name,
         "bill_no": invoice.invoice_number,
-        "grand_total": float(invoice.total or 0),
-        "net_total": float(invoice.subtotal or 0),
-        "total_taxes": float(invoice.tax or 0),
+        "grand_total": str(_Decimal(str(invoice.total or 0))),
+        "net_total": str(_Decimal(str(invoice.subtotal or 0))),
+        "total_taxes": str(_Decimal(str(invoice.tax or 0))),
         "currency": invoice.currency or "CAD",
         "docstatus": 0,  # create as draft
     }
@@ -280,7 +290,7 @@ def execute_approved_invoice(
     # 9. Submit the draft.
     _check_crash("before_erp_submit")
     try:
-        adapter.submit_purchase_invoice(docname=docname, approval_status="approved", approved_by=approval.approved_by or "system")
+        adapter.submit_purchase_invoice(docname)
     except Exception as e:
         # After ERP create, a submit failure is potentially ambiguous — the
         # document may exist as a draft. Mark as UNKNOWN for reconciliation.
@@ -289,9 +299,10 @@ def execute_approved_invoice(
 
     _check_crash("after_erp_submit")
 
-    # 10. Readback verification.
+    # 10. Readback verification — compare all financial fields (Phase 11).
     _check_crash("before_readback")
     from urllib.parse import quote
+    from decimal import Decimal as _Decimal
 
     readback = erp_read_transport.get(f"/api/resource/{quote('Purchase Invoice')}/{quote(docname)}")
     readback_data = readback.get("data", readback) if isinstance(readback, dict) else {}
@@ -299,6 +310,15 @@ def execute_approved_invoice(
     if docstatus != 1:
         _mark_unknown(repos, org_scope, updated.action_id, f"readback docstatus={docstatus}, expected 1", docname, invoice_id)
         raise ReadbackFailed(f"ERP readback shows docstatus={docstatus}, expected 1 (submitted)")
+
+    # Compare financial fields: supplier, bill_no, currency, totals.
+    mismatches = _compare_readback(payload, readback_data)
+    if mismatches:
+        _mark_unknown(
+            repos, org_scope, updated.action_id,
+            f"readback mismatch: {mismatches}", docname, invoice_id,
+        )
+        raise ReadbackMismatch(f"ERP readback fields do not match: {mismatches}")
 
     _check_crash("after_readback")
 
@@ -382,3 +402,36 @@ def _audit_transition(repos: Repositories, scope: Scope, action_id: UUID, from_s
             "subject_id": str(invoice_id),
         },
     )
+
+
+def _compare_readback(expected: dict[str, Any], actual: dict[str, Any]) -> list[str]:
+    """Compare expected ERP payload fields against readback data (Phase 11).
+
+    Returns a list of mismatch descriptions. Empty list means all fields match.
+    Compares: supplier, bill_no, currency, grand_total, net_total, total_taxes.
+    """
+    from decimal import Decimal as _Decimal
+
+    mismatches: list[str] = []
+
+    # String fields — exact match.
+    for field in ("supplier", "bill_no", "currency"):
+        exp = expected.get(field)
+        act = actual.get(field)
+        if exp is not None and act is not None and str(exp) != str(act):
+            mismatches.append(f"{field}: expected {exp!r}, got {act!r}")
+
+    # Numeric fields — compare as Decimal for precision.
+    for field in ("grand_total", "net_total", "total_taxes"):
+        exp = expected.get(field)
+        act = actual.get(field)
+        if exp is not None and act is not None:
+            try:
+                exp_d = _Decimal(str(exp))
+                act_d = _Decimal(str(act))
+                if exp_d != act_d:
+                    mismatches.append(f"{field}: expected {exp}, got {act}")
+            except Exception:
+                mismatches.append(f"{field}: could not compare {exp!r} vs {act!r}")
+
+    return mismatches

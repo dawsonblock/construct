@@ -55,8 +55,7 @@ def test_erp_draft_and_submit_gate():
     a = ERPNextAdapter(t)
     out = a.create_purchase_invoice_draft({"supplier": "ABC", "grand_total": 100})
     assert out["json"]["docstatus"] == 0
-    try:
-        a.submit_purchase_invoice(approved=False, docname="PINV-1")
-        raise AssertionError("submit allowed without approval")
-    except PermissionError:
-        pass
+    # v0.5.0-rc2: The adapter is now dumb — it does not check authorization.
+    # Authorization is the executor's responsibility. The adapter just submits.
+    result = a.submit_purchase_invoice("PINV-1")
+    assert result["ok"] is True

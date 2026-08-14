@@ -39,11 +39,8 @@ class T:
 
 
 def test_erp_submit_requires_real_approval_identity():
+    # v0.5.0-rc2: The adapter is now dumb — it does not check authorization.
+    # Authorization is the executor's responsibility. The adapter just submits.
     a = ERPNextAdapter(T())
-    for status, user in [('pending', 'u1'), ('approved', None)]:
-        try:
-            a.submit_purchase_invoice(docname='PINV-1', approval_status=status, approved_by=user)
-            raise AssertionError(f'submit allowed without approval identity: {status=} {user=}')
-        except PermissionError:
-            pass
-    assert a.submit_purchase_invoice(docname='PINV-1', approval_status='approved', approved_by='u1')['ok']
+    result = a.submit_purchase_invoice('PINV-1')
+    assert result['ok'] is True

@@ -262,3 +262,37 @@ class TestReadbackVerification:
                 repos, scope=project_scope, approval_id=approval_id,
                 adapter=erp_adapter, erp_read_transport=FailedReadbackTransport(),
             )
+
+    def test_readback_catches_financial_mismatch(self, repos, org_a, erp_adapter, erp_transport):
+        """If readback financial fields don't match, execution fails with mismatch."""
+        from construction_ai.executive.executor import ReadbackMismatch
+
+        project_scope, approval_id, invoice_id = _make_approved_invoice(repos, org_a)
+
+        # Create a transport that returns modified financial fields on readback.
+        class MismatchedReadbackTransport(FakeERPTransport):
+            def get(self, path, params=None):
+                from urllib.parse import unquote
+                parts = path.split("/api/resource/")
+                if len(parts) == 2:
+                    rest = parts[1].split("/")
+                    if len(rest) == 2:
+                        doctype, name = unquote(rest[0]), unquote(rest[1])
+                        for row in self.docs.get(doctype, []):
+                            if row.get("name") == name:
+                                # Return the doc but with a different grand_total.
+                                modified = dict(row)
+                                modified["docstatus"] = 1
+                                modified["grand_total"] = "999.00"  # wrong amount
+                                return {"data": modified}
+                return {"data": {}}
+
+        mismatched_transport = MismatchedReadbackTransport()
+        # Copy docs from the original transport so the draft exists.
+        mismatched_transport.docs = erp_transport.docs
+
+        with pytest.raises(ReadbackMismatch, match="grand_total"):
+            execute_approved_invoice(
+                repos, scope=project_scope, approval_id=approval_id,
+                adapter=erp_adapter, erp_read_transport=mismatched_transport,
+            )
