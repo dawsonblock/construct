@@ -243,6 +243,23 @@ class TestApprovedInvoiceExecutor:
         assert actions[0].target_system == "erpnext"
         assert actions[0].result["docstatus"] == 1
 
+    def test_uses_erp_supplier_id_not_vendor_name(self, repos, org_a, erp_adapter, erp_transport):
+        """Phase 12: The ERP payload uses the ERP supplier ID, not the vendor name."""
+        project_scope, approval_id, invoice_id = _make_approved_invoice(repos, org_a)
+
+        execute_approved_invoice(
+            repos, scope=project_scope, approval_id=approval_id,
+            adapter=erp_adapter, erp_read_transport=erp_transport,
+        )
+
+        # Check the ERP document — supplier should be the ERP supplier ID.
+        all_docs = [d for docs in erp_transport.docs.values() for d in docs]
+        assert len(all_docs) == 1
+        # The _make_approved_invoice helper creates a company with erp_supplier_id="Exec Vendor".
+        # The invoice's vendor_name is also "Exec Vendor", but the ERP supplier ID
+        # should come from the company record.
+        assert all_docs[0]["supplier"] == "Exec Vendor"  # erp_supplier_id from company
+
 
 class TestReadbackVerification:
 

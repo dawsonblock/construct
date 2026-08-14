@@ -195,11 +195,21 @@ def execute_approved_invoice(
     # 4. Build the idempotency key and ERP payload.
     # Phase 14: Keep money as Decimal — convert to string at the serialization
     # boundary, never to float.
+    # Phase 12: Use ERP supplier ID, not vendor name. The verification layer
+    # independently resolved the authoritative ERP supplier — use that exact
+    # identifier for the ERP write, not the vendor name.
     from decimal import Decimal as _Decimal
+
+    # Look up the company to get the ERP supplier ID.
+    supplier_id = invoice.vendor_name  # fallback
+    if invoice.vendor_company_id:
+        company = repos.companies.get(scope=org_scope, company_id=UUID(invoice.vendor_company_id))
+        if company and company.erp_supplier_id:
+            supplier_id = company.erp_supplier_id
 
     idempotency_key = f"approval:{approval_id}"
     payload = {
-        "supplier": invoice.vendor_name,
+        "supplier": supplier_id,
         "bill_no": invoice.invoice_number,
         "grand_total": str(_Decimal(str(invoice.total or 0))),
         "net_total": str(_Decimal(str(invoice.subtotal or 0))),

@@ -18,8 +18,13 @@ class ReadTransport(Protocol):
 
 
 def _raw_hash(payload: Any) -> str:
-    """SHA-256 of a stable textual rendering of the raw ERP response row."""
-    return hashlib.sha256(repr(sorted(payload.items()) if isinstance(payload, dict) else payload).encode()).hexdigest()
+    """SHA-256 of a canonical JSON rendering of the raw ERP response row.
+
+    v0.5.0-rc2 (Phase 10): Replaced repr(sorted(payload.items())) with
+    canonical JSON for deterministic hashing.
+    """
+    import json
+    return hashlib.sha256(json.dumps(payload, sort_keys=True, default=str).encode()).hexdigest()
 
 
 def _snapshot_evidence(
@@ -104,12 +109,23 @@ class ERPNextEvidenceResolver:
         return rows[0] if len(rows)==1 else None
 
     def resolve_purchase_order(self, po_number: str) -> tuple[PurchaseOrder|None,list[Evidence]]:
-        query = {"doctype": "Purchase Order", "filters": [["name", "=", po_number]], "fields": ["name", "supplier", "grand_total", "project"]}
-        rows = self._get_list('Purchase Order', [["name", "=", po_number]], ["name", "supplier", "grand_total", "project"])
+        # Phase 9/10: Fetch currency and complete fields for decisions.
+        fields = ["name", "supplier", "grand_total", "net_total", "total_taxes", "currency", "project", "docstatus", "transaction_date"]
+        query = {"doctype": "Purchase Order", "filters": [["name", "=", po_number]], "fields": fields}
+        rows = self._get_list('Purchase Order', [["name", "=", po_number]], fields)
         if len(rows) != 1:
             return None, []
         r = rows[0]
-        normalized = {"supplier_id": r.get("supplier"), "grand_total": float(r.get("grand_total") or 0), "project": r.get("project")}
+        normalized = {
+            "supplier_id": r.get("supplier"),
+            "grand_total": r.get("grand_total"),
+            "net_total": r.get("net_total"),
+            "total_taxes": r.get("total_taxes"),
+            "currency": r.get("currency"),
+            "project": r.get("project"),
+            "docstatus": r.get("docstatus"),
+            "transaction_date": r.get("transaction_date"),
+        }
         ev = [_snapshot_evidence(
             evidence_id=f"EVID-ERP-PO-{po_number}", field="ERP_PURCHASE_ORDER_SNAPSHOT", source_id=po_number,
             raw_row=r, normalized_fields=normalized, query=query, organization_id=self.organization_id,
@@ -117,13 +133,25 @@ class ERPNextEvidenceResolver:
         return PurchaseOrder('ERP-' + po_number, self.organization_id, po_number, r.get('project') or None, r.get('supplier') or None, float(r.get('grand_total') or 0)), ev
 
     def resolve_quote(self, quote_number: str) -> tuple[Quote|None,list[Evidence]]:
-        query = {"doctype": "Supplier Quotation", "filters": [["name", "=", quote_number]], "fields": ["name", "supplier", "grand_total", "project", "status"]}
-        rows = self._get_list('Supplier Quotation', [["name", "=", quote_number]], ["name", "supplier", "grand_total", "project", "status"])
+        # Phase 9/10: Fetch currency and complete fields for decisions.
+        fields = ["name", "supplier", "grand_total", "net_total", "total_taxes", "currency", "project", "status", "docstatus", "transaction_date"]
+        query = {"doctype": "Supplier Quotation", "filters": [["name", "=", quote_number]], "fields": fields}
+        rows = self._get_list('Supplier Quotation', [["name", "=", quote_number]], fields)
         if len(rows) != 1:
             return None, []
         r = rows[0]
         approved = str(r.get('status', '')).lower() in {'submitted', 'ordered', 'approved'}
-        normalized = {"supplier_id": r.get("supplier"), "grand_total": float(r.get("grand_total") or 0), "project": r.get("project"), "status": r.get("status")}
+        normalized = {
+            "supplier_id": r.get("supplier"),
+            "grand_total": r.get("grand_total"),
+            "net_total": r.get("net_total"),
+            "total_taxes": r.get("total_taxes"),
+            "currency": r.get("currency"),
+            "project": r.get("project"),
+            "status": r.get("status"),
+            "docstatus": r.get("docstatus"),
+            "transaction_date": r.get("transaction_date"),
+        }
         ev = [_snapshot_evidence(
             evidence_id=f"EVID-ERP-Q-{quote_number}", field="ERP_QUOTE_SNAPSHOT", source_id=quote_number,
             raw_row=r, normalized_fields=normalized, query=query, organization_id=self.organization_id,
