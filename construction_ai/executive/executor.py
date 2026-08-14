@@ -90,15 +90,21 @@ def check_approval_staleness(repos: Repositories, *, scope: Scope, approval) -> 
     drifted and the approval is stale — the human approved a different state
     than the one we'd execute against.
 
-    Raises ApprovalStale if the state has drifted.
-    Does nothing if state_fingerprint is None (approval predates fingerprinting
-    or project_id was NULL).
+    v0.5.0-rc3 (Phase 4): The fingerprint is now mandatory. If
+    state_fingerprint is None, execution is refused — fail closed.
+    Invariant: NoFingerprint ⇒ ERPExecution is forbidden.
     """
     if not approval.state_fingerprint:
-        return  # no fingerprint to check against
+        raise ApprovalStale(
+            "approval has no state fingerprint — cannot verify staleness. "
+            "Refusing to execute without fingerprint (fail closed)."
+        )
 
     if not approval.project_id:
-        return  # no project to reconstruct
+        raise ApprovalStale(
+            "approval has no project_id — cannot reconstruct state for staleness check. "
+            "Refusing to execute (fail closed)."
+        )
 
     from construction_ai.reconstruction.service import ProjectReconstructor
 

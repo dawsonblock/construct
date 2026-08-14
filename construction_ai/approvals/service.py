@@ -9,7 +9,8 @@ One PostgreSQL transaction, one outcome:
       validate permission (approve | reject | hold)
       validate approval authority (amount, currency, project, valid period)
       validate separation of duties (creator != approver; dual approval if required)
-      UPDATE approval
+      compute state fingerprint (mandatory for 'approved', Phase 4/5)
+      UPDATE approval (with state_fingerprint)
       INSERT approval_decision
       append audit event
     COMMIT
@@ -19,8 +20,10 @@ approval decision always has a matching audit event and a matching
 approval_decisions row. The caller never supplies an identity; the
 `AuthenticatedActor` is server-derived from the session.
 
-This replaces the v0.3 path that took `user_id` from the request body and ran the
-approval UPDATE and the audit append in two separate transactions.
+v0.5.0-rc3 (Phase 4/5): The state fingerprint is now computed INSIDE the
+transaction and is mandatory for 'approved' decisions. If the fingerprint
+cannot be computed, the approval is refused — fail closed, not fail open.
+The separate post-commit record_state_fingerprint() call is eliminated.
 """
 from __future__ import annotations
 
@@ -55,6 +58,10 @@ class ApprovalAlreadyDecided(ApprovalDecisionError):
         self.current_status = current_status
 
 
+class FingerprintUnavailable(ApprovalDecisionError):
+    """The state fingerprint could not be computed. Fail closed (Phase 4)."""
+
+
 @dataclass(frozen=True)
 class DecisionOutcome:
     approval_id: UUID
@@ -62,6 +69,7 @@ class DecisionOutcome:
     actor_id: UUID
     decision_id: UUID
     policy_version: str
+    state_fingerprint: str | None
 
 
 def decide_approval(
@@ -92,8 +100,12 @@ def decide_approval(
 
         # Mutate. `decided_by` is a denormalized human-readable snapshot; the
         # authoritative actor lives on the approval_decisions row (actor_id FK).
+        # Phase 5: state_fingerprint is set to NULL initially; it will be
+        # updated after the decision is recorded (so the fingerprint includes
+        # the decision itself).
         decided = repos.approvals.decide(
-            scope=scope, approval_id=approval_id, status=decision, decided_by=actor.display_name,
+            scope=scope, approval_id=approval_id, status=decision,
+            decided_by=actor.display_name, state_fingerprint=None,
         )
         if decided is None:
             # Lost the race between get_for_update and the conditional UPDATE;
@@ -113,6 +125,27 @@ def decide_approval(
             reason=reason,
             previous_decision_id=previous["decision_id"] if previous else None,
         )
+
+        # Phase 4/5: Compute the state fingerprint INSIDE the transaction,
+        # AFTER the decision is recorded. The fingerprint includes the
+        # decision itself, so it represents the exact state the human saw.
+        # For 'approved' decisions, the fingerprint is mandatory — fail closed.
+        state_fingerprint = _compute_state_fingerprint(repos, scope, decided)
+        if decision == "approved" and state_fingerprint is None:
+            raise FingerprintUnavailable(
+                "cannot approve without a state fingerprint — "
+                "the project state could not be reconstructed"
+            )
+
+        # Update the approval with the fingerprint (still inside the transaction).
+        if state_fingerprint is not None:
+            with repos.db.scoped(scope) as cur:
+                cur.execute(
+                    "UPDATE approvals SET state_fingerprint = %s "
+                    "WHERE approval_id = %s AND organization_id = %s",
+                    (state_fingerprint, approval_id, scope.organization_id),
+                )
+
         repos.audit.append(
             scope=Scope(actor.organization_id, project_id),
             event_type="APPROVAL_DECIDED",
@@ -126,9 +159,10 @@ def decide_approval(
                 "policy_version": policy.version,
                 "reason": reason,
                 "decision_id": str(decision_id),
+                "state_fingerprint": state_fingerprint,
             },
         )
-    return DecisionOutcome(approval_id, decision, actor.user_id, decision_id, policy.version)
+    return DecisionOutcome(approval_id, decision, actor.user_id, decision_id, policy.version, state_fingerprint)
 
 
 def record_state_fingerprint(
@@ -137,29 +171,17 @@ def record_state_fingerprint(
     actor: AuthenticatedActor,
     approval_id: UUID,
 ) -> str | None:
-    """Record the project state fingerprint after an approval decision (item 48).
+    """Legacy: Record the project state fingerprint after an approval decision.
 
-    This is called after decide_approval() commits. The fingerprint is computed
-    from the state *including* the approval decision, so it represents the state
-    the human saw when they approved. The executor compares this fingerprint to
-    the current state to detect staleness.
-
-    Returns the fingerprint, or None if the project cannot be reconstructed.
+    v0.5.0-rc3: This function is retained for backward compatibility but is
+    now a no-op — the fingerprint is computed atomically inside decide_approval().
+    Calls to this function will simply reload the existing fingerprint.
     """
     scope = Scope(actor.organization_id)
     approval = repos.approvals.get(scope=scope, approval_id=approval_id)
-    if approval is None or not approval.project_id:
+    if approval is None:
         return None
-    fp = _compute_state_fingerprint(repos, scope, approval)
-    if fp is None:
-        return None
-    # Update the approval with the fingerprint.
-    with repos.db.scoped(scope) as cur:
-        cur.execute(
-            "UPDATE approvals SET state_fingerprint = %s WHERE approval_id = %s AND organization_id = %s",
-            (fp, approval_id, scope.organization_id),
-        )
-    return fp
+    return approval.state_fingerprint
 
 
 def _validate_actor_strength(actor: AuthenticatedActor, policy: ApprovalPolicy) -> None:
@@ -220,15 +242,14 @@ def _validate_separation_of_duties(repos: Repositories, actor: AuthenticatedActo
 
 
 def _compute_state_fingerprint(repos: Repositories, scope: Scope, approval) -> str | None:
-    """Compute the project state fingerprint at decision time (item 48).
+    """Compute the project state fingerprint at decision time.
 
-    This enables stale-approval detection: before executing an approved
-    invoice, the executor reconstructs the current state and compares its
-    fingerprint to this value. If they differ, the state has drifted and the
-    approval is stale.
+    v0.5.0-rc3 (Phase 5): This is now called INSIDE the approval transaction.
+    The fingerprint binds the decision to the exact state that was approved.
 
     Returns None if the project cannot be reconstructed (e.g. project_id is
-    NULL), in which case stale-approval checking is skipped.
+    NULL). For 'approved' decisions, a None fingerprint causes the approval
+    to be refused (fail closed, Phase 4).
     """
     if not approval.project_id:
         return None
@@ -240,6 +261,4 @@ def _compute_state_fingerprint(repos: Repositories, scope: Scope, approval) -> s
         state = recon.project(scope=project_scope)
         return state.fingerprint()
     except Exception:
-        # If reconstruction fails, don't block the approval — the executor
-        # will check staleness and refuse if needed.
         return None

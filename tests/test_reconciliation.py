@@ -97,7 +97,7 @@ def _make_approved_and_executed(repos, org_a, erp_adapter, erp_transport):
     )
     pipeline = InvoicePipeline(repositories=repos, erp_resolver=None)
     result = pipeline.process(
-        scope=scope, extracted=invoice, signals={"project_reference": "P-RECON-01"},
+        scope=scope, extracted=invoice, signals={"project_id": project.project_id},
     )
     approval_id = UUID(result["approval_id"])
 

@@ -101,7 +101,7 @@ def _make_approved_invoice(repos, org_a, erp_adapter=None):
 
     pipeline = InvoicePipeline(repositories=repos, erp_resolver=None)
     result = pipeline.process(
-        scope=scope, extracted=invoice, signals={"project_reference": "P-EXEC-01"},
+        scope=scope, extracted=invoice, signals={"project_id": project.project_id},
     )
     approval_id = UUID(result["approval_id"])
     invoice_id = UUID(result["invoice_id"])

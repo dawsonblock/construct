@@ -41,8 +41,14 @@ from construction_ai.persistence.db import Scope
 @pytest.fixture()
 def approval_for_org_a(repos, org_a):
     """A pending approval owned by org A, system-originated ('ai')."""
+    # v0.5.0-rc3: Approvals that will be decided as 'approved' require a
+    # project_id for state fingerprint computation (mandatory fingerprint).
+    project = repos.projects.create(
+        scope=org_a["scope"], reference=f"P-AUTH-{uuid4().hex[:6]}", name="Auth Test",
+    )
+    project_scope = org_a["scope"].for_project(UUID(project.project_id))
     approval = repos.approvals.create(
-        scope=org_a["scope"],
+        scope=project_scope,
         reference=f"appr-{uuid4().hex[:8]}",
         approval_type="invoice",
         subject_type="invoice",
