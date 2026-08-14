@@ -93,20 +93,49 @@ class DocumentRepository(Repository):
         tables: list | None = None,
         revision_label: str | None = None,
         created_by: str = "system",
+        blob_id: UUID | None = None,
     ) -> DocumentVersion:
-        """Content-addressed and idempotent: identical bytes are one version."""
+        """Content-addressed and idempotent: identical bytes are one version.
+
+        v0.4.5: uses a per-document advisory lock to prevent two concurrent
+        uploads from racing on version_number. The blob_id (if provided) links
+        this version to a content-addressed document_blobs row — the same bytes
+        in multiple documents share one blob.
+        """
         from psycopg.types.json import Jsonb
 
         content_hash = hashlib.sha256(data).hexdigest()
         with self.db.scoped(scope.organization_only) as cur:
+            # If a blob_id is provided, check if this blob already has a version
+            # in this document — if so, return it (idempotent within a document).
+            if blob_id is not None:
+                cur.execute(
+                    f"SELECT {VERSION_COLUMNS} FROM document_versions "
+                    "WHERE organization_id = %s AND document_id = %s AND blob_id = %s",
+                    (scope.organization_id, document_id, blob_id),
+                )
+                existing = cur.fetchone()
+                if existing:
+                    columns = [c.name for c in cur.description]
+                    return _to_version(dict(zip(columns, existing, strict=True)))
+            else:
+                # Backward-compatible path: check by content_hash.
+                cur.execute(
+                    f"SELECT {VERSION_COLUMNS} FROM document_versions WHERE organization_id = %s AND content_hash = %s",
+                    (scope.organization_id, content_hash),
+                )
+                existing = cur.fetchone()
+                if existing:
+                    columns = [c.name for c in cur.description]
+                    return _to_version(dict(zip(columns, existing, strict=True)))
+
+            # Concurrency-safe version numbering: lock the document's version
+            # sequence within this transaction. Two concurrent uploads will
+            # serialize — one gets version N, the other gets version N+1.
             cur.execute(
-                f"SELECT {VERSION_COLUMNS} FROM document_versions WHERE organization_id = %s AND content_hash = %s",
-                (scope.organization_id, content_hash),
+                "SELECT pg_advisory_xact_lock(hashtextextended(%s, 0))",
+                (f"doc_version:{scope.organization_id}:{document_id}",),
             )
-            existing = cur.fetchone()
-            if existing:
-                columns = [c.name for c in cur.description]
-                return _to_version(dict(zip(columns, existing, strict=True)))
 
             cur.execute(
                 """SELECT d.project_id, COALESCE(MAX(dv.version_number), 0) + 1
@@ -124,13 +153,13 @@ class DocumentRepository(Repository):
             cur.execute(
                 f"""INSERT INTO document_versions(organization_id, document_id, project_id, version_number,
                         revision_label, content_hash, byte_size, mime_type, storage_uri, extracted_text,
-                        extraction_warnings, tables, created_by)
-                    VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                        extraction_warnings, tables, blob_id, created_by)
+                    VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
                     RETURNING {VERSION_COLUMNS}""",
                 (
                     scope.organization_id, document_id, project_id, next_version, revision_label,
                     content_hash, len(data), mime_type, storage_uri, extracted_text,
-                    Jsonb(extraction_warnings or []), Jsonb(tables or []), created_by,
+                    Jsonb(extraction_warnings or []), Jsonb(tables or []), blob_id, created_by,
                 ),
             )
             columns = [c.name for c in cur.description]

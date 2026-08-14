@@ -91,23 +91,54 @@ class AttachmentPipeline:
     def ingest(self, *, scope, filename: str, data: bytes, source_id=None, document_type: str | None = None):
         digest = hashlib.sha256(data).hexdigest()
         documents = self.repositories.documents
-        existing = documents.find_version_by_hash(scope=scope.organization_only, content_hash=digest)
-        if existing is not None:
-            return existing
+        blobs = self.repositories.document_blobs
 
-        # Extraction reads from a local path; object storage may be remote, so the
-        # bytes we already hold are written to a scratch file with the original
-        # suffix (extract_document dispatches on it).
-        with tempfile.TemporaryDirectory() as tmp:
-            path = Path(tmp) / Path(filename).name
-            path.write_bytes(data)
-            extracted = extract_document(path)
+        # v0.4.5: check for an existing blob first — the same bytes in multiple
+        # documents share one blob. If the blob exists, we still create a new
+        # document + version pointing to it (a new occurrence).
+        existing_blob = blobs.find_by_hash(scope=scope.organization_only, content_hash=digest)
 
-        uri = self.storage.put(str(scope.organization_id), filename, data)
+        if existing_blob is not None:
+            # The blob already exists — reuse its extracted text/tables.
+            uri = existing_blob.storage_uri
+            extracted_text = existing_blob.extracted_text
+            extraction_warnings = existing_blob.extraction_warnings
+            extracted_tables = existing_blob.tables
+            mime_type = existing_blob.mime_type
+            # Classify from the existing text if no explicit type was given.
+            if document_type is None:
+                from construction_ai.documents.extract import classify
+                document_type = classify(filename, extracted_text)
+        else:
+            # Extraction reads from a local path; object storage may be remote.
+            with tempfile.TemporaryDirectory() as tmp:
+                path = Path(tmp) / Path(filename).name
+                path.write_bytes(data)
+                extracted = extract_document(path)
+
+            uri = self.storage.put(str(scope.organization_id), filename, data)
+            extracted_text = extracted.text
+            extraction_warnings = extracted.warnings
+            extracted_tables = extracted.tables
+            mime_type = extracted.mime_type
+            if document_type is None:
+                document_type = extracted.document_type
+
+        # Create or get the blob (idempotent on content hash).
+        blob = blobs.get_or_create(
+            scope=scope,
+            data=data,
+            storage_uri=uri,
+            mime_type=mime_type,
+            extracted_text=extracted_text,
+            extraction_warnings=extraction_warnings,
+            tables=extracted_tables,
+        )
+
         document_id = documents.create(
             scope=scope,
             filename=filename,
-            document_type=document_type or extracted.document_type,
+            document_type=document_type,
             source_id=source_id,
             created_by="ingestion",
         )
@@ -116,9 +147,10 @@ class AttachmentPipeline:
             document_id=document_id,
             data=data,
             storage_uri=uri,
-            mime_type=extracted.mime_type,
-            extracted_text=extracted.text,
-            extraction_warnings=extracted.warnings,
-            tables=extracted.tables,
+            mime_type=mime_type,
+            extracted_text=extracted_text,
+            extraction_warnings=extraction_warnings,
+            tables=extracted_tables,
             created_by="ingestion",
+            blob_id=blob.blob_id,
         )

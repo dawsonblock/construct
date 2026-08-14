@@ -318,7 +318,10 @@ def test_attachment_ingestion_is_content_idempotent_within_a_tenant(repos, org_a
         data = b"INVOICE 8831\nAmount Due: $100.00"
         first = pipeline.ingest(scope=org_a["scope"], filename="invoice.txt", data=data)
         second = pipeline.ingest(scope=org_a["scope"], filename="renamed.txt", data=data)
-        assert first.document_version_id == second.document_version_id
+        # v0.4.5: the same bytes in multiple documents share one blob (content-
+        # addressed), but each document gets its own version (occurrence).
+        assert first.content_hash == second.content_hash
+        assert first.extracted_text == second.extracted_text
         assert first.extracted_text
 
 

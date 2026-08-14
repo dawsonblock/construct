@@ -19,6 +19,7 @@ from construction_ai.persistence.repositories.auth import (
 )
 from construction_ai.persistence.repositories.communications import CommunicationRepository
 from construction_ai.persistence.repositories.commercial import InvoiceRepository, PurchaseOrderRepository, QuoteRepository
+from construction_ai.persistence.repositories.document_blobs import DocumentBlobRepository
 from construction_ai.persistence.repositories.documents import DocumentRepository
 from construction_ai.persistence.repositories.external_actions import ExternalActionRepository
 from construction_ai.persistence.repositories.evidence import EvidenceRepository
@@ -37,6 +38,7 @@ __all__ = [
     "CommunicationRepository",
     "CompanyRepository",
     "Database",
+    "DocumentBlobRepository",
     "DocumentRepository",
     "EntityRepository",
     "ExternalActionRepository",
@@ -86,6 +88,10 @@ class Repositories:
     @cached_property
     def documents(self) -> DocumentRepository:
         return DocumentRepository(self.db)
+
+    @cached_property
+    def document_blobs(self) -> DocumentBlobRepository:
+        return DocumentBlobRepository(self.db)
 
     @cached_property
     def evidence(self) -> EvidenceRepository:
