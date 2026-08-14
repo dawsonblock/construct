@@ -57,8 +57,19 @@ def test_repositories_expose_no_unscoped_read():
             parameters = inspect.signature(method).parameters
             if "scope" not in parameters:
                 offenders.append(f"{annotation.__name__}.{method_name}")
-    # OrganizationRepository establishes tenancy and so cannot take a Scope.
-    offenders = [o for o in offenders if not o.startswith("OrganizationRepository.")]
+    # Credential resolution runs *before* a scope exists — it is how a scope is
+    # established. These are the unscoped entry points, mirroring
+    # OrganizationRepository.authenticate, and each is surveyed by the authority
+    # tests in test_authority.py.
+    unscoped_entry_points = {
+        "OrganizationRepository.",            # bearer token -> organization
+        "UserRepository.resolve_identity",   # provider subject -> user (login)
+        "SessionRepository.resolve",         # session token -> session (auth)
+    }
+    offenders = [
+        o for o in offenders
+        if not any(o.startswith(prefix) for prefix in unscoped_entry_points)
+    ]
     assert offenders == [], f"repository methods without a scope: {offenders}"
 
 

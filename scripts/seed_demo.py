@@ -19,10 +19,30 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from construction_ai.auth.provisioning import provision_approver  # noqa: E402
 from construction_ai.persistence.db import Scope  # noqa: E402
 from construction_ai.persistence.repositories import Repositories  # noqa: E402
 
 CREDENTIALS_PATH = ROOT / ".demo-credentials.json"
+
+# Demo approvers per organization. The dev identity subject is what the
+# acceptance gate presents to /auth/session; it is a fixture, not a real
+# credential, and lives in the gitignored demo-credentials file.
+APPROVERS = {
+    "demo": [
+        {"subject": "controller@demo", "display_name": "Dana Controller", "role": "controller",
+         "permissions": ["invoice.read", "invoice.review", "invoice.approve", "invoice.hold", "invoice.reject"],
+         "maximum_amount": 100000.0},
+        {"subject": "pm@demo", "display_name": "Pat Manager", "role": "project_manager",
+         "permissions": ["invoice.read", "invoice.review", "invoice.approve", "invoice.hold"],
+         "maximum_amount": 25000.0},
+    ],
+    "rival": [
+        {"subject": "controller@rival", "display_name": "Riley Controller", "role": "controller",
+         "permissions": ["invoice.read", "invoice.review", "invoice.approve", "invoice.hold", "invoice.reject"],
+         "maximum_amount": 100000.0},
+    ],
+}
 
 FIXTURES = {
     "demo": {
@@ -88,7 +108,23 @@ def seed(repos: Repositories) -> dict[str, dict]:
                 )
 
         token = repos.organizations.issue_api_key(organization_id=organization.organization_id, label="demo-seed")
-        credentials[slug] = {"organization_id": str(organization.organization_id), "api_key": token}
+        approver_subjects: list[dict] = []
+        for spec in APPROVERS.get(slug, []):
+            provision_approver(
+                repos,
+                scope,
+                subject=spec["subject"],
+                display_name=spec["display_name"],
+                role=spec["role"],
+                permissions=spec["permissions"],
+                maximum_amount=spec["maximum_amount"],
+            )
+            approver_subjects.append({"subject": spec["subject"], "display_name": spec["display_name"]})
+        credentials[slug] = {
+            "organization_id": str(organization.organization_id),
+            "api_key": token,
+            "approvers": approver_subjects,
+        }
     return credentials
 
 

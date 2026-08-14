@@ -201,6 +201,8 @@ class Approval:
     approved_at: Optional[datetime] = None
     reference: Optional[str] = None
     project_id: Optional[str] = None
+    currency: str = "CAD"
+    requested_by: str = "ai"
 
 
 @dataclass

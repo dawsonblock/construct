@@ -29,6 +29,8 @@ def _to_approval(row: dict[str, Any]) -> Approval:
         approved_at=row.get("decided_at"),
         reference=row["reference"],
         project_id=str(row["project_id"]) if row.get("project_id") else None,
+        currency=row.get("currency") or "CAD",
+        requested_by=row.get("requested_by") or "ai",
     )
 
 
@@ -50,19 +52,22 @@ class ApprovalRepository(Repository):
         evidence_ids: list[UUID] | None = None,
         requested_by: str = "ai",
         created_by: str = "system",
+        currency: str = "CAD",
     ) -> Approval:
         from psycopg.types.json import Jsonb
 
         with self.db.scoped(scope) as cur:
             cur.execute(
                 f"""INSERT INTO approvals(organization_id, project_id, reference, approval_type, subject_type,
-                        subject_id, recommended_action, amount, exceptions, evidence_ids, requested_by, created_by)
-                    VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                        subject_id, recommended_action, amount, currency, exceptions, evidence_ids,
+                        requested_by, created_by)
+                    VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
                     RETURNING {APPROVAL_COLUMNS}""",
                 (
                     scope.organization_id, scope.project_id, reference, approval_type, subject_type,
                     subject_id, recommended_action,
                     Decimal(str(amount)) if amount is not None else None,
+                    currency,
                     Jsonb(exceptions or []), list(evidence_ids or []), requested_by, created_by,
                 ),
             )
@@ -71,6 +76,22 @@ class ApprovalRepository(Repository):
 
     def get(self, *, scope: Scope, approval_id: UUID) -> Approval | None:
         row = self.get_row(scope=scope, record_id=approval_id, columns=APPROVAL_COLUMNS)
+        return _to_approval(row) if row else None
+
+    def get_for_update(self, *, scope: Scope, approval_id: UUID) -> Approval | None:
+        """Lock the row for the duration of the shared transaction.
+
+        Used by the atomic approval service so two concurrent approvers cannot
+        both pass validation against a pending row and then both write. The
+        conditional UPDATE in `decide` is the backstop; this is the race guard
+        that lets the service read authoritative state before mutating.
+        """
+        clause, params = self._tenant_clause(scope)
+        row = self._fetch_one(
+            scope,
+            f"SELECT {APPROVAL_COLUMNS} FROM approvals WHERE {clause} AND approval_id = %s FOR UPDATE",  # noqa: S608
+            [*params, approval_id],
+        )
         return _to_approval(row) if row else None
 
     def list(self, *, scope: Scope, status: str | None = None) -> list[Approval]:

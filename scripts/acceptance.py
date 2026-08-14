@@ -54,6 +54,14 @@ def auth(token: str) -> dict[str, str]:
     return {"Authorization": f"Bearer {token}"}
 
 
+def login_session(client: httpx.Client, subject: str) -> str | None:
+    """Exchange a dev identity subject for a server session token."""
+    response = client.post(f"{API_BASE}/auth/session", json={"credential": subject}, timeout=10)
+    if response.status_code != 200:
+        return None
+    return response.json().get("session_token")
+
+
 def wait_for_api(client: httpx.Client, attempts: int = 60, delay: float = 1.0) -> bool:
     for _ in range(attempts):
         try:
@@ -99,7 +107,7 @@ def submit_invoice(client: httpx.Client, token: str, text: str) -> dict:
     return wait_for_job(client, submission.json()["job_id"], token)
 
 
-def invoice_path(client: httpx.Client, token: str) -> dict:
+def invoice_path(client: httpx.Client, token: str, approver_subject: str) -> dict:
     print("\n-- invoice path ------------------------------------------------")
     text = demo_invoice_text(str(uuid.uuid4().int % 1_000_000).zfill(6))
     health = client.get(f"{API_BASE}/health", timeout=10).json()
@@ -133,13 +141,20 @@ def invoice_path(client: httpx.Client, token: str) -> dict:
     pending = client.get(f"{API_BASE}/approvals/{approval_id}", headers=auth(token), timeout=10).json()
     check("approval starts pending", pending.get("status") == "pending", str(pending.get("status")))
 
-    refused = client.post(f"{API_BASE}/approvals/{approval_id}/approve", headers=auth(token), json={"user_id": "ai"}, timeout=10)
-    check("ai cannot satisfy a human approval", refused.status_code == 422, f"HTTP {refused.status_code}")
+    # An approval is a financial mutation: it requires a server-derived human
+    # actor, not a caller-supplied user_id. The org API key alone is not a
+    # session, so the request is rejected before any decision is considered.
+    refused = client.post(f"{API_BASE}/approvals/{approval_id}/approve", headers=auth(token), json={"reason": ""}, timeout=10)
+    check("no session means no approval", refused.status_code == 401, f"HTTP {refused.status_code}")
 
-    approved = client.post(f"{API_BASE}/approvals/{approval_id}/approve", headers=auth(token), json={"user_id": "acceptance@local"}, timeout=10)
+    session = login_session(client, approver_subject)
+    if not check("approver can obtain a session", session is not None, approver_subject):
+        return result
+
+    approved = client.post(f"{API_BASE}/approvals/{approval_id}/approve", headers=auth(session), json={"reason": ""}, timeout=10)
     check("human approval recorded", approved.status_code == 200 and approved.json().get("status") == "approved", approved.text[:200])
 
-    again = client.post(f"{API_BASE}/approvals/{approval_id}/approve", headers=auth(token), json={"user_id": "someone@else"}, timeout=10)
+    again = client.post(f"{API_BASE}/approvals/{approval_id}/approve", headers=auth(session), json={"reason": ""}, timeout=10)
     check("an approved approval cannot be re-decided", again.status_code == 409, f"HTTP {again.status_code}")
 
     audit = client.get(f"{API_BASE}/audit/verify", headers=auth(token), timeout=30)
@@ -202,7 +217,7 @@ def reconstruction(client: httpx.Client, token: str, result: dict) -> str | None
     return project_id
 
 
-def tenant_isolation(client: httpx.Client, a_token: str, b_token: str, a_result: dict) -> None:
+def tenant_isolation(client: httpx.Client, a_token: str, b_token: str, a_result: dict, a_approver: str, b_approver: str) -> None:
     print("\n-- tenant isolation --------------------------------------------")
 
     check("unauthenticated read is rejected", client.get(f"{API_BASE}/projects", timeout=10).status_code == 401)
@@ -238,10 +253,16 @@ def tenant_isolation(client: httpx.Client, a_token: str, b_token: str, a_result:
         ("re-project B's graph", client.post(f"{API_BASE}/projects/{b_project_id}/graph/project", headers=auth(a_token), timeout=30)),
     ]
     if b_result.get("approval_id"):
+        a_session = login_session(client, a_approver)
+        check("A's approver can obtain A session", a_session is not None, a_approver)
+        # A's actor is scoped to A's organization; B's approval is invisible to
+        # it, so the decision attempt is a 404 — never a 403 that would confirm
+        # the approval exists in another tenant.
+        decide_headers = auth(a_session) if a_session else auth(a_token)
         probes += [
             ("read B's approval", client.get(f"{API_BASE}/approvals/{b_result['approval_id']}", headers=auth(a_token), timeout=10)),
             ("read B's approval packet", client.get(f"{API_BASE}/approvals/{b_result['approval_id']}/packet", headers=auth(a_token), timeout=10)),
-            ("decide B's approval", client.post(f"{API_BASE}/approvals/{b_result['approval_id']}/approve", headers=auth(a_token), json={"user_id": "attacker@a"}, timeout=10)),
+            ("decide B's approval", client.post(f"{API_BASE}/approvals/{b_result['approval_id']}/approve", headers=decide_headers, json={"reason": ""}, timeout=10)),
         ]
     for label, response in probes:
         check(f"A cannot {label}", response.status_code == 404, f"HTTP {response.status_code}")
@@ -291,10 +312,12 @@ def main() -> int:
     credentials = json.loads(CREDENTIALS_PATH.read_text())
     a_token = credentials["demo"]["api_key"]
     b_token = credentials["rival"]["api_key"]
+    a_approver = credentials["demo"]["approvers"][0]["subject"]
+    b_approver = credentials["rival"]["approvers"][0]["subject"]
 
-    a_result = invoice_path(client, a_token)
+    a_result = invoice_path(client, a_token, a_approver)
     reconstruction(client, a_token, a_result)
-    tenant_isolation(client, a_token, b_token, a_result)
+    tenant_isolation(client, a_token, b_token, a_result, a_approver, b_approver)
 
     print()
     if failures:

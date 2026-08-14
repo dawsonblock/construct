@@ -11,6 +11,12 @@ from functools import cached_property
 from construction_ai.persistence.db import Database, Scope, ScopeError
 from construction_ai.persistence.repositories.approvals import ApprovalPacketRepository, ApprovalRepository
 from construction_ai.persistence.repositories.audit import AuditRepository
+from construction_ai.persistence.repositories.auth import (
+    ApprovalAuthorityRepository,
+    ApprovalDecisionRepository,
+    SessionRepository,
+    UserRepository,
+)
 from construction_ai.persistence.repositories.communications import CommunicationRepository
 from construction_ai.persistence.repositories.commercial import InvoiceRepository, PurchaseOrderRepository, QuoteRepository
 from construction_ai.persistence.repositories.documents import DocumentRepository
@@ -21,6 +27,8 @@ from construction_ai.persistence.repositories.organizations import OrganizationR
 from construction_ai.persistence.repositories.projects import CompanyRepository, ProjectRepository
 
 __all__ = [
+    "ApprovalAuthorityRepository",
+    "ApprovalDecisionRepository",
     "ApprovalPacketRepository",
     "ApprovalRepository",
     "AuditRepository",
@@ -40,6 +48,8 @@ __all__ = [
     "Repositories",
     "Scope",
     "ScopeError",
+    "SessionRepository",
+    "UserRepository",
 ]
 
 
@@ -112,6 +122,22 @@ class Repositories:
     @cached_property
     def audit(self) -> AuditRepository:
         return AuditRepository(self.db)
+
+    @cached_property
+    def users(self) -> UserRepository:
+        return UserRepository(self.db)
+
+    @cached_property
+    def authorities(self) -> ApprovalAuthorityRepository:
+        return ApprovalAuthorityRepository(self.db)
+
+    @cached_property
+    def sessions(self) -> SessionRepository:
+        return SessionRepository(self.db)
+
+    @cached_property
+    def approval_decisions(self) -> ApprovalDecisionRepository:
+        return ApprovalDecisionRepository(self.db)
 
     @cached_property
     def reconstruction(self):

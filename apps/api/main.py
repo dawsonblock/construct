@@ -20,6 +20,15 @@ try:
 except Exception:  # pragma: no cover - import guard for tooling without FastAPI
     FastAPI = None
 
+from construction_ai.approvals.service import (
+    ApprovalAlreadyDecided,
+    ApprovalDecisionError,
+    ApprovalNotFound,
+    decide_approval,
+)
+from construction_ai.auth.authorization import AuthorizationError
+from construction_ai.auth.models import AuthenticatedActor
+from construction_ai.auth.sessions import AuthenticationError, actor_from_session, login, provider_from_env
 from construction_ai.jobs.handlers import INVOICE_DOCUMENT
 from construction_ai.persistence.db import Scope
 from construction_ai.persistence.repositories import Repositories
@@ -56,6 +65,17 @@ if app:
             raise HTTPException(401, "a valid organization API key is required")
         return Scope(organization_id)
 
+    def current_actor(authorization: str = Header(default="")) -> AuthenticatedActor:
+        """Bearer session token → AuthenticatedActor. The only place a *human*
+        identity is established — never from a request field. Every financial
+        mutation consumes this server-derived actor."""
+        parts = authorization.split(" ", 1)
+        token = parts[1].strip() if len(parts) == 2 and parts[0].lower() == "bearer" else ""
+        try:
+            return actor_from_session(repos, token)
+        except AuthenticationError as exc:
+            raise HTTPException(401, str(exc)) from exc
+
     def _uuid(value: str, label: str) -> UUID:
         try:
             return UUID(value)
@@ -63,9 +83,6 @@ if app:
             # Same shape as "not found": a malformed id must not be
             # distinguishable from another tenant's valid one.
             raise HTTPException(404, f"{label} not found") from None
-
-    class ApprovalAction(BaseModel):
-        user_id: str
 
     class RelationshipDecision(BaseModel):
         user_id: str
@@ -78,6 +95,12 @@ if app:
         thread_id: str | None = None
         work_confirmed: bool = False
 
+    class SessionLogin(BaseModel):
+        credential: str
+
+    class ApprovalDecisionRequest(BaseModel):
+        reason: str = ""
+
     # -- unauthenticated ----------------------------------------------------
 
     @app.get("/health")
@@ -89,6 +112,23 @@ if app:
             "tenancy": "relational_keys_plus_rls",
             "database": "ok" if repos.db.healthy() else "unavailable",
         }
+
+    # -- authentication -----------------------------------------------------
+
+    @app.post("/auth/session")
+    def create_session(body: SessionLogin):
+        """Exchange a credential for a session token.
+
+        The server resolves the credential to a user via the configured identity
+        provider and issues a server-side session. The response carries the
+        session token; the caller never chooses a user_id."""
+        try:
+            token = login(repos, provider=provider_from_env(), credential=body.credential)
+        except AuthenticationError as exc:
+            raise HTTPException(401, str(exc)) from exc
+        except Exception as exc:  # provider misconfiguration, etc.
+            raise HTTPException(503, f"authentication unavailable: {type(exc).__name__}") from exc
+        return {"session_token": token}
 
     # -- ingestion ----------------------------------------------------------
 
@@ -291,39 +331,39 @@ if app:
             raise HTTPException(404, "packet not found")
         return packet
 
-    def _decide(approval_id: str, user_id: str, status: str, scope: Scope):
-        if not user_id or user_id == "ai":
-            raise HTTPException(422, "an approval decision requires a human actor")
+    def _decide(approval_id: str, decision: str, actor: AuthenticatedActor, body: ApprovalDecisionRequest):
         approval_uuid = _uuid(approval_id, "approval")
-        decided = repos.approvals.decide(scope=scope, approval_id=approval_uuid, status=status, decided_by=user_id)
-        if decided is None:
-            # Either it is not ours, or it was already decided. Both are 404/409
-            # without revealing which — an existence oracle is a tenancy leak.
-            existing = repos.approvals.get(scope=scope, approval_id=approval_uuid)
-            if existing is None:
-                raise HTTPException(404, "approval not found")
-            raise HTTPException(409, f"approval already {existing.status.value}")
-        repos.audit.append(
-            scope=scope.for_project(UUID(decided.project_id) if decided.project_id else None),
-            event_type="APPROVAL_DECIDED",
-            actor=user_id,
-            object_type="approval",
-            object_id=approval_uuid,
-            payload={"status": status, "subject_id": decided.subject_id},
-        )
-        return {"approval_id": decided.approval_id, "status": decided.status.value, "by": user_id}
+        try:
+            outcome = decide_approval(
+                repos, actor=actor, approval_id=approval_uuid, decision=decision, reason=body.reason
+            )
+        except ApprovalNotFound:
+            raise HTTPException(404, "approval not found") from None
+        except ApprovalAlreadyDecided as exc:
+            raise HTTPException(409, str(exc)) from exc
+        except AuthorizationError as exc:
+            raise HTTPException(403, str(exc)) from exc
+        except ApprovalDecisionError as exc:
+            raise HTTPException(422, str(exc)) from exc
+        return {
+            "approval_id": str(outcome.approval_id),
+            "status": outcome.decision,
+            "by": str(outcome.actor_id),
+            "decision_id": str(outcome.decision_id),
+            "policy_version": outcome.policy_version,
+        }
 
     @app.post("/approvals/{approval_id}/approve")
-    def approve_api(approval_id: str, body: ApprovalAction, scope: Scope = Depends(current_scope)):
-        return _decide(approval_id, body.user_id, "approved", scope)
+    def approve_api(approval_id: str, body: ApprovalDecisionRequest, actor: AuthenticatedActor = Depends(current_actor)):
+        return _decide(approval_id, "approved", actor, body)
 
     @app.post("/approvals/{approval_id}/hold")
-    def hold_api(approval_id: str, body: ApprovalAction, scope: Scope = Depends(current_scope)):
-        return _decide(approval_id, body.user_id, "held", scope)
+    def hold_api(approval_id: str, body: ApprovalDecisionRequest, actor: AuthenticatedActor = Depends(current_actor)):
+        return _decide(approval_id, "held", actor, body)
 
     @app.post("/approvals/{approval_id}/reject")
-    def reject_api(approval_id: str, body: ApprovalAction, scope: Scope = Depends(current_scope)):
-        return _decide(approval_id, body.user_id, "rejected", scope)
+    def reject_api(approval_id: str, body: ApprovalDecisionRequest, actor: AuthenticatedActor = Depends(current_actor)):
+        return _decide(approval_id, "rejected", actor, body)
 
     # -- audit --------------------------------------------------------------
 

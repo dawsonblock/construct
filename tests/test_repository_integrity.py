@@ -15,8 +15,6 @@ import re
 import subprocess
 from pathlib import Path
 
-import pytest
-
 ROOT = Path(__file__).resolve().parents[1]
 
 # Suffixes that indicate an accidental duplicate / scratch copy rather than a
