@@ -18,8 +18,12 @@ QUEUED = "queued"
 RUNNING = "running"
 COMPLETED = "completed"
 FAILED = "failed"
+DEAD_LETTER = "dead_letter"
 
-JOB_COLUMNS = "organization_id, job_id, project_id, job_type, status, payload, result, error, created_at, updated_at"
+JOB_COLUMNS = (
+    "organization_id, job_id, project_id, job_type, status, payload, result, error, "
+    "created_at, updated_at, lease_expires_at, claimed_by, attempt_count, max_attempts"
+)
 
 
 @dataclass
@@ -32,6 +36,10 @@ class Job:
     project_id: UUID | None = None
     result: dict[str, Any] | None = None
     error: str | None = None
+    lease_expires_at: Any = None  # datetime | None
+    claimed_by: str | None = None
+    attempt_count: int = 0
+    max_attempts: int = 3
 
     @property
     def scope(self) -> Scope:
@@ -60,6 +68,10 @@ def _to_job(row: dict[str, Any]) -> Job:
         project_id=row.get("project_id"),
         result=row.get("result"),
         error=row.get("error"),
+        lease_expires_at=row.get("lease_expires_at"),
+        claimed_by=row.get("claimed_by"),
+        attempt_count=row.get("attempt_count") or 0,
+        max_attempts=row.get("max_attempts") or 3,
     )
 
 
@@ -85,20 +97,44 @@ class JobRepository(Repository):
         row = self.get_row(scope=scope, record_id=job_id, columns=JOB_COLUMNS)
         return _to_job(row) if row else None
 
-    def claim(self, *, scope: Scope, job_id: UUID) -> Job | None:
-        """queued → running, exactly once. Two workers cannot both win."""
+    def claim(self, *, scope: Scope, job_id: UUID, lease_seconds: int = 300, claimed_by: str = "worker") -> Job | None:
+        """queued → running, exactly once. Two workers cannot both win.
+
+        Sets a lease: if the worker crashes, the lease expires and another
+        worker can reclaim the job via reclaim_expired_jobs.
+        """
         with self.db.scoped(scope) as cur:
             cur.execute(
-                f"""UPDATE jobs SET status = 'running'
+                f"""UPDATE jobs SET status = 'running',
+                    lease_expires_at = now() + %s::interval,
+                    claimed_by = %s,
+                    attempt_count = attempt_count + 1
                     WHERE organization_id = %s AND job_id = %s AND status = 'queued'
                     RETURNING {JOB_COLUMNS}""",
-                (scope.organization_id, job_id),
+                (f"{lease_seconds} seconds", claimed_by, scope.organization_id, job_id),
             )
             row = cur.fetchone()
             if row is None:
                 return None
             columns = [c.name for c in cur.description]
             return _to_job(dict(zip(columns, row, strict=True)))
+
+    def reclaim_expired_jobs(self, *, scope: Scope) -> list[tuple[UUID, UUID]]:
+        """Reset expired-lease jobs from running → queued so they can be retried.
+
+        Returns a list of (organization_id, job_id) tuples for the reclaimed
+        jobs. The queue re-pushes these to the Redis Stream so a worker can
+        pick them up.
+        """
+        with self.db.scoped(scope) as cur:
+            cur.execute(
+                "UPDATE jobs SET status = 'queued', lease_expires_at = NULL, claimed_by = NULL "
+                "WHERE organization_id = %s AND status = 'running' "
+                "AND lease_expires_at IS NOT NULL AND lease_expires_at < now() "
+                "RETURNING organization_id, job_id",
+                (scope.organization_id,),
+            )
+            return [(row[0], row[1]) for row in cur.fetchall()]
 
     def complete(self, *, scope: Scope, job_id: UUID, result: dict[str, Any]) -> None:
         from psycopg.types.json import Jsonb

@@ -17,6 +17,9 @@ from construction_ai.jobs.queue import JobQueue
 class FakeRedis:
     def __init__(self):
         self.lists: dict[str, list[str]] = {}
+        self.streams: dict[str, list[tuple[str, dict[str, str]]]] = {}
+        self.groups: dict[str, dict[str, dict]] = {}
+        self._msg_counter = 0
 
     def rpush(self, name, value):
         self.lists.setdefault(name, []).append(value)
@@ -27,6 +30,65 @@ class FakeRedis:
 
     def llen(self, name):
         return len(self.lists.get(name) or [])
+
+    def xadd(self, stream, fields):
+        self._msg_counter += 1
+        msg_id = f"0-{self._msg_counter}"
+        self.streams.setdefault(stream, []).append((msg_id, dict(fields)))
+        return msg_id
+
+    def xgroup_create(self, stream, group, id="0", mkstream=False):
+        if mkstream and stream not in self.streams:
+            self.streams[stream] = []
+        if stream not in self.streams:
+            raise Exception("ERR no such key")
+        if group in self.groups.get(stream, {}):
+            raise Exception("BUSYGROUP Consumer Group name already exists")
+        self.groups.setdefault(stream, {})[group] = {"consumers": {}, "pending": {}, "last_delivered_id": id}
+
+    def xreadgroup(self, group, consumer, streams, count=1, block=0):
+        results = []
+        for stream_name, start_id in streams.items():
+            if stream_name not in self.streams:
+                continue
+            stream = self.streams[stream_name]
+            grp = self.groups.get(stream_name, {}).get(group)
+            if grp is None:
+                continue
+            grp["consumers"].setdefault(consumer, [])
+            delivered = []
+            for msg_id, fields in stream:
+                if start_id == ">":
+                    if msg_id in grp["pending"]:
+                        continue
+                    delivered.append((msg_id, fields))
+                    grp["pending"][msg_id] = consumer
+                    grp["consumers"][consumer].append(msg_id)
+                    if len(delivered) >= count:
+                        break
+            if delivered:
+                results.append((stream_name, delivered))
+        return results if results else []
+
+    def xack(self, stream, group, *msg_ids):
+        grp = self.groups.get(stream, {}).get(group)
+        if grp is None:
+            return 0
+        acked = 0
+        for mid in msg_ids:
+            if mid in grp["pending"]:
+                del grp["pending"][mid]
+                acked += 1
+        return acked
+
+    def xlen(self, stream):
+        return len(self.streams.get(stream, []))
+
+    def xpending(self, stream, group):
+        grp = self.groups.get(stream, {}).get(group)
+        if grp is None:
+            return 0
+        return len(grp["pending"])
 
 
 @pytest.fixture()
@@ -42,7 +104,7 @@ def test_enqueue_does_not_push_to_redis_directly(queue, org_a):
     """enqueue writes the job and outbox row, but does not push to Redis."""
     job = queue.enqueue(scope=org_a["scope"], job_type="invoice_document", payload={"text": "hello"})
     # Redis is empty — the relay hasn't run yet.
-    assert queue.redis.lists.get("test:jobs", []) == []
+    assert queue.redis.streams.get("test:jobs", []) == []
     # But the job exists in the database.
     assert queue.get(scope=org_a["scope"], job_id=job.job_id) is not None
 
@@ -50,10 +112,11 @@ def test_enqueue_does_not_push_to_redis_directly(queue, org_a):
 def test_relay_pushes_unpublished_outbox_to_redis(queue, org_a):
     """The relay reads unpublished outbox rows and pushes them to Redis."""
     job = queue.enqueue(scope=org_a["scope"], job_type="invoice_document", payload={"text": "hello"})
-    assert queue.redis.lists.get("test:jobs", []) == []
+    assert queue.redis.streams.get("test:jobs", []) == []
     pushed = queue.relay_outbox(limit=10)
     assert pushed == 1
-    assert queue.redis.lists["test:jobs"] == [f"{org_a['organization_id']}:{job.job_id}"]
+    tokens = [e[1]["token"] for e in queue.redis.streams["test:jobs"]]
+    assert tokens == [f"{org_a['organization_id']}:{job.job_id}"]
 
 
 def test_relay_is_idempotent(queue, org_a):
@@ -62,7 +125,7 @@ def test_relay_is_idempotent(queue, org_a):
     queue.relay_outbox(limit=10)
     pushed_again = queue.relay_outbox(limit=10)
     assert pushed_again == 0
-    assert len(queue.redis.lists["test:jobs"]) == 1
+    assert len(queue.redis.streams["test:jobs"]) == 1
 
 
 def test_relay_handles_multiple_jobs(queue, org_a):
@@ -72,7 +135,7 @@ def test_relay_handles_multiple_jobs(queue, org_a):
     job3 = queue.enqueue(scope=org_a["scope"], job_type="invoice_document", payload={"n": 3})
     pushed = queue.relay_outbox(limit=10)
     assert pushed == 3
-    tokens = queue.redis.lists["test:jobs"]
+    tokens = [e[1]["token"] for e in queue.redis.streams["test:jobs"]]
     assert len(tokens) == 3
     assert f"{org_a['organization_id']}:{job1.job_id}" in tokens
     assert f"{org_a['organization_id']}:{job2.job_id}" in tokens
@@ -111,7 +174,7 @@ def test_worker_relay_delivers_outbox_jobs(queue, org_a):
 
     job = queue.enqueue(scope=org_a["scope"], job_type="invoice_document", payload={"text": "hello"})
     # Redis is empty — no direct push.
-    assert queue.redis.lists.get("test:jobs", []) == []
+    assert queue.redis.streams.get("test:jobs", []) == []
     # The worker runs the relay then reserves.
     run_worker(queue, once=True, timeout=0)
     record = queue.get(scope=org_a["scope"], job_id=job.job_id)
@@ -129,6 +192,18 @@ class FailingRedis:
     def blpop(self, name, timeout=0):
         raise ConnectionError("Redis is down")
     def llen(self, name):
+        raise ConnectionError("Redis is down")
+    def xadd(self, stream, fields):
+        raise ConnectionError("Redis is down")
+    def xgroup_create(self, stream, group, **kw):
+        raise ConnectionError("Redis is down")
+    def xreadgroup(self, group, consumer, streams, **kw):
+        raise ConnectionError("Redis is down")
+    def xack(self, stream, group, *msg_ids):
+        raise ConnectionError("Redis is down")
+    def xlen(self, stream):
+        raise ConnectionError("Redis is down")
+    def xpending(self, stream, group):
         raise ConnectionError("Redis is down")
 
 
