@@ -174,7 +174,14 @@ class RelationshipRepository(Repository):
 
         Approved on creation with no decider, which the schema permits only for
         `origin='observed'`. Nothing inferred may use this path.
+
+        v0.4.6 (item 33): observed-edge protection — only the projection system
+        or a named deterministic rule may create observed edges. AI may not.
         """
+        if created_by == "ai" or producer == "ai":
+            raise PermissionError(
+                "AI may not create observed edges; use propose() for inferred relationships"
+            )
         return self._upsert_current(
             scope=scope,
             source_entity_id=source_entity_id,

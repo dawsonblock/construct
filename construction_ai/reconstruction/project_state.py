@@ -287,6 +287,14 @@ def reconstruct(repos, scope: Scope) -> ProjectState:
         "evidence_with_subject": sum(1 for e in evidence if e.subject_type and e.subject_id),
         "evidence_without_subject": sum(1 for e in evidence if not (e.subject_type and e.subject_id)),
         "evidence_subject_types": sorted({e.subject_type for e in evidence if e.subject_type}),
+        # v0.4.6 (item 34): provenance expansion — detailed breakdowns that make
+        # the reconstruction auditable and comparable.
+        "evidence_authority_distribution": _authority_distribution(evidence),
+        "graph_edges_by_status": _edges_by_status(relationships),
+        "graph_edges_by_origin": _edges_by_origin(relationships),
+        "conflicts_by_type": _conflicts_by_type(conflicts),
+        "conflicts_by_severity": _conflicts_by_severity(conflicts),
+        "document_version_counts": _version_counts(document_versions),
         # Structural completeness: how much of the graph the records imply is
         # actually stored. Anything below 1.0 means projection is stale, and the
         # matching GRAPH_INCOMPLETE conflicts say exactly which edges.
@@ -312,3 +320,59 @@ def reconstruct(repos, scope: Scope) -> ProjectState:
         unresolved_conflicts=[c.as_dict() for c in conflicts],
         provenance=provenance,
     )
+
+
+# --------------------------------------------------------------------------
+# v0.4.6 (item 34): provenance expansion helpers
+# --------------------------------------------------------------------------
+
+def _authority_distribution(evidence) -> dict[str, int]:
+    """Distribution of evidence items by authority level."""
+    high = sum(1 for e in evidence if e.authority >= 0.9)
+    medium = sum(1 for e in evidence if 0.5 <= e.authority < 0.9)
+    low = sum(1 for e in evidence if e.authority < 0.5)
+    return {"high": high, "medium": medium, "low": low}
+
+
+def _edges_by_status(relationships) -> dict[str, int]:
+    """Graph edge counts by status."""
+    counts: dict[str, int] = {}
+    for r in relationships:
+        counts[r.status] = counts.get(r.status, 0) + 1
+    return dict(sorted(counts.items()))
+
+
+def _edges_by_origin(relationships) -> dict[str, int]:
+    """Graph edge counts by origin (observed vs derived)."""
+    counts: dict[str, int] = {}
+    for r in relationships:
+        counts[r.origin] = counts.get(r.origin, 0) + 1
+    return dict(sorted(counts.items()))
+
+
+def _conflicts_by_type(conflicts) -> dict[str, int]:
+    """Conflict counts by type."""
+    counts: dict[str, int] = {}
+    for c in conflicts:
+        counts[c.conflict_type] = counts.get(c.conflict_type, 0) + 1
+    return dict(sorted(counts.items()))
+
+
+def _conflicts_by_severity(conflicts) -> dict[str, int]:
+    """Conflict counts by severity."""
+    counts: dict[str, int] = {}
+    for c in conflicts:
+        counts[c.severity] = counts.get(c.severity, 0) + 1
+    return dict(sorted(counts.items()))
+
+
+def _version_counts(document_versions) -> dict[str, int]:
+    """Document version counts: total, current, and superseded."""
+    # A version is "current" if it's the highest version_number for its document.
+    latest: dict[Any, int] = {}
+    for v in document_versions:
+        best = latest.get(v.document_id)
+        if best is None or v.version_number > best:
+            latest[v.document_id] = v.version_number
+    current = sum(1 for v in document_versions if v.version_number == latest.get(v.document_id))
+    return {"total": len(document_versions), "current": current, "superseded": len(document_versions) - current}
