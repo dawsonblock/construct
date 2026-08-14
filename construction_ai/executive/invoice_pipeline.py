@@ -257,6 +257,7 @@ class InvoicePipeline:
                     "verification": {
                         "subject_id": str(invoice_id),
                         "checks": verification.checks,
+                        "check_details": verification.check_details,
                         "exceptions": verification.exceptions,
                         "passed": verification.passed,
                     },

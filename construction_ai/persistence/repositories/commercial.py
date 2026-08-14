@@ -34,6 +34,7 @@ def _to_po(row: dict[str, Any]) -> PurchaseOrder:
         project_id=str(row["project_id"]) if row.get("project_id") else None,
         vendor_company_id=str(row["vendor_company_id"]) if row.get("vendor_company_id") else None,
         amount=_f(row["amount"]),
+        currency=row.get("currency") or "CAD",
         quote_number=row.get("quote_reference"),
         reference=row["reference"],
         ordered_on=row.get("ordered_on"),
@@ -48,6 +49,7 @@ def _to_quote(row: dict[str, Any]) -> Quote:
         project_id=str(row["project_id"]) if row.get("project_id") else None,
         vendor_company_id=str(row["vendor_company_id"]) if row.get("vendor_company_id") else None,
         amount=_f(row["amount"]),
+        currency=row.get("currency") or "CAD",
         approved=row["approved"],
         reference=row["reference"],
     )

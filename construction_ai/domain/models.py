@@ -16,6 +16,22 @@ class ApprovalStatus(str, Enum):
     REJECTED = "rejected"
 
 
+class CheckStatus(str, Enum):
+    """Tri-state (five-state) verification outcome.
+
+    The v0.3 verifier used booleans, so a check that could not be evaluated read
+    as `True` and silently passed. The invariant `MissingRequiredEvidence !=>
+    PASS` requires a real status: UNAVAILABLE means the check could not run, not
+    that it succeeded.
+    """
+
+    PASS = "PASS"
+    FAIL = "FAIL"
+    UNAVAILABLE = "UNAVAILABLE"
+    ERROR = "ERROR"
+    REVIEW_REQUIRED = "REVIEW_REQUIRED"
+
+
 class DecisionAction(str, Enum):
     RETRIEVE = "RETRIEVE"
     VERIFY = "VERIFY"
@@ -160,6 +176,7 @@ class PurchaseOrder:
     quote_number: Optional[str] = None
     reference: Optional[str] = None
     ordered_on: Optional[Any] = None
+    currency: str = "CAD"
 
 
 @dataclass
@@ -172,18 +189,25 @@ class Quote:
     amount: Optional[float] = None
     approved: bool = False
     reference: Optional[str] = None
+    currency: str = "CAD"
+    reference: Optional[str] = None
 
 
 @dataclass
 class VerificationResult:
     subject_id: str
-    checks: dict[str, bool]
+    checks: dict[str, CheckStatus]
     exceptions: list[str]
     evidence_ids: list[str]
+    #: Per-check provenance: observed/expected values, evidence ids, verifier
+    #: version. The approval packet renders this so a human can see *why* a check
+    #: passed, not just that it did.
+    check_details: dict[str, dict[str, Any]] = field(default_factory=dict)
 
     @property
     def passed(self) -> bool:
-        return all(self.checks.values()) and not self.exceptions
+        """PASS only when every required check is PASS. Missing data never passes."""
+        return all(status == CheckStatus.PASS for status in self.checks.values()) and not self.exceptions
 
 
 @dataclass

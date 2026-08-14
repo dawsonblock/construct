@@ -37,7 +37,7 @@ JOB_TIMEOUT_SECONDS = float(os.getenv("ACCEPTANCE_JOB_TIMEOUT", "60"))
 
 EXPECTED_CHECKS = {
     "vendor_match", "project_match", "po_match", "quote_match",
-    "amount_match", "tax_math", "not_duplicate", "work_confirmed",
+    "amount_match", "tax_math", "currency_match", "not_duplicate", "work_confirmed",
 }
 
 failures: list[str] = []
@@ -135,7 +135,7 @@ def invoice_path(client: httpx.Client, token: str, approver_subject: str) -> dic
         body = packet.json()
         checks = body.get("verification", {}).get("checks", {})
         check("all verification checks present", set(checks) == EXPECTED_CHECKS, f"missing {sorted(EXPECTED_CHECKS - set(checks))}")
-        check("all verification checks passed", all(checks.values()), str({k: v for k, v in checks.items() if not v}))
+        check("all verification checks passed", all(v == "PASS" for v in checks.values()), str({k: v for k, v in checks.items() if v != "PASS"}))
         check("packet carries evidence", len(body.get("evidence") or []) > 0)
 
     pending = client.get(f"{API_BASE}/approvals/{approval_id}", headers=auth(token), timeout=10).json()
