@@ -44,8 +44,19 @@ def test_erp_evidence_resolution_carries_provenance():
     quote, quote_evidence = r.resolve_quote('Q-8821')
     assert po.project_id == 'PRJ-0042' and po.amount == 4760
     assert quote.approved is True
-    assert {e.field for e in po_evidence + quote_evidence} == {'project_id', 'po_amount', 'quote_amount'}
-    assert all(e.authority >= 0.9 for e in po_evidence + quote_evidence)
+    # ERP observations are first-class snapshots (item 8): one snapshot per
+    # query, carrying source system, raw hash, normalized fields, adapter version.
+    assert [e.field for e in po_evidence] == ['ERP_PURCHASE_ORDER_SNAPSHOT']
+    assert [e.field for e in quote_evidence] == ['ERP_QUOTE_SNAPSHOT']
+    for e in po_evidence + quote_evidence:
+        assert e.source_type == 'erpnext'
+        assert e.extractor == 'erpnext-adapter:v1'
+        assert e.value['source_system'] == 'ERPNext'
+        assert 'raw_hash' in e.value and 'normalized_fields' in e.value
+        assert e.value['adapter_version'] == 'erpnext-adapter:v1'
+        assert e.authority >= 0.9
+    assert po_evidence[0].value['normalized_fields']['supplier_id'] == 'COMP-9'
+    assert po_evidence[0].value['normalized_fields']['grand_total'] == 4760
 
 
 def test_benchmark_has_no_unsafe_automatic_assignments():

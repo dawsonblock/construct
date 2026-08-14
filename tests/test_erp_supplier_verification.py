@@ -15,9 +15,19 @@ from construction_ai.domain.models import PurchaseOrder, Quote
 from construction_ai.erp import normalize_name, resolve_supplier_to_company
 from construction_ai.executive.invoice_pipeline import InvoicePipeline
 from construction_ai.extraction.invoice import extract_invoice_deterministic
+from construction_ai.integrations.erpnext import _snapshot_evidence
 
 ROOT = __import__("pathlib").Path(__file__).resolve().parents[1]
 DEMO_INVOICE = (ROOT / "scripts" / "fixtures" / "demo_invoice_8831.txt").read_text()
+
+
+def _po_snapshot(po_number, supplier, amount, project):
+    return _snapshot_evidence(
+        evidence_id=f"EVID-ERP-PO-{po_number}", field="ERP_PURCHASE_ORDER_SNAPSHOT", source_id=po_number,
+        raw_row={"name": po_number, "supplier": supplier, "grand_total": amount, "project": project},
+        normalized_fields={"supplier_id": supplier, "grand_total": amount, "project": project},
+        query={"doctype": "Purchase Order", "filters": [["name", "=", po_number]]}, organization_id="ORG",
+    )
 
 
 # --------------------------------------------------------------------------
@@ -41,13 +51,21 @@ class StubERP:
             return None, []
         return (
             PurchaseOrder("ERP-PO", "ERP", "PO-1042-17", self.project_reference, self.po_supplier, 4760.00, "Q-8821"),
-            [],
+            [_po_snapshot(po_number, self.po_supplier, 4760.00, self.project_reference)],
         )
 
     def resolve_quote(self, quote_number):
         if quote_number != "Q-8821":
             return None, []
-        return Quote("ERP-Q", "ERP", "Q-8821", self.project_reference, self.po_supplier, 4760.00, True), []
+        return (
+            Quote("ERP-Q", "ERP", "Q-8821", self.project_reference, self.po_supplier, 4760.00, True),
+            [_snapshot_evidence(
+                evidence_id=f"EVID-ERP-Q-{quote_number}", field="ERP_QUOTE_SNAPSHOT", source_id=quote_number,
+                raw_row={"name": quote_number, "supplier": self.po_supplier, "grand_total": 4760.00, "project": self.project_reference, "status": "Ordered"},
+                normalized_fields={"supplier_id": self.po_supplier, "grand_total": 4760.00, "project": self.project_reference, "status": "Ordered"},
+                query={"doctype": "Supplier Quotation", "filters": [["name", "=", quote_number]]}, organization_id="ORG",
+            )],
+        )
 
 
 def _extract():
@@ -108,6 +126,22 @@ def test_the_happy_path_still_matches(repos, org_a):
     )
     assert result["recommended_action"] == "APPROVE"
     assert "UNKNOWN_OR_MISMATCHED_VENDOR" not in result["exceptions"]
+
+
+def test_erp_observations_are_persisted_as_first_class_evidence(repos, org_a):
+    """Every ERP query affecting the decision creates a persisted evidence record
+    (item 8), not an ephemeral Python value. The approval references them."""
+    extracted, evidence = _extract()
+    result = InvoicePipeline(repositories=repos, erp_resolver=StubERP(po_supplier="ABC Electric")).process(
+        scope=org_a["scope"], extracted=extracted, signals=_signals(org_a["project"]), evidence=evidence, work_confirmed=True
+    )
+    project_scope = org_a["scope"].for_project(UUID(result["project_id"]))
+    approval = repos.approvals.for_subject(
+        scope=project_scope, subject_type="invoice", subject_id=UUID(result["invoice_id"])
+    )
+    stored = {e.field for e in repos.evidence.get_many(scope=project_scope, evidence_ids=[UUID(eid) for eid in approval.evidence_ids])}
+    assert "ERP_PURCHASE_ORDER_SNAPSHOT" in stored
+    assert "ERP_QUOTE_SNAPSHOT" in stored
 
 
 # --------------------------------------------------------------------------

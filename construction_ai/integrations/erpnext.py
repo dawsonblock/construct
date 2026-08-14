@@ -1,15 +1,66 @@
 from __future__ import annotations
+import hashlib
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from typing import Any, Protocol
 from urllib.parse import quote
 from construction_ai.policy.engine import decide
 from construction_ai.domain.models import Evidence, PurchaseOrder, Quote
 
+ADAPTER_VERSION = "erpnext-adapter:v1"
+
+
 class Transport(Protocol):
     def post(self, path: str, json: dict[str, Any]) -> Any: ...
 
+
 class ReadTransport(Protocol):
-    def get(self, path: str, params: dict[str, Any]|None=None) -> Any: ...
+    def get(self, path: str, params: dict[str, Any] | None = None) -> Any: ...
+
+
+def _raw_hash(payload: Any) -> str:
+    """SHA-256 of a stable textual rendering of the raw ERP response row."""
+    return hashlib.sha256(repr(sorted(payload.items()) if isinstance(payload, dict) else payload).encode()).hexdigest()
+
+
+def _snapshot_evidence(
+    *,
+    evidence_id: str,
+    field: str,
+    source_id: str,
+    raw_row: dict[str, Any],
+    normalized_fields: dict[str, Any],
+    query: dict[str, Any],
+    organization_id: str,
+    confidence: float = 1.0,
+    authority: float = 0.95,
+) -> Evidence:
+    """A first-class ERP observation (item 8).
+
+    The ERP result is never an ephemeral Python value: it commits the source
+    system, the query, the subject, the raw response hash, the normalized fields
+    the decision will use, the retrieval timestamp, and the adapter version.
+    """
+    return Evidence(
+        evidence_id=evidence_id,
+        source_type="erpnext",
+        source_id=source_id,
+        field=field,
+        value={
+            "source_system": "ERPNext",
+            "query": query,
+            "subject_type": "purchase_order" if "PURCHASE_ORDER" in field else "quote",
+            "subject_id": source_id,
+            "raw_hash": _raw_hash(raw_row),
+            "normalized_fields": normalized_fields,
+            "adapter_version": ADAPTER_VERSION,
+        },
+        confidence=confidence,
+        authority=authority,
+        extractor=ADAPTER_VERSION,
+        organization_id=organization_id,
+        observed_at=datetime.now(timezone.utc),
+    )
 
 @dataclass
 class ERPNextAdapter:
@@ -48,14 +99,28 @@ class ERPNextEvidenceResolver:
         return rows[0] if len(rows)==1 else None
 
     def resolve_purchase_order(self, po_number: str) -> tuple[PurchaseOrder|None,list[Evidence]]:
-        rows=self._get_list('Purchase Order',[["name","=",po_number]],["name","supplier","grand_total","project"])
-        if len(rows)!=1: return None,[]
-        r=rows[0]; ev=[Evidence(f'EVID-ERP-PO-{po_number}-PROJECT','erpnext',po_number,'project_id',r.get('project'),1.0,0.95,organization_id=self.organization_id),Evidence(f'EVID-ERP-PO-{po_number}-AMOUNT','erpnext',po_number,'po_amount',float(r.get('grand_total') or 0),1.0,0.95,organization_id=self.organization_id)]
-        return PurchaseOrder('ERP-'+po_number,self.organization_id,po_number,r.get('project') or None,r.get('supplier') or None,float(r.get('grand_total') or 0)),ev
+        query = {"doctype": "Purchase Order", "filters": [["name", "=", po_number]], "fields": ["name", "supplier", "grand_total", "project"]}
+        rows = self._get_list('Purchase Order', [["name", "=", po_number]], ["name", "supplier", "grand_total", "project"])
+        if len(rows) != 1:
+            return None, []
+        r = rows[0]
+        normalized = {"supplier_id": r.get("supplier"), "grand_total": float(r.get("grand_total") or 0), "project": r.get("project")}
+        ev = [_snapshot_evidence(
+            evidence_id=f"EVID-ERP-PO-{po_number}", field="ERP_PURCHASE_ORDER_SNAPSHOT", source_id=po_number,
+            raw_row=r, normalized_fields=normalized, query=query, organization_id=self.organization_id,
+        )]
+        return PurchaseOrder('ERP-' + po_number, self.organization_id, po_number, r.get('project') or None, r.get('supplier') or None, float(r.get('grand_total') or 0)), ev
 
     def resolve_quote(self, quote_number: str) -> tuple[Quote|None,list[Evidence]]:
-        rows=self._get_list('Supplier Quotation',[["name","=",quote_number]],["name","supplier","grand_total","project","status"])
-        if len(rows)!=1: return None,[]
-        r=rows[0]; approved=str(r.get('status','')).lower() in {'submitted','ordered','approved'}
-        ev=[Evidence(f'EVID-ERP-Q-{quote_number}-AMOUNT','erpnext',quote_number,'quote_amount',float(r.get('grand_total') or 0),1.0,0.95,organization_id=self.organization_id)]
-        return Quote('ERP-'+quote_number,self.organization_id,quote_number,r.get('project') or None,r.get('supplier') or None,float(r.get('grand_total') or 0),approved),ev
+        query = {"doctype": "Supplier Quotation", "filters": [["name", "=", quote_number]], "fields": ["name", "supplier", "grand_total", "project", "status"]}
+        rows = self._get_list('Supplier Quotation', [["name", "=", quote_number]], ["name", "supplier", "grand_total", "project", "status"])
+        if len(rows) != 1:
+            return None, []
+        r = rows[0]
+        approved = str(r.get('status', '')).lower() in {'submitted', 'ordered', 'approved'}
+        normalized = {"supplier_id": r.get("supplier"), "grand_total": float(r.get("grand_total") or 0), "project": r.get("project"), "status": r.get("status")}
+        ev = [_snapshot_evidence(
+            evidence_id=f"EVID-ERP-Q-{quote_number}", field="ERP_QUOTE_SNAPSHOT", source_id=quote_number,
+            raw_row=r, normalized_fields=normalized, query=query, organization_id=self.organization_id,
+        )]
+        return Quote('ERP-' + quote_number, self.organization_id, quote_number, r.get('project') or None, r.get('supplier') or None, float(r.get('grand_total') or 0), approved), ev

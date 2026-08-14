@@ -185,9 +185,14 @@ class InvoicePipeline:
             # The PO/quote vendor is resolved INDEPENDENTLY from the supplier ERP
             # actually returned (item 6). It is never copied from the invoice's
             # resolved vendor — that destroyed vendor_match independence in v0.3.
+            #
+            # ERP observations are first-class evidence (item 8): every ERP query
+            # affecting the decision is persisted with its raw hash, normalized
+            # fields, adapter version and retrieval time — never an ephemeral value.
             purchase_order = quote = None
+            erp_evidence_ids: list[UUID] = []
             if self.erp and invoice.po_number:
-                erp_po, _ = self.erp.resolve_purchase_order(invoice.po_number)
+                erp_po, po_evidence = self.erp.resolve_purchase_order(invoice.po_number)
                 if erp_po:
                     erp_project_id = self._project_id_for_reference(organization_scope, erp_po.project_id)
                     po_vendor_company_id = self._resolve_erp_supplier(working, erp_po.vendor_company_id)
@@ -199,8 +204,13 @@ class InvoicePipeline:
                         quote_reference=erp_po.quote_number,
                         erp_docname=erp_po.po_number,
                     )
+                    if existing_approval is None and po_evidence:
+                        erp_evidence_ids.extend(self._persist_evidence(
+                            working, po_evidence, source_version_id=None,
+                            subject_type="invoice", subject_id=invoice_id,
+                        ))
             if self.erp and invoice.quote_number:
-                erp_quote, _ = self.erp.resolve_quote(invoice.quote_number)
+                erp_quote, quote_evidence = self.erp.resolve_quote(invoice.quote_number)
                 if erp_quote:
                     erp_project_id = self._project_id_for_reference(organization_scope, erp_quote.project_id)
                     quote_vendor_company_id = self._resolve_erp_supplier(working, erp_quote.vendor_company_id)
@@ -212,6 +222,12 @@ class InvoicePipeline:
                         approved=erp_quote.approved,
                         erp_docname=erp_quote.quote_number,
                     )
+                    if existing_approval is None and quote_evidence:
+                        erp_evidence_ids.extend(self._persist_evidence(
+                            working, quote_evidence, source_version_id=None,
+                            subject_type="invoice", subject_id=invoice_id,
+                        ))
+            evidence_ids = [*evidence_ids, *erp_evidence_ids]
 
             # 4. Verification, then policy. Both unchanged and both deterministic.
             invoice.project_id = str(project_id) if project_id else None

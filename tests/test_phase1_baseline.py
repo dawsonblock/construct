@@ -205,7 +205,9 @@ def test_erpnext_stub_and_resolver_agree_end_to_end():
     po, evidence = resolver.resolve_purchase_order("PO-1042-17")
     assert po.project_id == "PRJ-0042"
     assert po.amount == 4760.00
-    assert {e.field for e in evidence} == {"project_id", "po_amount"}
+    # ERP observations are first-class snapshots (item 8).
+    assert [e.field for e in evidence] == ["ERP_PURCHASE_ORDER_SNAPSHOT"]
+    assert evidence[0].value["normalized_fields"]["supplier_id"] == "ABC Electric"
     quote, _ = resolver.resolve_quote("Q-8821")
     assert quote.approved is True
     assert resolver.resolve_quote("Q-9014")[0].approved is False
