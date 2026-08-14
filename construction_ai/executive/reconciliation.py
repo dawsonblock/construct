@@ -103,7 +103,7 @@ def reconcile_erp_state(
     missing = 0
 
     for action in actions:
-        if action.status != "completed":
+        if action.status not in ("completed", "confirmed"):
             continue
         result = action.result or {}
         docname = result.get("docname", "")

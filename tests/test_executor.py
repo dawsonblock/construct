@@ -239,7 +239,7 @@ class TestApprovedInvoiceExecutor:
 
         actions = repos.external_actions.list(scope=org_a["scope"], action_type="erp_submit_purchase_invoice")
         assert len(actions) == 1
-        assert actions[0].status == "completed"
+        assert actions[0].status == "confirmed"
         assert actions[0].target_system == "erpnext"
         assert actions[0].result["docstatus"] == 1
 

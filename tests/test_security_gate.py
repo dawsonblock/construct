@@ -27,7 +27,7 @@ def test_security_gate_passes():
         "app_role_no_bypassrls",
         "rls_enabled",
         "audit_append_only",
-        "external_actions_append_only",
+        "external_actions_no_delete",
         "cross_tenant_isolation",
         "migration_checksums",
     ]

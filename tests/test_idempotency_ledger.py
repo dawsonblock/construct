@@ -182,31 +182,16 @@ def test_external_action_request_hash_is_stored(repos, org_a):
 
 
 # --------------------------------------------------------------------------
-# External action ledger is append-only
+# External action ledger — DELETE is denied, UPDATE is allowed (state machine)
 # --------------------------------------------------------------------------
 
-def test_app_role_cannot_update_external_actions(repos, org_a):
-    """The app role must not be able to UPDATE external_actions."""
-    scope = org_a["scope"]
-    action = repos.external_actions.record(
-        scope=scope, action_type="erp_invoice_submit", idempotency_key="k1", result={"r": 1}
-    )
-    dsn = os.getenv("TEST_DATABASE_URL") or os.getenv("APP_DATABASE_URL") or (
-        "postgresql://construction_app:construction_app@localhost:5432/construction_ai"
-    )
-    with psycopg.connect(dsn) as conn:
-        conn.autocommit = True
-        with conn.cursor() as cur:
-            cur.execute("SELECT set_config('app.organization_id', %s, true)", (str(scope.organization_id),))
-            with pytest.raises(psycopg.errors.InsufficientPrivilege):
-                cur.execute(
-                    "UPDATE external_actions SET result = '{\"forged\": true}'::jsonb WHERE action_id = %s",
-                    (action.action_id,),
-                )
-
-
 def test_app_role_cannot_delete_external_actions(repos, org_a):
-    """The app role must not be able to DELETE external_actions."""
+    """The app role must not be able to DELETE external_actions.
+
+    v0.5.0-rc2: external_actions is now a state machine that allows controlled
+    UPDATEs for state transitions. DELETE remains denied — external actions are
+    permanent records.
+    """
     scope = org_a["scope"]
     action = repos.external_actions.record(
         scope=scope, action_type="erp_invoice_submit", idempotency_key="k1", result={"r": 1}

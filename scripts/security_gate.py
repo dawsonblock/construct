@@ -124,8 +124,15 @@ def check_audit_table_is_append_only_for_app_role() -> CheckResult:
     return CheckResult("audit_append_only", True, "audit_events is append-only for app role")
 
 
-def check_external_actions_is_append_only_for_app_role() -> CheckResult:
-    """The app role must not have UPDATE/DELETE on external_actions."""
+def check_external_actions_no_delete_for_app_role() -> CheckResult:
+    """The app role must not have DELETE on external_actions.
+
+    v0.5.0-rc2: external_actions is now a state machine table that allows
+    controlled UPDATEs for state transitions (PENDING → EXECUTING → CONFIRMED,
+    etc.). DELETE remains denied — external actions are permanent records.
+    The append-only audit trail invariant is preserved by audit_events, which
+    still denies both UPDATE and DELETE.
+    """
     import psycopg
 
     with psycopg.connect(_dsn()) as conn:
@@ -133,16 +140,11 @@ def check_external_actions_is_append_only_for_app_role() -> CheckResult:
         with conn.cursor() as cur:
             try:
                 cur.execute("SELECT set_config('app.organization_id', '00000000-0000-0000-0000-000000000000', true)")
-                cur.execute("UPDATE external_actions SET status = 'test' WHERE false")
-                return CheckResult("external_actions_append_only", False, "app role can UPDATE external_actions")
-            except Exception:
-                pass
-            try:
                 cur.execute("DELETE FROM external_actions WHERE false")
-                return CheckResult("external_actions_append_only", False, "app role can DELETE external_actions")
+                return CheckResult("external_actions_no_delete", False, "app role can DELETE external_actions")
             except Exception:
                 pass
-    return CheckResult("external_actions_append_only", True, "external_actions is append-only for app role")
+    return CheckResult("external_actions_no_delete", True, "external_actions denies DELETE for app role")
 
 
 def check_cross_tenant_isolation() -> CheckResult:
@@ -194,7 +196,7 @@ def run_all_checks() -> list[CheckResult]:
         check_app_role_cannot_bypass_rls,
         check_rls_enabled_on_tenant_tables,
         check_audit_table_is_append_only_for_app_role,
-        check_external_actions_is_append_only_for_app_role,
+        check_external_actions_no_delete_for_app_role,
         check_cross_tenant_isolation,
         check_migration_checksums_unchanged,
     ]
