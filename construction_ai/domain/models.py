@@ -228,6 +228,7 @@ class Approval:
     currency: str = "CAD"
     requested_by: str = "ai"
     state_fingerprint: Optional[str] = None  # v0.5.0-rc1 (item 48)
+    quorum_threshold: int = 1  # v0.5.0-rc3 (Phase 7)
 
 
 @dataclass

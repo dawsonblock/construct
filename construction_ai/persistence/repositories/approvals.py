@@ -11,7 +11,7 @@ from construction_ai.persistence.repositories.base import Repository
 APPROVAL_COLUMNS = (
     "organization_id, approval_id, project_id, reference, approval_type, subject_type, subject_id, "
     "recommended_action, amount, currency, status, exceptions, evidence_ids, requested_by, decided_by, decided_at, "
-    "state_fingerprint"
+    "state_fingerprint, quorum_threshold"
 )
 
 
@@ -33,6 +33,7 @@ def _to_approval(row: dict[str, Any]) -> Approval:
         currency=row.get("currency") or "CAD",
         requested_by=row.get("requested_by") or "ai",
         state_fingerprint=row.get("state_fingerprint"),
+        quorum_threshold=row.get("quorum_threshold") or 1,
     )
 
 

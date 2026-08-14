@@ -62,6 +62,14 @@ class FingerprintUnavailable(ApprovalDecisionError):
     """The state fingerprint could not be computed. Fail closed (Phase 4)."""
 
 
+class AlreadyVoted(ApprovalDecisionError):
+    """The actor has already cast a vote on this approval (Phase 7)."""
+
+
+class QuorumNotMet(ApprovalDecisionError):
+    """The approval requires more votes to reach quorum (Phase 7)."""
+
+
 @dataclass(frozen=True)
 class DecisionOutcome:
     approval_id: UUID
@@ -70,6 +78,7 @@ class DecisionOutcome:
     decision_id: UUID
     policy_version: str
     state_fingerprint: str | None
+    quorum_met: bool  # True if the approval transitioned to 'approved'
 
 
 def decide_approval(
@@ -81,7 +90,16 @@ def decide_approval(
     reason: str = "",
     policy: ApprovalPolicy = DEFAULT_POLICY,
 ) -> DecisionOutcome:
-    """The only authoritative way to decide an approval."""
+    """The only authoritative way to decide an approval.
+
+    v0.5.0-rc3 (Phase 7): For approvals with quorum_threshold > 1, this casts
+    a vote rather than immediately transitioning the approval. The approval
+    only transitions to 'approved' when the quorum is met by distinct approve
+    votes from distinct approvers.
+
+    For 'rejected' and 'held' decisions, the approval transitions immediately
+    (a single reject or hold is terminal — no quorum needed).
+    """
     if decision not in _DECISION_PERMISSION:
         raise ApprovalDecisionError(f"unsupported decision: {decision!r}")
 
@@ -98,47 +116,89 @@ def decide_approval(
         _validate_authority(repos, actor, approval, decision)
         _validate_separation_of_duties(repos, actor, approval, policy)
 
-        # Mutate. `decided_by` is a denormalized human-readable snapshot; the
-        # authoritative actor lives on the approval_decisions row (actor_id FK).
-        # Phase 5: state_fingerprint is set to NULL initially; it will be
-        # updated after the decision is recorded (so the fingerprint includes
-        # the decision itself).
-        decided = repos.approvals.decide(
-            scope=scope, approval_id=approval_id, status=decision,
-            decided_by=actor.display_name, state_fingerprint=None,
-        )
-        if decided is None:
-            # Lost the race between get_for_update and the conditional UPDATE;
-            # the row is no longer pending. Safe to report as already decided.
-            raise ApprovalAlreadyDecided("pending")
+        # Phase 7: Check if the actor already voted.
+        if repos.approval_votes.has_voted(scope=scope, approval_id=approval_id, actor_id=actor.user_id):
+            raise AlreadyVoted(f"actor {actor.user_id} already voted on approval {approval_id}")
 
-        project_id = UUID(decided.project_id) if decided.project_id else None
-        previous = repos.approval_decisions.latest_for(scope=scope, approval_id=approval_id)
-        decision_id = repos.approval_decisions.record(
+        # Phase 7: Cast the vote (append-only).
+        vote_value = {"approved": "approve", "rejected": "reject", "held": "hold"}[decision]
+        vote_id = repos.approval_votes.cast_vote(
             scope=scope,
             approval_id=approval_id,
-            decision=decision,
             actor_id=actor.user_id,
-            actor_role_snapshot=list(actor.roles),
-            project_id=project_id,
-            policy_version=policy.version,
+            vote=vote_value,
             reason=reason,
-            previous_decision_id=previous["decision_id"] if previous else None,
+            policy_version=policy.version,
+            actor_role_snapshot=list(actor.roles),
         )
 
-        # Phase 4/5: Compute the state fingerprint INSIDE the transaction,
-        # AFTER the decision is recorded. The fingerprint includes the
-        # decision itself, so it represents the exact state the human saw.
-        # For 'approved' decisions, the fingerprint is mandatory — fail closed.
-        state_fingerprint = _compute_state_fingerprint(repos, scope, decided)
-        if decision == "approved" and state_fingerprint is None:
-            raise FingerprintUnavailable(
-                "cannot approve without a state fingerprint — "
-                "the project state could not be reconstructed"
+        # For 'rejected' and 'held', transition immediately — no quorum needed.
+        if decision in ("rejected", "held"):
+            decided = repos.approvals.decide(
+                scope=scope, approval_id=approval_id, status=decision,
+                decided_by=actor.display_name, state_fingerprint=None,
+            )
+            if decided is None:
+                raise ApprovalAlreadyDecided("pending")
+
+            project_id = UUID(decided.project_id) if decided.project_id else None
+            decision_id = repos.approval_decisions.record(
+                scope=scope, approval_id=approval_id, decision=decision,
+                actor_id=actor.user_id, actor_role_snapshot=list(actor.roles),
+                project_id=project_id, policy_version=policy.version, reason=reason,
+            )
+            repos.audit.append(
+                scope=Scope(actor.organization_id, project_id),
+                event_type="APPROVAL_DECIDED",
+                actor=str(actor.user_id), object_type="approval", object_id=approval_id,
+                payload={"decision": decision, "actor": actor.display_name,
+                         "subject_id": decided.subject_id, "policy_version": policy.version,
+                         "reason": reason, "decision_id": str(decision_id),
+                         "vote_id": str(vote_id), "quorum_met": True},
+            )
+            return DecisionOutcome(approval_id, decision, actor.user_id, decision_id, policy.version, None, True)
+
+        # For 'approved', check quorum.
+        approve_count = repos.approval_votes.count_approve_votes(scope=scope, approval_id=approval_id)
+        quorum_threshold = getattr(approval, "quorum_threshold", 1) or 1
+
+        if approve_count < quorum_threshold:
+            # Quorum not yet met — stay pending, but the vote IS recorded.
+            # This is not an error — it's an expected state. Return a normal
+            # outcome with quorum_met=False so the caller knows to wait.
+            repos.audit.append(
+                scope=Scope(actor.organization_id),
+                event_type="APPROVAL_VOTE_CAST",
+                actor=str(actor.user_id), object_type="approval", object_id=approval_id,
+                payload={"vote": "approve", "actor": actor.display_name,
+                         "policy_version": policy.version, "reason": reason,
+                         "vote_id": str(vote_id), "approve_count": approve_count,
+                         "quorum_threshold": quorum_threshold, "quorum_met": False},
+            )
+        else:
+            # Quorum met — transition to approved.
+            decided = repos.approvals.decide(
+                scope=scope, approval_id=approval_id, status="approved",
+                decided_by=actor.display_name, state_fingerprint=None,
+            )
+            if decided is None:
+                raise ApprovalAlreadyDecided("pending")
+
+            project_id = UUID(decided.project_id) if decided.project_id else None
+            decision_id = repos.approval_decisions.record(
+                scope=scope, approval_id=approval_id, decision="approved",
+                actor_id=actor.user_id, actor_role_snapshot=list(actor.roles),
+                project_id=project_id, policy_version=policy.version, reason=reason,
             )
 
-        # Update the approval with the fingerprint (still inside the transaction).
-        if state_fingerprint is not None:
+            # Phase 4/5: Compute the state fingerprint INSIDE the transaction.
+            state_fingerprint = _compute_state_fingerprint(repos, scope, decided)
+            if state_fingerprint is None:
+                raise FingerprintUnavailable(
+                    "cannot approve without a state fingerprint — "
+                    "the project state could not be reconstructed"
+                )
+
             with repos.db.scoped(scope) as cur:
                 cur.execute(
                     "UPDATE approvals SET state_fingerprint = %s "
@@ -146,23 +206,21 @@ def decide_approval(
                     (state_fingerprint, approval_id, scope.organization_id),
                 )
 
-        repos.audit.append(
-            scope=Scope(actor.organization_id, project_id),
-            event_type="APPROVAL_DECIDED",
-            actor=str(actor.user_id),
-            object_type="approval",
-            object_id=approval_id,
-            payload={
-                "decision": decision,
-                "actor": actor.display_name,
-                "subject_id": decided.subject_id,
-                "policy_version": policy.version,
-                "reason": reason,
-                "decision_id": str(decision_id),
-                "state_fingerprint": state_fingerprint,
-            },
-        )
-    return DecisionOutcome(approval_id, decision, actor.user_id, decision_id, policy.version, state_fingerprint)
+            repos.audit.append(
+                scope=Scope(actor.organization_id, project_id),
+                event_type="APPROVAL_DECIDED",
+                actor=str(actor.user_id), object_type="approval", object_id=approval_id,
+                payload={"decision": "approved", "actor": actor.display_name,
+                         "subject_id": decided.subject_id, "policy_version": policy.version,
+                         "reason": reason, "decision_id": str(decision_id),
+                         "vote_id": str(vote_id), "state_fingerprint": state_fingerprint,
+                         "approve_count": approve_count, "quorum_threshold": quorum_threshold,
+                         "quorum_met": True},
+            )
+            return DecisionOutcome(approval_id, "approved", actor.user_id, decision_id, policy.version, state_fingerprint, True)
+
+    # Quorum not met — return normally (not an exception).
+    return DecisionOutcome(approval_id, "approved", actor.user_id, vote_id, policy.version, None, False)
 
 
 def record_state_fingerprint(

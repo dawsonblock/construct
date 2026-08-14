@@ -164,6 +164,12 @@ class Repositories:
         return ApprovalDecisionRepository(self.db)
 
     @cached_property
+    def approval_votes(self):
+        from construction_ai.persistence.repositories.auth import ApprovalVoteRepository
+
+        return ApprovalVoteRepository(self.db)
+
+    @cached_property
     def work_confirmations(self):
         from construction_ai.work.repository import WorkConfirmationRepository
 

@@ -12,7 +12,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 from uuid import UUID
 
-from construction_ai.persistence.db import Database, Scope, row_to_dict
+from construction_ai.persistence.db import Database, Scope, row_to_dict, rows_to_dicts
 
 SESSION_TOKEN_PREFIX = "csess."
 # Sessions stay under RLS. The token carries the org so the resolver can set the
@@ -358,3 +358,76 @@ class ApprovalDecisionRepository:
                 (scope.organization_id, approval_id),
             )
             return row_to_dict(cur)
+
+
+class ApprovalVoteRepository:
+    """Append-only quorum votes. Insert only — no update or delete.
+
+    v0.5.0-rc3 (Phase 7): Real multi-approver quorum. Each approver casts a
+    vote (approve/reject/hold). The approval only transitions to 'approved'
+    when the quorum_threshold is met by distinct approve votes.
+    """
+
+    def __init__(self, db: Database):
+        self.db = db
+
+    def cast_vote(
+        self,
+        *,
+        scope: Scope,
+        approval_id: UUID,
+        actor_id: UUID,
+        vote: str,
+        reason: str = "",
+        policy_version: str | None = None,
+        actor_role_snapshot: list[str] | None = None,
+    ) -> UUID:
+        """Cast a vote. Fails if the actor already voted (unique constraint)."""
+        from psycopg.types.json import Jsonb
+
+        with self.db.scoped(scope) as cur:
+            cur.execute(
+                """INSERT INTO approval_votes(
+                       organization_id, approval_id, actor_id, vote, reason,
+                       policy_version, actor_role_snapshot)
+                   VALUES(%s, %s, %s, %s, %s, %s, %s)
+                   RETURNING vote_id""",
+                (
+                    scope.organization_id, approval_id, actor_id, vote, reason,
+                    policy_version, Jsonb(actor_role_snapshot or []),
+                ),
+            )
+            return cur.fetchone()[0]
+
+    def count_approve_votes(self, *, scope: Scope, approval_id: UUID) -> int:
+        """Count distinct approve votes for an approval."""
+        with self.db.scoped(scope) as cur:
+            cur.execute(
+                """SELECT COUNT(*) FROM approval_votes
+                   WHERE organization_id = %s AND approval_id = %s AND vote = 'approve'""",
+                (scope.organization_id, approval_id),
+            )
+            return cur.fetchone()[0]
+
+    def list_votes(self, *, scope: Scope, approval_id: UUID) -> list[dict[str, Any]]:
+        """List all votes for an approval."""
+        with self.db.scoped(scope) as cur:
+            cur.execute(
+                """SELECT vote_id, actor_id, vote, reason, policy_version,
+                          actor_role_snapshot, created_at
+                   FROM approval_votes
+                   WHERE organization_id = %s AND approval_id = %s
+                   ORDER BY created_at""",
+                (scope.organization_id, approval_id),
+            )
+            return rows_to_dicts(cur)
+
+    def has_voted(self, *, scope: Scope, approval_id: UUID, actor_id: UUID) -> bool:
+        """Check if an actor has already voted on this approval."""
+        with self.db.scoped(scope) as cur:
+            cur.execute(
+                """SELECT 1 FROM approval_votes
+                   WHERE organization_id = %s AND approval_id = %s AND actor_id = %s""",
+                (scope.organization_id, approval_id, actor_id),
+            )
+            return cur.fetchone() is not None
