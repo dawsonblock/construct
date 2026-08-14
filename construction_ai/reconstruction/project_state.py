@@ -209,13 +209,10 @@ def _format_decimal(d: Decimal) -> str:
     """Format a Decimal without scientific notation and without trailing zeros."""
     # Normalize to remove trailing zeros, then format without exponent.
     normalized = d.normalize()
-    sign, digits, exponent = normalized.as_tuple()
-    if exponent < 0:
-        # Has fractional digits — format as plain string.
-        return format(normalized, "f")
-    else:
-        # Integer value — format without exponent.
-        return format(normalized, "f")
+    # Normalize negative zero to positive zero (0.0 == -0.0 in Python).
+    if normalized == 0:
+        normalized = abs(normalized)
+    return format(normalized, "f")
 
 
 def reconstruct(repos, scope: Scope) -> ProjectState:

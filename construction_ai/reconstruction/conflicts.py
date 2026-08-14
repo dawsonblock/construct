@@ -57,6 +57,9 @@ def _canonical_value_repr(value: Any) -> str:
 def _format_decimal_repr(d: Decimal) -> str:
     """Format a Decimal without scientific notation and without trailing zeros."""
     normalized = d.normalize()
+    # Normalize negative zero to positive zero (0.0 == -0.0 in Python).
+    if normalized == 0:
+        normalized = abs(normalized)
     return format(normalized, "f")
 
 
