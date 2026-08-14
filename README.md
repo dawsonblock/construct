@@ -333,6 +333,6 @@ Stated plainly so they are not mistaken for solved problems:
 
 <div align="center">
 
-**v0.4.0.dev0** — Proprietary. Not for distribution.
+**v0.4.1-dev** — Proprietary. Not for distribution.
 
 </div>

@@ -1,4 +1,4 @@
-# Pinned versions — v0.3.0 frozen baseline
+# Pinned versions — v0.4.1-dev baseline
 
 Everything the running system depends on is pinned here. Nothing in the stack
 resolves a floating tag at build or run time.

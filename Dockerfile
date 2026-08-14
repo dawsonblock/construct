@@ -8,6 +8,12 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
+# Release label. Kept in sync with VERSION / pyproject.toml / __version__.
+ARG APP_VERSION=0.4.1.dev0
+LABEL org.opencontainers.image.title="construction-ai-ops" \
+      org.opencontainers.image.version="${APP_VERSION}" \
+      org.opencontainers.image.description="Evidence-first construction operations AI control plane"
+
 # The lock is a complete transitive closure, so --no-deps makes the install
 # exactly reproducible: pip resolves nothing.
 COPY requirements.lock.txt requirements-dev.lock.txt ./

@@ -1,4 +1,4 @@
-# Runtime lock for construction-ai-ops v0.3.0.
+# Runtime lock for construction-ai-ops v0.4.1-dev.
 # Fully pinned transitive closure — regenerate with `make lock`, never hand-edit.
 # Resolved on Python 3.12 (see Dockerfile base image pin).
 PyJWT==2.13.0

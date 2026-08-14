@@ -17,7 +17,7 @@ from fastapi import FastAPI, HTTPException, Query
 
 FIXTURES = json.loads((Path(__file__).parent / "fixtures.json").read_text())
 
-app = FastAPI(title="ERPNext stub", version="0.4.0.dev0")
+app = FastAPI(title="ERPNext stub", version="0.4.1.dev0")
 
 
 def _matches(row: dict[str, Any], filters: list[list[Any]]) -> bool:

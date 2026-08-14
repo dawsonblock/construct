@@ -1,4 +1,4 @@
-# Full local stack for the v0.3.0 frozen baseline.
+# Full local stack for the v0.4.1-dev hardening branch.
 #   cp .env.example .env && docker compose up
 # Images are pinned by digest — see docs/PINNED_VERSIONS.md.
 #
