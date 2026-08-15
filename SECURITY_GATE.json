@@ -1,13 +1,13 @@
 {
   "dependency_lock_hash": "3e4c9c397e2cbe493372df885a0c79b69388c701ed5c0ebea4436153f3a7f1b1",
   "exit_code": 0,
-  "generated_at": "2026-08-15T06:17:35.657126+00:00",
+  "generated_at": "2026-08-15T06:26:35.661283+00:00",
   "git_branch": "v0.4-hardening",
-  "git_commit": "738877bc34ce367353935759516df331efb68e30",
+  "git_commit": "e886bd4802fad16dc73649084a868aad6510b168",
   "output": "=== v0.4.7 Security Gate ===\n\n  [PASS] app_role_not_superuser: app role is not a superuser\n  [PASS] app_role_no_bypassrls: app role does not have BYPASSRLS\n  [PASS] rls_enabled: RLS enabled and forced on 17 tenant tables\n  [PASS] audit_append_only: audit_events is append-only for app role\n  [PASS] external_actions_no_delete: external_actions denies DELETE for app role\n  [PASS] cross_tenant_isolation: no cross-tenant access without tenant GUC\n  [PASS] migration_checksums: 28 migration checksums verified\n\nAll 7 security checks passed.",
   "passed": true,
-  "payload_tree_hash": "f32248b76974d7fcf4d23d7892d4a54a0b07975517a2959f790ad2cf7497425e",
-  "qualification_run_id": "qual-20260815-738877bc34ce",
+  "payload_tree_hash": "a0a81f6c7dc00a3b3a550c558a3e7feffe3f79426affb816f7b1864779e5e5c7",
+  "qualification_run_id": "qual-20260815-e886bd4802fa",
   "release_version": "0.5.0-rc7.dev0",
   "summary": "security gate passed",
   "version": "0.5.0-rc7.dev0"

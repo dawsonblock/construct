@@ -2,12 +2,12 @@
   "adversarial": {
     "exit_code": 0,
     "passed": true,
-    "summary": "49 passed in 1.89s"
+    "summary": "49 passed in 2.07s"
   },
   "crash_recovery": {
     "exit_code": 0,
     "passed": true,
-    "summary": "62 passed in 8.64s"
+    "summary": "62 passed in 9.69s"
   },
   "critical_skipped_count": 0,
   "critical_skips_allowed": 0,
@@ -15,7 +15,7 @@
   "external_effect": {
     "exit_code": 0,
     "passed": true,
-    "summary": "100 passed in 4.17s"
+    "summary": "100 passed in 5.52s"
   },
   "gates": {
     "CRASH_RECOVERY_PASS": true,
@@ -25,20 +25,28 @@
     "SECURITY_PASS": true,
     "UNIT_PASS": true
   },
-  "generated_at": "2026-08-15T06:17:38.112461+00:00",
+  "generated_at": "2026-08-15T06:26:37.888144+00:00",
   "git_branch": "v0.4-hardening",
-  "git_commit": "738877bc34ce367353935759516df331efb68e30",
+  "git_commit": "e886bd4802fad16dc73649084a868aad6510b168",
+  "identity_snapshot": {
+    "dependency_lock_hash": "655f8e2135e560a60defc0264a9a88c8b7ceda3585142e733f087e89149e8ea0",
+    "git_commit": "e886bd4802fad16dc73649084a868aad6510b168",
+    "payload_tree_hash": "a0a81f6c7dc00a3b3a550c558a3e7feffe3f79426affb816f7b1864779e5e5c7",
+    "qualification_run_id": "qual-20260815-e886bd4802fa",
+    "release_version": "0.5.0-rc7.dev0",
+    "schema_fingerprint": null
+  },
   "manifest_filename": "PAYLOAD_MANIFEST.json",
-  "manifest_sha": "3837306c790ec4a0a2120fc5d91857ad90eacb918404a7c3bdb19570f892947b",
-  "manifest_tree_hash": "f32248b76974d7fcf4d23d7892d4a54a0b07975517a2959f790ad2cf7497425e",
+  "manifest_sha": "29192c2c4b7a89ca4c392be5f41b5313d4c8c3d4fb1ef46e2af8b3ddb81bb32d",
+  "manifest_tree_hash": "a0a81f6c7dc00a3b3a550c558a3e7feffe3f79426affb816f7b1864779e5e5c7",
   "noncritical_skipped_count": 5,
-  "payload_tree_hash": "f32248b76974d7fcf4d23d7892d4a54a0b07975517a2959f790ad2cf7497425e",
-  "qualification_run_id": "qual-20260815-738877bc34ce",
+  "payload_tree_hash": "a0a81f6c7dc00a3b3a550c558a3e7feffe3f79426affb816f7b1864779e5e5c7",
+  "qualification_run_id": "qual-20260815-e886bd4802fa",
   "qualified": true,
   "release_integrity": {
     "exit_code": 0,
     "passed": true,
-    "summary": "20 passed in 0.62s"
+    "summary": "20 passed in 0.88s"
   },
   "release_version": "0.5.0-rc7.dev0",
   "schema": {
@@ -48,7 +56,7 @@
   "security": {
     "exit_code": 0,
     "passed": true,
-    "summary": "26 passed in 0.45s"
+    "summary": "26 passed in 0.93s"
   },
   "skipped_tests": [
     {
@@ -91,16 +99,16 @@
     "error": 0,
     "exit_code": 0,
     "failed": 0,
-    "passed": 565,
+    "passed": 593,
     "run": true,
     "skipped": 5,
-    "summary": "565 passed, 5 skipped in 27.25s",
-    "total": 570
+    "summary": "593 passed, 5 skipped in 31.44s",
+    "total": 598
   },
   "unit_suite": {
     "exit_code": 0,
     "passed": true,
-    "summary": "82 passed in 6.77s"
+    "summary": "82 passed in 8.48s"
   },
   "version": "0.5.0-rc7.dev0"
 }

@@ -325,6 +325,18 @@ def generate_report(*, run_tests: bool = False) -> dict:
         "manifest_sha": manifest_binding["manifest_sha"],
         "manifest_tree_hash": manifest_binding["manifest_tree_hash"],
         "manifest_filename": manifest_binding["manifest_filename"],
+        # rc7 Phase 27: Pre-qualification identity snapshot.
+        # These values are captured BEFORE tests run. After every gate
+        # completes, verification can check these have not changed.
+        # If the working tree mutates during qualification: QUALIFICATION INVALID.
+        "identity_snapshot": {
+            "release_version": _version(),
+            "git_commit": _git_commit(),
+            "payload_tree_hash": manifest_binding["manifest_tree_hash"],
+            "dependency_lock_hash": _lock_hash(),
+            "schema_fingerprint": schema.get("fingerprint"),
+            "qualification_run_id": _qualification_run_id(),
+        },
         # rc4 Phase 20: gate categories.
         "gates": {
             "UNIT_PASS": False,

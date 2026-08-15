@@ -191,6 +191,61 @@ if app:
             "financial_execution_ready": financial_execution_ready,
         }
 
+    @app.get("/metrics")
+    def metrics():
+        """rc7 Phase 41: Operational metrics for external-action state.
+
+        Exposes counts for each external-action status and remote_state,
+        plus confirmed-actions-missing-audit (Phase 26). Alert on any
+        growing queue.
+        """
+        from construction_ai.persistence.db import Scope
+        org_scope = Scope(organization_id=repos.db.default_organization_id) if hasattr(repos.db, "default_organization_id") else None
+        metrics_data: dict = {"version": VERSION}
+
+        try:
+            with repos.db.scoped(Scope(organization_id=repos.db.default_organization_id)) if org_scope else repos.db.scoped() as cur:
+                # Status counts
+                cur.execute(
+                    """SELECT status, count(*) FROM external_actions
+                       WHERE organization_id = current_setting('app.organization_id')::uuid
+                       GROUP BY status"""
+                )
+                metrics_data["external_actions_by_status"] = {
+                    row[0]: row[1] for row in cur.fetchall()
+                }
+
+                # Remote state counts
+                cur.execute(
+                    """SELECT COALESCE(remote_state, 'unknown'), count(*) FROM external_actions
+                       WHERE organization_id = current_setting('app.organization_id')::uuid
+                       GROUP BY remote_state"""
+                )
+                metrics_data["external_actions_by_remote_state"] = {
+                    row[0]: row[1] for row in cur.fetchall()
+                }
+
+                # Phase 26: Confirmed actions missing audit
+                cur.execute(
+                    """SELECT count(*) FROM external_actions
+                       WHERE organization_id = current_setting('app.organization_id')::uuid
+                       AND status = 'confirmed' AND final_audit_event_id IS NULL"""
+                )
+                metrics_data["confirmed_actions_missing_audit"] = cur.fetchone()[0]
+
+                # Negative confirmation pending
+                cur.execute(
+                    """SELECT count(*) FROM external_actions
+                       WHERE organization_id = current_setting('app.organization_id')::uuid
+                       AND status = 'unknown' AND first_negative_observation_at IS NOT NULL"""
+                )
+                metrics_data["negative_confirmation_pending"] = cur.fetchone()[0]
+        except Exception as e:
+            metrics_data["error"] = str(e)
+            metrics_data["database"] = "unavailable"
+
+        return metrics_data
+
     # -- authentication -----------------------------------------------------
 
     @app.post("/auth/session")

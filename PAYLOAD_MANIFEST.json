@@ -55,8 +55,8 @@
       "size": 15
     },
     "apps/api/main.py": {
-      "sha256": "280b538350a289078ae232681fbb79f14382ea4d5ebf360ca891c392b10406de",
-      "size": 25303
+      "sha256": "849a35feb98d4c05dbacdffda5201de5f23901d05935f7824815e29e67655251",
+      "size": 27893
     },
     "apps/erpnext_stub/__init__.py": {
       "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
@@ -707,8 +707,8 @@
       "size": 3367
     },
     "scripts/qualification_report.py": {
-      "sha256": "04fedbc551d65e8661d3e244c5fe07a03fa5e57adf4aa1d64dbb1dccc8564e5a",
-      "size": 17008
+      "sha256": "c7c7be48c4a2cb81a171806dc10147e4144b0f07a7505709d72e12d3673858c3",
+      "size": 17662
     },
     "scripts/release_attestation.py": {
       "sha256": "f9265cec3db8d7b51dcd6b068a1903a77ea566a43064f8563f93f8a8ae61ba5c",
@@ -955,9 +955,9 @@
       "size": 461
     }
   },
-  "generated_at": "2026-08-15T06:16:53.483347+00:00",
+  "generated_at": "2026-08-15T06:25:30.865042+00:00",
   "git_branch": "v0.4-hardening",
-  "git_commit": "738877bc34ce367353935759516df331efb68e30",
+  "git_commit": "e886bd4802fad16dc73649084a868aad6510b168",
   "migration_count": 28,
   "migration_fingerprint": "5ec8e1531a8025ce6eab83f0154fa1d18fd5172fe1b3367aadfe751c1c764b97",
   "migrations": [
@@ -1091,7 +1091,7 @@
     "SECURITY_GATE.json",
     "TEST_RESULTS.json"
   ],
-  "test_fingerprint": "644579e18521d1e318f7e83a36b86ad8228360e27944f6cbd81c04c77758efff",
-  "tree_hash": "f32248b76974d7fcf4d23d7892d4a54a0b07975517a2959f790ad2cf7497425e",
+  "test_fingerprint": "ec04936c9dfa5ce5432167dd58370ffd9552da4c336d7ebf0ad96e5bbcc5f21a",
+  "tree_hash": "a0a81f6c7dc00a3b3a550c558a3e7feffe3f79426affb816f7b1864779e5e5c7",
   "version": "0.5.0-rc7.dev0"
 }
