@@ -36,19 +36,33 @@ def _git_commit() -> str:
 
 
 def package_release(version: str) -> tuple[Path, str]:
-    """Package the release ZIP and return (zip_path, sha256)."""
+    """Package the release ZIP and return (zip_path, sha256).
+
+    rc8: Reads the payload file list from PAYLOAD_MANIFEST.json instead of
+    using `git ls-files`. This ensures the ZIP contains exactly the files
+    listed in the payload manifest — no more, no less. The previous rc7
+    approach used `git ls-files`, which missed untracked new files and
+    included generated ZIPs that were accidentally tracked.
+    """
+    import json
+
     zip_name = f"construct-{version}.zip"
     zip_path = ROOT / zip_name
 
-    # Files to include in the ZIP.
-    # Get tracked files from git.
-    try:
-        res = subprocess.run(["git", "ls-files"], capture_output=True, text=True, check=True, cwd=ROOT)
-        tracked = [l.strip() for l in res.stdout.splitlines() if l.strip()]
-    except Exception:
-        tracked = []
+    # rc8: Read the payload file list from the manifest.
+    manifest_path = ROOT / "PAYLOAD_MANIFEST.json"
+    if manifest_path.exists():
+        manifest = json.loads(manifest_path.read_text())
+        payload_files = set(manifest.get("files", {}).keys())
+    else:
+        # Fallback: use git ls-files if no manifest exists.
+        try:
+            res = subprocess.run(["git", "ls-files"], capture_output=True, text=True, check=True, cwd=ROOT)
+            payload_files = set(l.strip() for l in res.stdout.splitlines() if l.strip())
+        except Exception:
+            payload_files = set()
 
-    # Also include generated artifacts.
+    # Also include generated attestation artifacts (not in payload manifest).
     artifacts = [
         "PAYLOAD_MANIFEST.json",
         "PAYLOAD_MANIFEST.sha256",
@@ -61,13 +75,13 @@ def package_release(version: str) -> tuple[Path, str]:
         "RELEASE_ATTESTATION.json.sha256",
     ]
 
-    all_files = set(tracked)
+    all_files = set(payload_files)
     for a in artifacts:
         if (ROOT / a).exists():
             all_files.add(a)
 
-    # Exclude the ZIP itself and any old ZIPs.
-    all_files = {f for f in all_files if not f.endswith(".zip")}
+    # Exclude any ZIP files or ZIP hash files (hard exclusion).
+    all_files = {f for f in all_files if not f.endswith(".zip") and not f.endswith(".zip.sha256")}
 
     with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
         for f in sorted(all_files):

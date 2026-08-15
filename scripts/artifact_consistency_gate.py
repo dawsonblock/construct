@@ -43,6 +43,8 @@ IDENTITY_FIELDS = [
     "git_commit",
     "payload_tree_hash",
     "qualification_run_id",
+    "dependency_lock_hash",
+    "schema_fingerprint",
 ]
 
 

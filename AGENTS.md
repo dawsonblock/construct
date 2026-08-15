@@ -50,7 +50,7 @@ All version surfaces must agree (enforced by test_repository_integrity.py):
 
 ## Migrations
 Migrations are transactional and forward-only. Never edit an applied migration.
-Current count: 28 (through 028_rc7_payload_hash_and_reconciliation_provenance.sql).
+Current count: 29 (through 029_rc8_supersession_uniqueness.sql).
 
 ## Test categories
 - Unit tests (pure functions, no DB)

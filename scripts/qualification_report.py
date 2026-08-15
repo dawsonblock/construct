@@ -50,6 +50,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import subprocess
 import sys
 from datetime import datetime, timezone
@@ -88,13 +89,15 @@ def _version() -> str:
 
 
 def _lock_hash() -> str:
-    """SHA-256 over both lock files."""
-    hasher = hashlib.sha256()
-    for name in ("requirements.lock.txt", "requirements-dev.lock.txt"):
-        path = ROOT / name
-        if path.exists():
-            hasher.update(path.read_bytes())
-    return hasher.hexdigest()
+    """rc8: Use the shared canonical dependency lock hash.
+
+    Previously this hashed both lock files while generate_gate_artifacts.py
+    hashed only requirements.lock.txt. Now both use the same shared helper
+    from qualification_identity.py, ensuring one consistent dependency hash
+    across all artifacts.
+    """
+    from qualification_identity import compute_dependency_lock_hash
+    return compute_dependency_lock_hash()
 
 
 def _qualification_run_id() -> str:
@@ -128,15 +131,45 @@ def _manifest_binding() -> dict[str, str | None]:
 
 
 def _schema_version() -> dict:
-    """Migration count and schema fingerprint."""
+    """Migration count and schema fingerprint.
+
+    rc8: Now computes the schema fingerprint from the live database when
+    available, matching the approach in generate_gate_artifacts.py and
+    release_manifest.py. This ensures all artifacts share the same
+    schema_fingerprint value.
+    """
     migrations_dir = ROOT / "migrations"
     migrations = sorted(migrations_dir.glob("*.sql"))
     hasher = hashlib.sha256()
     for f in migrations:
         hasher.update(f.read_bytes())
+    migration_fingerprint = hasher.hexdigest()
+
+    # rc8: Compute schema fingerprint from the live database.
+    schema_fp = "offline"
+    try:
+        import psycopg
+        dsn = os.getenv("DATABASE_URL", "postgresql://construction:construction@localhost:5432/construction_ai")
+        with psycopg.connect(dsn) as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    SELECT table_name, column_name, data_type, is_nullable, column_default
+                    FROM information_schema.columns
+                    WHERE table_schema = 'public'
+                    ORDER BY table_name, ordinal_position
+                """)
+                rows = cur.fetchall()
+                fp_hasher = hashlib.sha256()
+                for row in rows:
+                    fp_hasher.update(str(row).encode())
+                schema_fp = fp_hasher.hexdigest()
+    except Exception:
+        pass
+
     return {
         "migration_count": len(migrations),
-        "migration_fingerprint": hasher.hexdigest(),
+        "migration_fingerprint": migration_fingerprint,
+        "fingerprint": schema_fp,
     }
 
 
@@ -323,6 +356,7 @@ def generate_report(*, run_tests: bool = False) -> dict:
         "git_branch": _git_branch(),
         "payload_tree_hash": manifest_binding["manifest_tree_hash"],
         "dependency_lock_hash": _lock_hash(),
+        "schema_fingerprint": schema.get("fingerprint", "offline"),
         "qualification_run_id": _qualification_run_id(),
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "schema": schema,

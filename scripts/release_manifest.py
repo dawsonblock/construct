@@ -161,62 +161,124 @@ SELF_EXCLUDED_ARTIFACTS = {
     "MIGRATION_GATE.json",
     "RELEASE_ATTESTATION.json",
     "RELEASE_ATTESTATION.sha256",
+    "RELEASE_ATTESTATION.json.sha256",
+    "FINAL_ARCHIVE.sha256",
+    "RC6_AUDIT_BASELINE.json",
+    "QUALIFICATION_IDENTITY.json",
 }
+
+#: rc8: Explicit payload roots. Instead of relying on `git ls-files` (which
+#: tracks whatever happens to be in the repo, including generated ZIPs and
+#: stale artifacts), the payload is defined by explicit roots. Everything
+#: under these directories is payload. Everything else is NOT payload.
+PAYLOAD_ROOTS = [
+    "construction_ai",
+    "apps",
+    "scripts",
+    "migrations",
+    "docs",
+    "tests",
+    "evaluation",
+]
+
+#: rc8: Explicit payload files at the repo root. These are individual files
+#: that are part of the payload but not under any PAYLOAD_ROOTS directory.
+PAYLOAD_FILES = [
+    "pyproject.toml",
+    "requirements.lock.txt",
+    "requirements-dev.lock.txt",
+    "Dockerfile",
+    "docker-compose.yml",
+    "Makefile",
+    "VERSION",
+    "README.md",
+    "AGENTS.md",
+    ".gitignore",
+]
+
+#: rc8: Glob patterns for files that must NEVER appear in the payload manifest,
+#: regardless of how they were discovered. This is a hard exclusion layer
+#: that catches generated archives, hash files, and any other build output.
+NEVER_PAYLOAD_PATTERNS = [
+    "*.zip",
+    "*.zip.sha256",
+    "*.sha256",
+    "__pycache__/*",
+    "*.pyc",
+    ".pytest_cache/*",
+    ".ruff_cache/*",
+    ".mypy_cache/*",
+    "dist/*",
+    "build/*",
+    "*.egg-info/*",
+]
+
+
+def _is_never_payload(rel: str) -> bool:
+    """rc8: Check if a file path matches any NEVER_PAYLOAD_PATTERNS."""
+    import fnmatch
+    for pattern in NEVER_PAYLOAD_PATTERNS:
+        if fnmatch.fnmatch(rel, pattern):
+            return True
+    # Also check if any parent directory matches a pattern with /*
+    parts = rel.split("/")
+    for i in range(1, len(parts)):
+        prefix = "/".join(parts[:i]) + "/*"
+        for pattern in NEVER_PAYLOAD_PATTERNS:
+            if fnmatch.fnmatch(prefix, pattern):
+                return True
+    return False
 
 
 def _file_manifest() -> tuple[dict[str, dict[str, Any]], str]:
-    """Complete per-file manifest over all shipped files.
+    """Complete per-file manifest over all shipped payload files.
+
+    rc8: Uses explicit payload roots (PAYLOAD_ROOTS + PAYLOAD_FILES) instead
+    of `git ls-files`. This prevents generated ZIPs, hash files, and other
+    build output from accidentally appearing in the payload manifest.
+
+    The previous rc7 approach used `git ls-files`, which tracked whatever
+    happened to be in the repo — including `construct-*.zip` and
+    `construct-*.zip.sha256`. This created a circular dependency:
+    PayloadManifest -> FinalZIP while FinalZIP contains PayloadManifest.
 
     Returns (files, tree_hash):
-      - files: {relative_path: {size, sha256}} for every tracked file EXCEPT
-        the manifest itself and post-manifest qualification artifacts. The
-        manifest cannot contain its own final hash (self-reference), and
-        post-manifest artifacts are bound by `tree_hash` + a separate
-        post_manifest_artifacts section, not by inclusion in `files`.
-      - tree_hash: SHA-256 over the canonical JSON of the `files` map. This
-        is the deterministic root hash of the release tree and is stable
-        across regenerations as long as the underlying files are unchanged.
+      - files: {relative_path: {size, sha256}} for every payload file EXCEPT
+        the manifest itself and post-manifest qualification artifacts.
+      - tree_hash: SHA-256 over the canonical JSON of the `files` map.
     """
     root = Path(__file__).parent.parent
     files: dict[str, dict[str, Any]] = {}
-    tracked_paths: list[Path] = []
-    try:
-        res = subprocess.run(["git", "ls-files"], capture_output=True, text=True, check=True, cwd=root)
-        lines = [l.strip() for l in res.stdout.splitlines() if l.strip()]
-        for line in lines:
-            p = root / line
-            if p.is_file():
-                tracked_paths.append(p)
-    except Exception:
-        patterns = [
-            "construction_ai/**/*.py",
-            "apps/**/*",
-            "scripts/**/*",
-            "tests/**/*",
-            "migrations/*.sql",
-            "docs/**/*",
-            "*.toml",
-            "*.txt",
-            "*.md",
-            "Dockerfile",
-            "docker-compose.yml",
-            "Makefile",
-            "VERSION",
-        ]
-        for pat in patterns:
-            for p in root.glob(pat):
-                if p.is_file():
-                    tracked_paths.append(p)
+    payload_paths: list[Path] = []
 
-    for p in sorted(set(tracked_paths)):
+    # 1. Collect files from explicit payload roots.
+    for dir_name in PAYLOAD_ROOTS:
+        dir_path = root / dir_name
+        if dir_path.is_dir():
+            for p in sorted(dir_path.rglob("*")):
+                if p.is_file():
+                    payload_paths.append(p)
+
+    # 2. Collect explicit payload files at the repo root.
+    for file_name in PAYLOAD_FILES:
+        file_path = root / file_name
+        if file_path.is_file():
+            payload_paths.append(file_path)
+
+    # 3. Deduplicate and sort.
+    for p in sorted(set(payload_paths)):
         rel = str(p.relative_to(root))
-        if rel.startswith((".git", "__pycache__", ".pytest_cache", ".ruff_cache")):
-            continue
+
+        # Hard exclusions: generated artifacts, caches, build output.
         if rel in SELF_EXCLUDED_ARTIFACTS:
-            # The manifest deliberately does not hash itself or the
-            # post-manifest qualification artifacts. They are bound via
-            # tree_hash + post_manifest_artifacts instead.
             continue
+        if _is_never_payload(rel):
+            continue
+        # Skip any file inside __pycache__, .pytest_cache, etc.
+        parts = rel.split("/")
+        if any(part in ("__pycache__", ".pytest_cache", ".ruff_cache", ".mypy_cache", ".git") for part in parts):
+            continue
+
         data = p.read_bytes()
         files[rel] = {
             "size": len(data),

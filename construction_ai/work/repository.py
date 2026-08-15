@@ -48,6 +48,22 @@ class WorkConfirmationRepository:
     ) -> WorkConfirmation:
         from decimal import Decimal
 
+        # rc8: Validate supersession BEFORE inserting the new confirmation.
+        # The rc7 code inserted first, then validated after the db.scoped()
+        # context exited (which commits). If validation failed, the invalid
+        # confirmation was already persisted — a partial-write bug.
+        # The correct invariant is:
+        #   SupersessionRequest = Atomic(ValidateSubject, InsertNew, SupersedeOld)
+        # If validation fails: NoNewConfirmationPersisted.
+        if supersedes_confirmation_id is not None:
+            self._validate_same_subject_before_supersede_raw(
+                scope=scope,
+                project_id=project_id,
+                sov_item_id=sov_item_id,
+                invoice_id=invoice_id,
+                superseded_id=supersedes_confirmation_id,
+            )
+
         with self.db.scoped(scope) as cur:
             cur.execute(
                 """INSERT INTO work_confirmations(
@@ -72,18 +88,17 @@ class WorkConfirmationRepository:
             )
             confirmation = _to_confirmation(row_to_dict(cur))
 
-        # rc6: If this confirmation supersedes an earlier one, transition the
-        # earlier record to 'superseded' so active selection filters it out.
-        # rc7: Validate that the new confirmation and the superseded confirmation
-        # refer to the same financial/work subject (same project AND same
-        # SOV item / invoice scope). A confirmation for roofing SOV must not
-        # supersede a confirmation for electrical SOV.
+        # rc8: Mark the old confirmation as superseded AFTER the new one is
+        # inserted. Both operations are within the same transaction context
+        # if an outer transaction exists. If no outer transaction, the new
+        # confirmation is committed first, then the old one is marked.
+        # This is acceptable because:
+        # 1. Validation already passed (same subject).
+        # 2. The new confirmation existing without the old being superseded
+        #    is a recoverable state (reconciliation can fix it).
+        # 3. The old confirmation being superseded without a new one is NOT
+        #    possible because _mark_superseded runs after insert.
         if supersedes_confirmation_id is not None:
-            self._validate_same_subject_before_supersede(
-                scope=scope,
-                new_confirmation=confirmation,
-                superseded_id=supersedes_confirmation_id,
-            )
             self._mark_superseded(scope=scope, confirmation_id=supersedes_confirmation_id)
         return confirmation
 
@@ -127,6 +142,68 @@ class WorkConfirmationRepository:
                 (scope.organization_id, confirmation_id),
             )
             return cur.rowcount > 0
+
+    def _validate_same_subject_before_supersede_raw(
+        self, *, scope: Scope, project_id: UUID | None, sov_item_id: UUID | None,
+        invoice_id: UUID | None, superseded_id: UUID,
+    ) -> None:
+        """rc8: Validate supersession subject BEFORE inserting the new confirmation.
+
+        This is the atomic version that uses raw parameters instead of a
+        WorkConfirmation object. It must be called BEFORE the INSERT so that
+        if validation fails, no partial write is persisted.
+
+        The invariant is:
+          new.project_id == old.project_id
+          AND new.sov_item_id == old.sov_item_id
+          AND new.invoice_id == old.invoice_id
+        """
+        with self.db.scoped(scope) as cur:
+            cur.execute(
+                """SELECT project_id, scope_id, invoice_id, sov_item_id, status
+                   FROM work_confirmations
+                   WHERE organization_id = %s AND confirmation_id = %s""",
+                (scope.organization_id, superseded_id),
+            )
+            old = row_to_dict(cur)
+            if old is None:
+                raise ValueError(
+                    f"cannot supersede confirmation {superseded_id}: not found"
+                )
+
+            # rc8: Check that the target is still active (confirmed).
+            if old.get("status") != "confirmed":
+                raise ValueError(
+                    f"cannot supersede confirmation {superseded_id}: "
+                    f"status is '{old.get('status')}', not 'confirmed'"
+                )
+
+        # Check project_id.
+        old_project = old.get("project_id")
+        if old_project != project_id:
+            raise ValueError(
+                f"supersession subject mismatch: new confirmation project_id={project_id} "
+                f"does not match superseded confirmation project_id={old_project} — "
+                "rc8: supersession can only target the same financial/work subject"
+            )
+
+        # Check SOV item.
+        old_sov = old.get("sov_item_id")
+        if old_sov != sov_item_id:
+            raise ValueError(
+                f"supersession subject mismatch: new confirmation sov_item_id={sov_item_id} "
+                f"does not match superseded confirmation sov_item_id={old_sov} — "
+                "rc8: supersession can only target the same financial/work subject"
+            )
+
+        # Check invoice_id.
+        old_invoice = old.get("invoice_id")
+        if old_invoice != invoice_id:
+            raise ValueError(
+                f"supersession subject mismatch: new confirmation invoice_id={invoice_id} "
+                f"does not match superseded confirmation invoice_id={old_invoice} — "
+                "rc8: supersession can only target the same financial/work subject"
+            )
 
     def _validate_same_subject_before_supersede(
         self, *, scope: Scope, new_confirmation: WorkConfirmation, superseded_id: UUID,

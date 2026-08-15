@@ -57,12 +57,12 @@ class TestUpgradeQualification:
                 )
                 assert cur.fetchone()[0] == 1, "migration 028 must be applied"
 
-    def test_migration_count_is_28(self):
-        """Total migration count must be 28."""
+    def test_migration_count_is_29(self):
+        """Total migration count must be 29."""
         with psycopg.connect(DATABASE_URL) as conn:
             with conn.cursor() as cur:
                 cur.execute("SELECT count(*) FROM schema_migrations")
-                assert cur.fetchone()[0] == 28, "migration count must be 28"
+                assert cur.fetchone()[0] == 29, "migration count must be 29"
 
     def test_request_payload_hash_column_exists(self):
         """The request_payload_hash column must exist on external_actions."""
@@ -152,8 +152,8 @@ class TestUpgradeQualification:
             env={"DATABASE_URL": DATABASE_URL, "PATH": os.environ.get("PATH", "")},
             cwd=str(ROOT),
         )
-        # All 28 migrations should be applied with none pending.
-        assert "applied: 28" in result.stdout or "applied: 28" in result.stderr
+        # All 29 migrations should be applied with none pending.
+        assert "applied: 29" in result.stdout or "applied: 29" in result.stderr
         assert "pending: none" in result.stdout or "pending: none" in result.stderr
 
     def test_legacy_external_actions_survive(self):

@@ -68,13 +68,13 @@ class TestCleanSlateInfrastructure:
                 result = cur.fetchone()[0]
                 assert result is not None
 
-    def test_migration_count_28(self):
-        """Database must be at migration count 28 (rc7)."""
+    def test_migration_count_29(self):
+        """Database must be at migration count 29 (rc8)."""
         with psycopg.connect(DATABASE_URL) as conn:
             with conn.cursor() as cur:
                 cur.execute("SELECT count(*) FROM schema_migrations")
                 count = cur.fetchone()[0]
-                assert count == 28, f"expected 28 migrations, got {count}"
+                assert count == 29, f"expected 29 migrations, got {count}"
 
     def test_rls_active(self):
         """Row-level security must be active on key tables."""

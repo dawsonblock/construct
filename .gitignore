@@ -26,3 +26,7 @@ vendor/upstream_sources/
 # OS
 .DS_Store
 .hypothesis/
+*.zip
+*.zip.sha256
+construct-*.zip
+construct-*.zip.sha256

@@ -1,6 +1,6 @@
 {
   "attestation_chain": "PayloadTree -> PAYLOAD_MANIFEST.json -> Qualification -> RELEASE_ATTESTATION.json",
-  "code_fingerprint": "4439e159be17c6608499615aa16c7de90fc64198452725604724289c88e5aa6d",
+  "code_fingerprint": "264894fd2dca6c24751f4788b3ac9f4567a49ced3bbd32b1dd998c8428988fd2",
   "dependencies": {
     "hypothesis": "6.151.4",
     "psycopg": "3.3.4",
@@ -10,41 +10,21 @@
     "ruff": "unknown"
   },
   "files": {
-    ".dockerignore": {
-      "sha256": "04218e59a8644a9f60f4341af8ceb81d3ebb751762024c0a57fd3972fa0b39a8",
-      "size": 197
-    },
-    ".env.example": {
-      "sha256": "6efafa52f94cc24536fc0259b7ff0a641d926d98c714204b7da019361bb90ee7",
-      "size": 2730
+    ".gitignore": {
+      "sha256": "d875c0ebbbe84391b028265c1a991a21db3f35a35bfb014e96c9d800eb91eb60",
+      "size": 484
     },
     "AGENTS.md": {
-      "sha256": "42379544dbc0e4817d0c5aa2ee13f7a3a43ffaeaec3e1c4a801f23b2794e86f8",
-      "size": 2833
+      "sha256": "d3de6df5ac3005ec779482ccc37e75e48af7ae05eb33beb3d387fd2477da0ae8",
+      "size": 2814
     },
     "Dockerfile": {
       "sha256": "84a5d0e9866d8460504463678ba5d772a0a5147f93703a8bfb776f036eaee5d3",
       "size": 1518
     },
-    "LICENSE": {
-      "sha256": "6f8c5b7240d54b75faf34636e9c0c03be94e9234323d5ed27ae3e7cd27aebfe5",
-      "size": 1068
-    },
-    "MANIFEST.rc3.json": {
-      "sha256": "581baecff1a48024a944577f1fa920b499c78d0ae4a5034684df5d5a50a0acc2",
-      "size": 4113
-    },
-    "MANIFEST.v0.3.STALE.json": {
-      "sha256": "24e2f84d4c04b5de167627e60c555e0023509cee2f750bb835b41d4a7ab7cb40",
-      "size": 12614
-    },
     "Makefile": {
       "sha256": "f5b3e19bf5f5c85994f1ac1c6e00ae0bdb2dbee32f0eb9cf1aa270b419789cfb",
       "size": 6993
-    },
-    "RC6_AUDIT_BASELINE.json": {
-      "sha256": "b3c040dd967c81ab30f4b92e32123bf15c5b649e3d7de6651c3c5d6ac0dc233f",
-      "size": 1700
     },
     "README.md": {
       "sha256": "da2217ad0e6a0a8068427bc4fffe3d261b5eee26be389f0c05c8aa2726b3038d",
@@ -89,14 +69,6 @@
     "apps/worker/main.py": {
       "sha256": "7a441f4fceacf817e12381e2b8a26714fcbaea96bc061bbdda7e604e828d022a",
       "size": 2842
-    },
-    "construct-0.5.0-rc7.dev0.zip": {
-      "sha256": "0203edb3a9dd1e79c62cbf580a25ac7fe150a879aa4dcac2b991ad22220469a2",
-      "size": 482282
-    },
-    "construct-0.5.0-rc7.dev0.zip.sha256": {
-      "sha256": "bce85ca57f5701688a1b225d0f13d6de6b6b9c4bae63afd9c44e76116b77e7f3",
-      "size": 95
     },
     "construction_ai/__init__.py": {
       "sha256": "2170baf1f4dfd55ccfa6b13638e7a4da928b2a92ec6fb77c3898607358203a24",
@@ -459,12 +431,8 @@
       "size": 883
     },
     "construction_ai/work/repository.py": {
-      "sha256": "90b635d145a6820f6787b1380adf4b89666559b2352ec4d15fd7f0692c3e9c04",
-      "size": 10962
-    },
-    "demo_vertical_slice.py": {
-      "sha256": "6996553721a53e8d7f83b0b6de1e533a6b9e0f5ef33f439848a7452bc27d7e2d",
-      "size": 1283
+      "sha256": "619e94fe1c05c1e4268cdeefd87b104f3648eb5ffc94995ddd2613251594c1e1",
+      "size": 14570
     },
     "docker-compose.yml": {
       "sha256": "76bf34105f27b4d642089347bad01f474823b0e775dac64512012631287542aa",
@@ -541,10 +509,6 @@
     "evaluation/generate_benchmark.py": {
       "sha256": "0ab0fc694c720443b04c9c09fda5896348645555e70e6a2dd4859fc698f6d4e4",
       "size": 252
-    },
-    "infra/docker-compose.yml": {
-      "sha256": "df6d5ba604d6b31152f3eb1d2f1435ffcfd3128ca2c22a582160ff2aa31760ab",
-      "size": 404
     },
     "migrations/001_control_plane.sql": {
       "sha256": "707cf2cfa332c6c9c9404de72f9d59f313d26b6dcc569f417dbc14c196e060d5",
@@ -658,6 +622,10 @@
       "sha256": "d258a312743c764422a4404fa7ce8c65c6ed3ba6df83093af8127f4a8f2d030c",
       "size": 1840
     },
+    "migrations/029_rc8_supersession_uniqueness.sql": {
+      "sha256": "0c1ab7afdb83be9aa920c7459aad13dddf951f353caca724c4fb5f17ddd45e97",
+      "size": 793
+    },
     "pyproject.toml": {
       "sha256": "a61ae99e5379397cbcb55399318529d8cc7bd593a0f8449841975a666e15e62d",
       "size": 1609
@@ -675,8 +643,8 @@
       "size": 18902
     },
     "scripts/artifact_consistency_gate.py": {
-      "sha256": "7e4a404cd6f726b1c53a9252a3c34b9abe20f88054302ffed31b172457766d24",
-      "size": 3607
+      "sha256": "bbd5226ad4f7d1eccbc7e3c952a151ab70885863f14a4303dcaceaaf667475d4",
+      "size": 3661
     },
     "scripts/bootstrap_app_role.py": {
       "sha256": "ee1e324b4a926ef687f5b345c844a1d040ce962d0e88e32b940dbb9962b4b0e6",
@@ -703,28 +671,32 @@
       "size": 11534
     },
     "scripts/generate_gate_artifacts.py": {
-      "sha256": "31b5a12948cbcfdeda7d4ba7abcbc1f45448bf9fefcb8b0d030343be5973c55a",
-      "size": 10200
+      "sha256": "cd71fa5f663f137b3f3b76b20fe1d1d067948f629f600a5ac88a85e575f06697",
+      "size": 11516
     },
     "scripts/migrate.py": {
       "sha256": "4f9b6e2eb0655cb22f594c90e42f6f28639cb981ca3dd01f6d275879d1569ebc",
       "size": 1589
     },
     "scripts/package_release.py": {
-      "sha256": "b37a9655b8dcf3509479230a6bfcc4529c282ab6528b4a7651b12d3a38f635ce",
-      "size": 3367
+      "sha256": "af9353f04d9b987e7d3f5adb2d4e94337aceb06920545a2b231690dfe58e8e7a",
+      "size": 4136
+    },
+    "scripts/qualification_identity.py": {
+      "sha256": "3e21e2c4ebcb612274a0eaa336531c774189744cf04e8b53b968dafb4beb0c24",
+      "size": 4302
     },
     "scripts/qualification_report.py": {
-      "sha256": "903e631e1b5cc54d2c726d1b4d3ea1defe0ecfe0806cec4f0e0faa5eac6e9b4e",
-      "size": 17937
+      "sha256": "9da982ee3e9f04aca2333bd4cae6c456a3028c33835ecc8ceac641620acbdf52",
+      "size": 19385
     },
     "scripts/release_attestation.py": {
-      "sha256": "f9265cec3db8d7b51dcd6b068a1903a77ea566a43064f8563f93f8a8ae61ba5c",
-      "size": 6391
+      "sha256": "6761cd4f4ace325beaae81a2d81f7208623c9caa1643f380cb8fd58806c53f58",
+      "size": 7141
     },
     "scripts/release_manifest.py": {
-      "sha256": "348bb9843783c760b082b7123b11df90094583b8eba361e525f3d06aa679946b",
-      "size": 14296
+      "sha256": "20145df878977b70d019a3966a344f337301fb07af3651db0f88e5f69a9fe959",
+      "size": 16117
     },
     "scripts/reproducibility_check.py": {
       "sha256": "97ea72167021a4eea732e276c5189b12344f73b34e70cd7912159a0824911858",
@@ -741,6 +713,10 @@
     "scripts/upgrade_gate.py": {
       "sha256": "e459a21eded46996ec78d4471ff3c02868db208b09a26685b06848b96d5f0a8b",
       "size": 6968
+    },
+    "scripts/verify_packaged_release.py": {
+      "sha256": "46db455e19d50b05ca1144245b11ae2f7996fb5f888ae6441309e66d0b1a0784",
+      "size": 7475
     },
     "scripts/verify_payload_manifest.py": {
       "sha256": "669e6100ee8280a90b3572ab597d46e25020542f22e4241c05bf084a4ad9e431",
@@ -883,15 +859,15 @@
       "size": 15290
     },
     "tests/test_rc7_clean_slate.py": {
-      "sha256": "2c63ddeec635fe9120479cae93f9164a79b6c0f8926319923a2ebaef58e56613",
+      "sha256": "9db031c6a7440d143bb941dec16ed4f56cd5ee39c5e2f6f318ec93d2a44f22dd",
       "size": 7421
     },
     "tests/test_rc7_hardening.py": {
-      "sha256": "4c4f0d9042d157b64bc695f7edb59d0c93340f369c8a98e5e3e443fdcdf195e9",
-      "size": 27604
+      "sha256": "3338d6ae7f2c7fa71029206fd2fd485b80a093756ab0d0c8e9d48b418f875878",
+      "size": 33608
     },
     "tests/test_rc7_upgrade_qualification.py": {
-      "sha256": "8bfeb1d425e44218d4fc6413eb74dbd9d0a338407caefbcca6c5047a95c98087",
+      "sha256": "2a8ba63f95a1a4e2fd2181235d8ea8e91e33b43c6c56d96aba9cf8f68b7c6a25",
       "size": 7865
     },
     "tests/test_reconcile_unknown.py": {
@@ -969,17 +945,13 @@
     "tests/test_worker_leases.py": {
       "sha256": "1ab3359cb7c18ad0f9f8dbdd24c58d4d446a1258aebe419c7f58a1206d7e72ca",
       "size": 10323
-    },
-    "vendor/NOTICE.md": {
-      "sha256": "4d489a3ba3c03b64d87c684f4d9b96cb07c5c55690f1f57d5fe29f395d695b52",
-      "size": 461
     }
   },
-  "generated_at": "2026-08-15T07:13:10.822273+00:00",
+  "generated_at": "2026-08-15T08:28:07.914269+00:00",
   "git_branch": "v0.4-hardening",
-  "git_commit": "b45c0ca3c6ffc351cbf966ecc915dd5b1f77c1d7",
-  "migration_count": 28,
-  "migration_fingerprint": "5ec8e1531a8025ce6eab83f0154fa1d18fd5172fe1b3367aadfe751c1c764b97",
+  "git_commit": "58ae474b0f2cc2a983258506f496f2e4112b4d09",
+  "migration_count": 29,
+  "migration_fingerprint": "57c97591c127f8e0ee415096a7f95dea2e412f3e8449925feed4e2d7937a660c",
   "migrations": [
     {
       "filename": "001_control_plane.sql",
@@ -1092,12 +1064,17 @@
     {
       "filename": "028_rc7_payload_hash_and_reconciliation_provenance.sql",
       "sha256": "d258a312743c764422a4404fa7ce8c65c6ed3ba6df83093af8127f4a8f2d030c"
+    },
+    {
+      "filename": "029_rc8_supersession_uniqueness.sql",
+      "sha256": "0c1ab7afdb83be9aa920c7459aad13dddf951f353caca724c4fb5f17ddd45e97"
     }
   ],
   "mode": "with-database",
   "schema_fingerprint": "72b9ed42a190d59a39ff2a3a915312183877ad4cd5c66f47cc62d78a028b5b96",
   "self_excluded_artifacts": [
     "CRASH_MATRIX.json",
+    "FINAL_ARCHIVE.sha256",
     "MANIFEST.json",
     "MANIFEST.json.sha256",
     "MANIFEST.sha256",
@@ -1105,13 +1082,16 @@
     "MIGRATION_GATE.json",
     "PAYLOAD_MANIFEST.json",
     "PAYLOAD_MANIFEST.sha256",
+    "QUALIFICATION_IDENTITY.json",
     "QUALIFICATION_REPORT.json",
+    "RC6_AUDIT_BASELINE.json",
     "RELEASE_ATTESTATION.json",
+    "RELEASE_ATTESTATION.json.sha256",
     "RELEASE_ATTESTATION.sha256",
     "SECURITY_GATE.json",
     "TEST_RESULTS.json"
   ],
-  "test_fingerprint": "de719bda5fd9011bcc16325569fc6eaf563afcef108f62ea0a4c0d8d3c428b9a",
-  "tree_hash": "88e32c1005a1724afb694edceb605f7cb330935c262e3244df0377776bade12f",
+  "test_fingerprint": "a77789da761fae1f0f853684a7a695f06c679a992a3f405fe650bf73ee10623d",
+  "tree_hash": "6bc2476cedc0828313e64c5c1ea866d2debd4f1d22438b6c6ad9c9f973f106fd",
   "version": "0.5.0-rc7.dev0"
 }

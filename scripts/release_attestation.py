@@ -109,6 +109,8 @@ def generate_attestation() -> dict:
     qualification_manifest_sha = None
     qualification_run_id = None
     payload_tree_hash = None
+    dependency_lock_hash = None
+    schema_fingerprint = None
     try:
         for name in ("PAYLOAD_MANIFEST.json", "MANIFEST.json"):
             p = ROOT / name
@@ -116,6 +118,7 @@ def generate_attestation() -> dict:
                 manifest = json.loads(p.read_text())
                 manifest_tree_hash = manifest.get("tree_hash")
                 payload_tree_hash = manifest.get("tree_hash")
+                schema_fingerprint = manifest.get("schema_fingerprint")
                 break
     except Exception:
         pass
@@ -123,8 +126,19 @@ def generate_attestation() -> dict:
         report = json.loads((ROOT / "QUALIFICATION_REPORT.json").read_text())
         qualification_manifest_sha = report.get("manifest_sha")
         qualification_run_id = report.get("qualification_run_id")
+        dependency_lock_hash = report.get("dependency_lock_hash")
+        if not schema_fingerprint:
+            schema_fingerprint = report.get("schema_fingerprint")
     except Exception:
         pass
+
+    # rc8: If dependency_lock_hash is still None, compute it from the shared helper.
+    if not dependency_lock_hash:
+        try:
+            from qualification_identity import compute_dependency_lock_hash
+            dependency_lock_hash = compute_dependency_lock_hash()
+        except Exception:
+            dependency_lock_hash = "unknown"
 
     # Compute the attestation root hash over all evidence hashes.
     # This is the single value that binds the entire release bundle.
@@ -142,6 +156,8 @@ def generate_attestation() -> dict:
         "git_commit": _git_commit(),
         "git_branch": _git_branch(),
         "payload_tree_hash": payload_tree_hash,
+        "dependency_lock_hash": dependency_lock_hash,
+        "schema_fingerprint": schema_fingerprint,
         "qualification_run_id": qualification_run_id,
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "attestation_chain": "PayloadTree -> PAYLOAD_MANIFEST.json -> Qualification -> RELEASE_ATTESTATION.json",

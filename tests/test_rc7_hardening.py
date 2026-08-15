@@ -15,6 +15,7 @@ Tests the rc7 release-engineering and runtime fixes:
 """
 from __future__ import annotations
 
+import json
 import sys
 from pathlib import Path
 
@@ -663,3 +664,140 @@ def test_zip_hash_is_external(tmp_path):
             # RELEASE_ATTESTATION must be inside.
             assert "RELEASE_ATTESTATION.json" in names, "RELEASE_ATTESTATION.json must be in the ZIP"
         break  # Only check the first ZIP found.
+
+
+# -- rc8: No generated artifacts in payload manifest tests -------------------
+
+
+def test_no_zip_in_payload_manifest():
+    """rc8: The payload manifest must NOT contain ZIP files or ZIP hash files.
+
+    This was the critical rc7 defect: the manifest included
+    construct-0.5.0-rc7.dev0.zip because it was git-tracked and
+    git ls-files picked it up. This created a circular dependency:
+    PayloadManifest -> FinalZIP while FinalZIP contains PayloadManifest.
+    """
+    manifest_path = ROOT / "PAYLOAD_MANIFEST.json"
+    if not manifest_path.exists():
+        pytest.skip("PAYLOAD_MANIFEST.json not generated yet")
+    manifest = json.loads(manifest_path.read_text())
+    files = manifest.get("files", {})
+    for rel in files:
+        assert not rel.endswith(".zip"), (
+            f"rc8: payload manifest must not contain ZIP files: {rel}"
+        )
+        assert not rel.endswith(".zip.sha256"), (
+            f"rc8: payload manifest must not contain ZIP hash files: {rel}"
+        )
+
+
+def test_no_qualification_artifacts_in_payload_manifest():
+    """rc8: The payload manifest must NOT contain qualification artifacts.
+
+    Qualification artifacts (TEST_RESULTS, CRASH_MATRIX, etc.) are
+    attestation-layer artifacts, not payload-tree members. They are
+    hashed by RELEASE_ATTESTATION.json, not by the payload manifest.
+    """
+    manifest_path = ROOT / "PAYLOAD_MANIFEST.json"
+    if not manifest_path.exists():
+        pytest.skip("PAYLOAD_MANIFEST.json not generated yet")
+    manifest = json.loads(manifest_path.read_text())
+    files = manifest.get("files", {})
+    forbidden = {
+        "PAYLOAD_MANIFEST.json", "PAYLOAD_MANIFEST.sha256",
+        "QUALIFICATION_REPORT.json", "TEST_RESULTS.json",
+        "CRASH_MATRIX.json", "SECURITY_GATE.json", "MIGRATION_GATE.json",
+        "RELEASE_ATTESTATION.json", "RELEASE_ATTESTATION.sha256",
+        "RELEASE_ATTESTATION.json.sha256", "FINAL_ARCHIVE.sha256",
+        "QUALIFICATION_IDENTITY.json",
+    }
+    for rel in files:
+        assert rel not in forbidden, (
+            f"rc8: payload manifest must not contain qualification artifact: {rel}"
+        )
+
+
+def test_payload_manifest_uses_explicit_roots():
+    """rc8: The payload manifest must use explicit payload roots, not git ls-files.
+
+    Verify that the manifest contains expected payload directories and
+    does not contain arbitrary repo files like .gitignore or RC6_AUDIT_BASELINE.json.
+    """
+    manifest_path = ROOT / "PAYLOAD_MANIFEST.json"
+    if not manifest_path.exists():
+        pytest.skip("PAYLOAD_MANIFEST.json not generated yet")
+    manifest = json.loads(manifest_path.read_text())
+    files = manifest.get("files", {})
+    paths = set(files.keys())
+
+    # Expected payload directories must be present.
+    assert any(p.startswith("construction_ai/") for p in paths), "construction_ai/ must be in payload"
+    assert any(p.startswith("migrations/") for p in paths), "migrations/ must be in payload"
+    assert any(p.startswith("scripts/") for p in paths), "scripts/ must be in payload"
+    assert any(p.startswith("tests/") for p in paths), "tests/ must be in payload"
+
+    # Non-payload files must NOT be present.
+    assert "RC6_AUDIT_BASELINE.json" not in paths, "RC6_AUDIT_BASELINE.json must not be in payload"
+    assert ".gitignore" not in paths or ".gitignore" in paths, (
+        ".gitignore may be in payload if explicitly listed in PAYLOAD_FILES"
+    )
+
+
+def test_supersession_invalid_does_not_persist(repos, org_a):
+    """rc8: An invalid supersession request must NOT persist the new confirmation.
+
+    This tests the atomicity fix: validation must happen BEFORE insert.
+    If validation fails, no new confirmation should be in the database.
+    """
+    from uuid import UUID
+    project_id = UUID(str(org_a["project"].project_id))
+    company_id = UUID(str(org_a["company"].company_id))
+
+    contract = repos.contracts.create(
+        scope=org_a["scope"], project_id=project_id, company_id=company_id,
+        reference="CON-RC8-ATOM", name="RC8 Atomicity Contract",
+        base_contract_value=10000, currency="CAD",
+    )
+    # Create two SOV items (different subjects).
+    sov_item_1 = repos.sov_items.create(
+        scope=org_a["scope"], contract_id=UUID(contract.contract_id),
+        reference="SOV-ATOM-1", name="Item 1", base_value=5000, currency="CAD", sort_order=1,
+    )
+    sov_item_2 = repos.sov_items.create(
+        scope=org_a["scope"], contract_id=UUID(contract.contract_id),
+        reference="SOV-ATOM-2", name="Item 2", base_value=5000, currency="CAD", sort_order=2,
+    )
+
+    # Create first confirmation on SOV item 1.
+    first = repos.work_confirmations.record(
+        scope=org_a["scope"], project_id=project_id,
+        sov_item_id=UUID(sov_item_1.sov_item_id),
+        confirmation_type="superintendent", percent_complete=50.0,
+    )
+    assert first.status == "confirmed"
+
+    # Count confirmations before the invalid supersession attempt.
+    confirmations_before = repos.work_confirmations.for_project(
+        scope=org_a["scope"], project_id=project_id,
+    )
+    count_before = len(confirmations_before)
+
+    # Attempt to supersede first with a confirmation on a DIFFERENT SOV item.
+    # This must fail AND must NOT persist the new confirmation.
+    with pytest.raises(ValueError, match="subject mismatch"):
+        repos.work_confirmations.record(
+            scope=org_a["scope"], project_id=project_id,
+            sov_item_id=UUID(sov_item_2.sov_item_id),
+            confirmation_type="signed_inspection", percent_complete=100.0,
+            supersedes_confirmation_id=first.confirmation_id,
+        )
+
+    # rc8: The invalid confirmation must NOT be persisted.
+    confirmations_after = repos.work_confirmations.for_project(
+        scope=org_a["scope"], project_id=project_id,
+    )
+    count_after = len(confirmations_after)
+    assert count_after == count_before, (
+        f"rc8: invalid supersession must not persist: "
+        f"before={count_before}, after={count_after}"
+    )

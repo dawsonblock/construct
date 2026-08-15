@@ -68,11 +68,15 @@ def _version() -> str:
 
 
 def _lock_hash() -> str:
-    """Hash of the dependency lock file."""
-    lock = ROOT / "requirements.lock.txt"
-    if lock.exists():
-        return hashlib.sha256(lock.read_bytes()).hexdigest()
-    return "unknown"
+    """rc8: Use the shared canonical dependency lock hash.
+
+    Previously this hashed only requirements.lock.txt, while
+    qualification_report.py hashed both lock files. This mismatch
+    caused the artifact consistency gate to miss a dependency identity
+    disagreement. Now both use the same shared helper.
+    """
+    from qualification_identity import compute_dependency_lock_hash
+    return compute_dependency_lock_hash()
 
 
 def _payload_tree_hash() -> str | None:
@@ -100,11 +104,37 @@ def _qualification_run_id() -> str:
     return f"qual-{date}-{commit}"
 
 
+def _schema_fingerprint() -> str:
+    """rc8: Schema fingerprint for identity consistency."""
+    try:
+        import psycopg
+        import os
+        dsn = os.getenv("DATABASE_URL", "postgresql://construction:construction@localhost:5432/construction_ai")
+        with psycopg.connect(dsn) as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    SELECT table_name, column_name, data_type, is_nullable, column_default
+                    FROM information_schema.columns
+                    WHERE table_schema = 'public'
+                    ORDER BY table_name, ordinal_position
+                """)
+                rows = cur.fetchall()
+                hasher = hashlib.sha256()
+                for row in rows:
+                    hasher.update(str(row).encode())
+                return hasher.hexdigest()
+    except Exception:
+        return "offline"
+
+
 def _base_artifact() -> dict:
-    """rc7 Phase 6/7: Common identity header for all gate artifacts.
+    """rc7 Phase 6/7 / rc8: Common identity header for all gate artifacts.
 
     Every artifact must contain the same identity fields. If any field differs
     between artifacts, qualification fails (Phase 33).
+
+    rc8: Added schema_fingerprint to the identity fields. The artifact
+    consistency gate now checks this field.
     """
     return {
         "release_version": _version(),
@@ -113,6 +143,7 @@ def _base_artifact() -> dict:
         "git_branch": _git_branch(),
         "payload_tree_hash": _payload_tree_hash(),
         "dependency_lock_hash": _lock_hash(),
+        "schema_fingerprint": _schema_fingerprint(),
         "qualification_run_id": _qualification_run_id(),
         "generated_at": datetime.now(timezone.utc).isoformat(),
     }

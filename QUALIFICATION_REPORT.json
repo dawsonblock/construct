@@ -2,20 +2,20 @@
   "adversarial": {
     "exit_code": 0,
     "passed": true,
-    "summary": "49 passed in 2.30s"
+    "summary": "49 passed in 1.94s"
   },
   "crash_recovery": {
     "exit_code": 0,
     "passed": true,
-    "summary": "62 passed in 8.47s"
+    "summary": "62 passed in 11.64s"
   },
   "critical_skipped_count": 0,
   "critical_skips_allowed": 0,
-  "dependency_lock_hash": "655f8e2135e560a60defc0264a9a88c8b7ceda3585142e733f087e89149e8ea0",
+  "dependency_lock_hash": "bcc8f6f02036e5e2447153bf0e4ce65f8dc123cd2fcf93eeabe6b1a224763b85",
   "external_effect": {
     "exit_code": 0,
     "passed": true,
-    "summary": "100 passed in 4.30s"
+    "summary": "100 passed in 9.45s"
   },
   "gates": {
     "CRASH_RECOVERY_PASS": true,
@@ -25,54 +25,56 @@
     "SECURITY_PASS": true,
     "UNIT_PASS": true
   },
-  "generated_at": "2026-08-15T07:13:54.324002+00:00",
+  "generated_at": "2026-08-15T08:29:04.603436+00:00",
   "git_branch": "v0.4-hardening",
-  "git_commit": "b45c0ca3c6ffc351cbf966ecc915dd5b1f77c1d7",
+  "git_commit": "58ae474b0f2cc2a983258506f496f2e4112b4d09",
   "identity_snapshot": {
-    "dependency_lock_hash": "655f8e2135e560a60defc0264a9a88c8b7ceda3585142e733f087e89149e8ea0",
-    "git_commit": "b45c0ca3c6ffc351cbf966ecc915dd5b1f77c1d7",
-    "payload_tree_hash": "88e32c1005a1724afb694edceb605f7cb330935c262e3244df0377776bade12f",
-    "qualification_run_id": "qual-20260815-b45c0ca3c6ff",
+    "dependency_lock_hash": "bcc8f6f02036e5e2447153bf0e4ce65f8dc123cd2fcf93eeabe6b1a224763b85",
+    "git_commit": "58ae474b0f2cc2a983258506f496f2e4112b4d09",
+    "payload_tree_hash": "6bc2476cedc0828313e64c5c1ea866d2debd4f1d22438b6c6ad9c9f973f106fd",
+    "qualification_run_id": "qual-20260815-58ae474b0f2c",
     "release_version": "0.5.0-rc7.dev0",
-    "schema_fingerprint": null
+    "schema_fingerprint": "72b9ed42a190d59a39ff2a3a915312183877ad4cd5c66f47cc62d78a028b5b96"
   },
   "manifest_filename": "PAYLOAD_MANIFEST.json",
-  "manifest_sha": "5a7c688043aa8354ac610f1159d50fb8da324b9ff14eb46739aef589a6d3e24e",
-  "manifest_tree_hash": "88e32c1005a1724afb694edceb605f7cb330935c262e3244df0377776bade12f",
+  "manifest_sha": "65f67fb9178f87e05e4d5f3a8053913757ee15c699fda0f879c7bba7816dcf14",
+  "manifest_tree_hash": "6bc2476cedc0828313e64c5c1ea866d2debd4f1d22438b6c6ad9c9f973f106fd",
   "noncritical_skipped_count": 0,
-  "payload_tree_hash": "88e32c1005a1724afb694edceb605f7cb330935c262e3244df0377776bade12f",
-  "qualification_run_id": "qual-20260815-b45c0ca3c6ff",
+  "payload_tree_hash": "6bc2476cedc0828313e64c5c1ea866d2debd4f1d22438b6c6ad9c9f973f106fd",
+  "qualification_run_id": "qual-20260815-58ae474b0f2c",
   "qualified": true,
   "release_integrity": {
     "exit_code": 0,
     "passed": true,
-    "summary": "20 passed in 0.74s"
+    "summary": "20 passed in 1.21s"
   },
   "release_version": "0.5.0-rc7.dev0",
   "schema": {
-    "migration_count": 28,
-    "migration_fingerprint": "5ec8e1531a8025ce6eab83f0154fa1d18fd5172fe1b3367aadfe751c1c764b97"
+    "fingerprint": "72b9ed42a190d59a39ff2a3a915312183877ad4cd5c66f47cc62d78a028b5b96",
+    "migration_count": 29,
+    "migration_fingerprint": "57c97591c127f8e0ee415096a7f95dea2e412f3e8449925feed4e2d7937a660c"
   },
+  "schema_fingerprint": "72b9ed42a190d59a39ff2a3a915312183877ad4cd5c66f47cc62d78a028b5b96",
   "security": {
     "exit_code": 0,
     "passed": true,
-    "summary": "26 passed in 0.53s"
+    "summary": "26 passed in 0.83s"
   },
   "skipped_tests": [],
   "test_suite": {
     "error": 0,
     "exit_code": 0,
     "failed": 0,
-    "passed": 624,
+    "passed": 628,
     "run": true,
     "skipped": 0,
-    "summary": "624 passed in 28.11s",
-    "total": 624
+    "summary": "628 passed in 53.57s",
+    "total": 628
   },
   "unit_suite": {
     "exit_code": 0,
     "passed": true,
-    "summary": "82 passed in 7.40s"
+    "summary": "82 passed in 10.05s"
   },
   "version": "0.5.0-rc7.dev0"
 }
