@@ -39,7 +39,7 @@ ROOT = Path(__file__).parent.parent
 # ---------------------------------------------------------------------------
 
 def test_manifest_excludes_itself_from_files_map():
-    """MANIFEST.json must NOT appear in its own `files` map — a manifest
+    """The payload manifest must NOT appear in its own `files` map — a manifest
     cannot contain its own final hash without a self-referential paradox."""
     sys.path.insert(0, str(ROOT / "scripts"))
     try:
@@ -49,8 +49,11 @@ def test_manifest_excludes_itself_from_files_map():
         sys.path.pop(0)
 
     assert "files" in manifest
+    assert "PAYLOAD_MANIFEST.json" not in manifest["files"], (
+        "PAYLOAD_MANIFEST.json must not be in its own per-file map — self-reference"
+    )
     assert "MANIFEST.json" not in manifest["files"], (
-        "MANIFEST.json must not be in its own per-file map — self-reference"
+        "legacy MANIFEST.json must also be excluded"
     )
     assert "tree_hash" in manifest, "rc6/rc7 manifest must include a tree_hash"
     assert len(manifest["tree_hash"]) == 64, "tree_hash must be SHA-256 hex"
@@ -58,8 +61,8 @@ def test_manifest_excludes_itself_from_files_map():
     # uses RELEASE_ATTESTATION.json instead. The manifest now has
     # attestation_chain and self_excluded_artifacts.
     assert "self_excluded_artifacts" in manifest
-    assert "MANIFEST.json" in manifest["self_excluded_artifacts"]
-    assert "MANIFEST.json.sha256" in manifest["self_excluded_artifacts"], (
+    assert "PAYLOAD_MANIFEST.json" in manifest["self_excluded_artifacts"]
+    assert "PAYLOAD_MANIFEST.sha256" in manifest["self_excluded_artifacts"], (
         "rc7: the companion filename must match the actual generated file"
     )
     assert "RELEASE_ATTESTATION.json" in manifest["self_excluded_artifacts"]
@@ -89,30 +92,37 @@ def test_manifest_files_do_not_include_post_generation_artifacts():
     finally:
         sys.path.pop(0)
 
-    for artifact in ("MANIFEST.json", "QUALIFICATION_REPORT.json", "TEST_RESULTS.json",
-                     "CRASH_MATRIX.json", "SECURITY_GATE.json", "MIGRATION_GATE.json"):
+    for artifact in ("PAYLOAD_MANIFEST.json", "MANIFEST.json", "QUALIFICATION_REPORT.json", "TEST_RESULTS.json",
+                     "CRASH_MATRIX.json", "SECURITY_GATE.json", "MIGRATION_GATE.json",
+                     "RELEASE_ATTESTATION.json"):
         assert artifact not in manifest["files"], (
             f"{artifact} must not be in files — it is a post-generation artifact"
         )
 
 
 # ---------------------------------------------------------------------------
-# 2. P0: Qualification report binds to the EXACT current MANIFEST.json
+# 2. P0: Qualification report binds to the EXACT current payload manifest
 # ---------------------------------------------------------------------------
 
 def test_qualification_report_manifest_sha_binds_to_current_manifest(tmp_path):
     """The qualification report's manifest_sha must match the SHA-256 of
-    MANIFEST.json — not a stale rc3 manifest."""
+    the current payload manifest — not a stale rc3 manifest."""
     sys.path.insert(0, str(ROOT / "scripts"))
     try:
         import qualification_report
         import hashlib
         report = qualification_report.generate_report(run_tests=False)
-        manifest_path = ROOT / "MANIFEST.json"
-        if manifest_path.exists():
+        # Try the canonical rc7 name first, then legacy.
+        manifest_path = None
+        for name in ("PAYLOAD_MANIFEST.json", "MANIFEST.json"):
+            p = ROOT / name
+            if p.exists():
+                manifest_path = p
+                break
+        if manifest_path:
             expected_sha = hashlib.sha256(manifest_path.read_bytes()).hexdigest()
             assert report["manifest_sha"] == expected_sha, (
-                f"manifest_sha {report['manifest_sha']!r} != actual MANIFEST.json hash {expected_sha!r}"
+                f"manifest_sha {report['manifest_sha']!r} != actual {manifest_path.name} hash {expected_sha!r}"
             )
             assert "manifest_tree_hash" in report
     finally:

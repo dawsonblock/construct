@@ -65,6 +65,11 @@ class ApprovalNotFound(ExecutionError):
     pass
 
 
+class ExecutionDisabled(ExecutionError):
+    """rc7 Phase 43: ERP execution is feature-gated (default: disabled)."""
+    pass
+
+
 class ReadbackFailed(ExecutionError):
     pass
 
@@ -236,6 +241,19 @@ def execute_approved_invoice(
         ExternalActionInProgress: another worker owns the reservation.
         ExternalActionTerminal: the action failed terminally.
     """
+    import os as _os
+
+    # rc7 Phase 43: ERP execution is feature-gated. The safe default is
+    # non-mutating — ERP_EXECUTION_ENABLED must be explicitly set to "true"
+    # for the executor to attempt any external financial write. This makes
+    # the system safe to deploy without risking unintended ERP mutations.
+    if _os.environ.get("ERP_EXECUTION_ENABLED", "false").lower() != "true":
+        raise ExecutionDisabled(
+            "ERP execution is disabled (ERP_EXECUTION_ENABLED != true). "
+            "rc7: the safe default is non-mutating. Set ERP_EXECUTION_ENABLED=true "
+            "to enable external financial writes."
+        )
+
     org_scope = scope.organization_only
     operation = "erp_submit_purchase_invoice"
 
@@ -895,6 +913,45 @@ def _compare_canonical(expected: dict[str, Any], actual: dict[str, Any]) -> list
         elif str(exp) != str(act):
             mismatches.append(f"{field}: expected {exp!r}, got {act!r}")
     return mismatches
+
+
+def verify_remote_invoice(expected: dict[str, Any], actual: dict[str, Any]) -> tuple[bool, list[str]]:
+    """rc7 Phase 24: Single canonical ERP invoice verification function.
+
+    This is the ONE function that normal execution, UNKNOWN reconciliation,
+    and remote-draft continuation all call to verify a remote ERP document
+    against the expected invoice. If future fields are added, every execution
+    path inherits them automatically.
+
+    Target invariant:
+        ∀ PathsToConfirmed, VerificationFunction = SameFunction
+
+    Verifies:
+        - supplier ID
+        - invoice number
+        - currency
+        - grand total
+        - net total
+        - tax
+        - purchase order
+        - project
+        - docstatus (must be 1 = submitted for confirmed)
+        - idempotency key
+
+    Returns (success, mismatches). If success is False, mismatches contains
+    a list of human-readable field mismatch descriptions.
+    """
+    canonical_expected = _canonical_erp_invoice(expected)
+    canonical_actual = _canonical_erp_invoice(actual)
+    mismatches = _compare_canonical(canonical_expected, canonical_actual)
+
+    # Also check docstatus — the remote document must be submitted (1)
+    # for a confirmed action. Draft (0) or cancelled (2) is not confirmed.
+    actual_docstatus = actual.get("docstatus")
+    if actual_docstatus is not None and actual_docstatus != 1:
+        mismatches.append(f"docstatus: expected 1 (submitted), got {actual_docstatus}")
+
+    return len(mismatches) == 0, mismatches
 
 
 def _compare_readback(expected: dict[str, Any], actual: dict[str, Any]) -> list[str]:

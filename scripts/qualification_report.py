@@ -97,28 +97,34 @@ def _lock_hash() -> str:
     return hasher.hexdigest()
 
 
-def _manifest_binding() -> dict[str, str | None]:
-    """rc6: Bind the qualification report to the EXACT current manifest.
+def _qualification_run_id() -> str:
+    """rc7 Phase 6: Generate a deterministic qualification run ID."""
+    commit = _git_commit()[:12]
+    date = datetime.now(timezone.utc).strftime("%Y%m%d")
+    return f"qual-{date}-{commit}"
 
-    Previous builds looked for `MANIFEST.rc3.json` first and fell back to
-    `MANIFEST.json`, which caused the report's `manifest_sha` to point at a
-    stale rc3 manifest rather than the rc5/rc6 manifest shipped in the same
-    archive. rc6 binds unambiguously to `MANIFEST.json` (the canonical
-    current manifest) and also records `manifest_tree_hash` so verification
-    can confirm the report was generated against the exact release tree.
+
+def _manifest_binding() -> dict[str, str | None]:
+    """rc7: Bind the qualification report to the EXACT current payload manifest.
+
+    The report binds one-directionally to PAYLOAD_MANIFEST.json (not the other
+    way around). This is the acyclic attestation chain:
+      PayloadTree -> PAYLOAD_MANIFEST.json -> Qualification -> RELEASE_ATTESTATION.json
     """
-    path = ROOT / "MANIFEST.json"
-    if not path.exists():
-        return {"manifest_sha": None, "manifest_tree_hash": None}
-    manifest_sha = hashlib.sha256(path.read_bytes()).hexdigest()
-    manifest_tree_hash: str | None = None
-    try:
-        import json
-        manifest = json.loads(path.read_text())
-        manifest_tree_hash = manifest.get("tree_hash")
-    except Exception:
-        pass
-    return {"manifest_sha": manifest_sha, "manifest_tree_hash": manifest_tree_hash}
+    # Try the canonical rc7 name first, fall back to legacy MANIFEST.json.
+    for name in ("PAYLOAD_MANIFEST.json", "MANIFEST.json"):
+        path = ROOT / name
+        if path.exists():
+            manifest_sha = hashlib.sha256(path.read_bytes()).hexdigest()
+            manifest_tree_hash: str | None = None
+            try:
+                import json
+                manifest = json.loads(path.read_text())
+                manifest_tree_hash = manifest.get("tree_hash")
+            except Exception:
+                pass
+            return {"manifest_sha": manifest_sha, "manifest_tree_hash": manifest_tree_hash, "manifest_filename": name}
+    return {"manifest_sha": None, "manifest_tree_hash": None, "manifest_filename": None}
 
 
 def _schema_version() -> dict:
@@ -307,14 +313,18 @@ def generate_report(*, run_tests: bool = False) -> dict:
     manifest_binding = _manifest_binding()
 
     report: dict = {
+        "release_version": _version(),
         "version": _version(),
         "git_commit": _git_commit(),
         "git_branch": _git_branch(),
+        "payload_tree_hash": manifest_binding["manifest_tree_hash"],
+        "dependency_lock_hash": _lock_hash(),
+        "qualification_run_id": _qualification_run_id(),
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "schema": schema,
-        "dependency_lock_hash": _lock_hash(),
         "manifest_sha": manifest_binding["manifest_sha"],
         "manifest_tree_hash": manifest_binding["manifest_tree_hash"],
+        "manifest_filename": manifest_binding["manifest_filename"],
         # rc4 Phase 20: gate categories.
         "gates": {
             "UNIT_PASS": False,

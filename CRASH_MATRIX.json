@@ -1,10 +1,14 @@
 {
+  "dependency_lock_hash": "3e4c9c397e2cbe493372df885a0c79b69388c701ed5c0ebea4436153f3a7f1b1",
   "description": "Crash injection and recovery tests using production mechanisms",
   "exit_code": 0,
-  "generated_at": "2026-08-15T04:51:28.864744+00:00",
+  "generated_at": "2026-08-15T05:53:11.329097+00:00",
   "git_branch": "v0.4-hardening",
-  "git_commit": "9aae468536e44e76e1814eccee182a212dd5e0cc",
+  "git_commit": "eee1d641305824a76d38f6e4b3505716bf42360f",
   "passed": true,
-  "summary": "62 passed in 8.54s",
+  "payload_tree_hash": "b3934f28b095395b13e6f34c834339cc958a6647f9c3fcb6299a7f2ee01dabc0",
+  "qualification_run_id": "qual-20260815-eee1d6413058",
+  "release_version": "0.5.0-rc7.dev0",
+  "summary": "62 passed in 9.39s",
   "version": "0.5.0-rc7.dev0"
 }

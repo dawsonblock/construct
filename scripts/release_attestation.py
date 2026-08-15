@@ -36,8 +36,8 @@ ROOT = Path(__file__).parent.parent
 #: The canonical list of evidence files that the attestation hashes.
 #: These are the post-manifest artifacts that form the qualification bundle.
 EVIDENCE_FILES = [
-    "MANIFEST.json",
-    "MANIFEST.json.sha256",
+    "PAYLOAD_MANIFEST.json",
+    "PAYLOAD_MANIFEST.sha256",
     "QUALIFICATION_REPORT.json",
     "TEST_RESULTS.json",
     "CRASH_MATRIX.json",
@@ -107,14 +107,22 @@ def generate_attestation() -> dict:
     # Extract manifest tree_hash and qualification manifest_sha for convenience.
     manifest_tree_hash = None
     qualification_manifest_sha = None
+    qualification_run_id = None
+    payload_tree_hash = None
     try:
-        manifest = json.loads((ROOT / "MANIFEST.json").read_text())
-        manifest_tree_hash = manifest.get("tree_hash")
+        for name in ("PAYLOAD_MANIFEST.json", "MANIFEST.json"):
+            p = ROOT / name
+            if p.exists():
+                manifest = json.loads(p.read_text())
+                manifest_tree_hash = manifest.get("tree_hash")
+                payload_tree_hash = manifest.get("tree_hash")
+                break
     except Exception:
         pass
     try:
         report = json.loads((ROOT / "QUALIFICATION_REPORT.json").read_text())
         qualification_manifest_sha = report.get("manifest_sha")
+        qualification_run_id = report.get("qualification_run_id")
     except Exception:
         pass
 
@@ -129,11 +137,14 @@ def generate_attestation() -> dict:
     attestation_root = hasher.hexdigest()
 
     return {
+        "release_version": _version(),
         "version": _version(),
         "git_commit": _git_commit(),
         "git_branch": _git_branch(),
+        "payload_tree_hash": payload_tree_hash,
+        "qualification_run_id": qualification_run_id,
         "generated_at": datetime.now(timezone.utc).isoformat(),
-        "attestation_chain": "PayloadTree -> MANIFEST.json -> Qualification -> RELEASE_ATTESTATION.json",
+        "attestation_chain": "PayloadTree -> PAYLOAD_MANIFEST.json -> Qualification -> RELEASE_ATTESTATION.json",
         "attestation_root_hash": attestation_root,
         "manifest_tree_hash": manifest_tree_hash,
         "qualification_manifest_sha": qualification_manifest_sha,

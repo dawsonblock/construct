@@ -17,6 +17,14 @@ import uuid
 
 import pytest
 
+
+@pytest.fixture(autouse=True)
+def _enable_erp_execution_for_tests(monkeypatch):
+    """rc7 Phase 43: ERP execution is feature-gated (default: disabled).
+    Tests need it enabled to exercise the execution path."""
+    monkeypatch.setenv("ERP_EXECUTION_ENABLED", "true")
+
+
 from construction_ai.persistence.db import Database, Scope
 from construction_ai.persistence.repositories import Repositories
 

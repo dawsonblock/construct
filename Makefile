@@ -3,7 +3,7 @@ SHELL := /bin/bash
 COMPOSE := docker compose
 SCRATCH := .venv
 
-.PHONY: help env up down logs ps migrate migrate-status seed acceptance gate test test-integration test-stack lint lock clean qualify-external-effects qualify qualify-full
+.PHONY: help env up down logs ps migrate migrate-status seed acceptance gate test test-integration test-stack lint lock clean qualify-external-effects qualify qualify-full verify-artifact verify-schema verify-runtime
 
 help: ## Show available targets
 	@grep -hE '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN{FS=":.*?## "}{printf "  \033[1m%-16s\033[0m %s\n", $$1, $$2}'
@@ -94,18 +94,21 @@ qualify-external-effects: ## Full clean-slate qualification of external-effect s
 
 qualify: ## Full qualification: acyclic attestation chain (requires full stack)
 	@echo "==> Full qualification: acyclic attestation chain"
-	@echo "    rc7: PayloadTree -> MANIFEST -> Qualification -> RELEASE_ATTESTATION"
+	@echo "    rc7: PayloadTree -> PAYLOAD_MANIFEST -> Qualification -> RELEASE_ATTESTATION"
 	@echo "    This target requires the full stack to be running (make up)."
 	@echo ""
-	@echo "[1/3] Generating payload manifest (MANIFEST.json)..."
-	DATABASE_URL="postgresql://construction:construction@localhost:5432/construction_ai" python scripts/release_manifest.py --output MANIFEST.json
+	@echo "[1/4] Generating payload manifest (PAYLOAD_MANIFEST.json)..."
+	DATABASE_URL="postgresql://construction:construction@localhost:5432/construction_ai" python scripts/release_manifest.py --output PAYLOAD_MANIFEST.json
 	@echo ""
-	@echo "[2/3] Generating gate artifacts and qualification report..."
+	@echo "[2/4] Generating gate artifacts and qualification report..."
 	python scripts/generate_gate_artifacts.py
 	python scripts/qualification_report.py --pytest --output QUALIFICATION_REPORT.json
 	@echo ""
-	@echo "[3/3] Generating release attestation (RELEASE_ATTESTATION.json)..."
+	@echo "[3/4] Generating release attestation (RELEASE_ATTESTATION.json)..."
 	python scripts/release_attestation.py --output RELEASE_ATTESTATION.json
+	@echo ""
+	@echo "[4/4] Verifying payload manifest..."
+	python scripts/verify_payload_manifest.py --manifest PAYLOAD_MANIFEST.json
 	@echo ""
 	@echo "==> Release attestation chain complete"
 	@cat QUALIFICATION_REPORT.json | python -c "import json,sys; r=json.load(sys.stdin); print(f'Qualified: {r[\"qualified\"]}')"
@@ -115,6 +118,25 @@ qualify-full: ## Full clean-slate qualification: reset DB + run all categories +
 	@echo "    This target requires the full stack to be running (make up)."
 	@echo "    It will DROP and RECREATE the database schema."
 	python scripts/full_qualification.py
+
+verify-artifact: ## Verify payload manifest against files on disk (no DB required)
+	@echo "==> Verifying payload manifest (artifact-only, no DB)..."
+	python scripts/verify_payload_manifest.py --manifest PAYLOAD_MANIFEST.json
+
+verify-schema: ## Verify database schema, migrations, and RLS (requires PostgreSQL)
+	@echo "==> Verifying database schema (requires PostgreSQL)..."
+	DATABASE_URL="postgresql://construction:construction@localhost:5432/construction_ai" python scripts/upgrade_gate.py
+	DATABASE_URL="postgresql://construction:construction@localhost:5432/construction_ai" python scripts/security_gate.py
+
+verify-runtime: ## Verify runtime services (Redis, ERP stub, API)
+	@echo "==> Verifying runtime services..."
+	@echo "    Checking Redis..."
+	@redis-cli ping 2>/dev/null || echo "    WARNING: Redis not reachable"
+	@echo "    Checking ERP stub..."
+	@curl -s http://localhost:8000/health 2>/dev/null || echo "    WARNING: ERP stub not reachable"
+	@echo "    Checking API..."
+	@curl -s http://localhost:8001/health 2>/dev/null || echo "    WARNING: API not reachable"
+	@echo "==> Runtime verification complete"
 
 clean: ## Remove local caches and runtime artifacts
 	rm -rf .pytest_cache .ruff_cache object_store construction_ai_ops.db

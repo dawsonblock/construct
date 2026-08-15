@@ -76,6 +76,11 @@ class ExternalAction:
     finalized_at: datetime | None = None
     # rc5 Phase 1: Request payload for unified recovery readback.
     request_payload: dict[str, Any] | None = None
+    # rc7 Phase 22: Hash of request_payload, persisted at reservation time.
+    # Recovery verifies Hash(request_payload) == request_payload_hash before
+    # using the payload for comparison. If they differ, the intent record is
+    # corrupt and recovery must fail closed with EXTERNAL_ACTION_PAYLOAD_CORRUPT.
+    request_payload_hash: str | None = None
     # rc6: Time-bounded negative confirmation — the timestamp of the first
     # empty ERP search sweep. PROVEN_ABSENT now requires both
     # attempts >= threshold AND elapsed >= window since this timestamp.
@@ -128,11 +133,11 @@ class ExternalActionRepository(Repository):
             cur.execute(
                 """INSERT INTO external_actions(
                        organization_id, action_type, operation, target_system,
-                       idempotency_key, request_hash, request_payload, status,
+                       idempotency_key, request_hash, request_payload, request_payload_hash, status,
                        subject_type, subject_id, remote_system,
                        remote_state, reserved_at
                    )
-                   VALUES(%s, %s, %s, %s, %s, %s, %s, 'pending', %s, %s, %s, 'no_remote_effect', now())
+                   VALUES(%s, %s, %s, %s, %s, %s, %s, %s, 'pending', %s, %s, %s, 'no_remote_effect', now())
                    ON CONFLICT (organization_id, action_type, idempotency_key) DO NOTHING
                    RETURNING action_id""",
                 (
@@ -143,6 +148,7 @@ class ExternalActionRepository(Repository):
                     idempotency_key,
                     req_hash,
                     Jsonb(request_payload, dumps=dumps) if request_payload else None,
+                    req_hash,  # rc7: request_payload_hash (same as request_hash for now)
                     subject_type,
                     subject_id,
                     remote_system,
@@ -565,7 +571,7 @@ class ExternalActionRepository(Repository):
             "execution_owner, lease_acquired_at, lease_expires_at, heartbeat_at, "
             "recovery_attempts, remote_state, erp_idempotency_key, readback_hash, "
             "final_audit_event_id, finalized_at, request_payload, "
-            "first_negative_observation_at"
+            "request_payload_hash, first_negative_observation_at"
         )
 
     def _select_sql(self) -> str:
@@ -605,5 +611,6 @@ def _to_action(row: dict[str, Any]) -> ExternalAction:
         final_audit_event_id=row["final_audit_event_id"] if isinstance(row.get("final_audit_event_id"), UUID) else (UUID(str(row["final_audit_event_id"])) if row.get("final_audit_event_id") else None),
         finalized_at=row.get("finalized_at"),
         request_payload=row.get("request_payload"),
+        request_payload_hash=row.get("request_payload_hash"),
         first_negative_observation_at=row.get("first_negative_observation_at"),
     )

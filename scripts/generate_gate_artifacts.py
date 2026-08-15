@@ -67,12 +67,53 @@ def _version() -> str:
     return "unknown"
 
 
+def _lock_hash() -> str:
+    """Hash of the dependency lock file."""
+    lock = ROOT / "requirements.lock.txt"
+    if lock.exists():
+        return hashlib.sha256(lock.read_bytes()).hexdigest()
+    return "unknown"
+
+
+def _payload_tree_hash() -> str | None:
+    """Read the payload_tree_hash from the current payload manifest."""
+    for name in ("PAYLOAD_MANIFEST.json", "MANIFEST.json"):
+        p = ROOT / name
+        if p.exists():
+            try:
+                manifest = json.loads(p.read_text())
+                return manifest.get("tree_hash")
+            except Exception:
+                pass
+    return None
+
+
+def _qualification_run_id() -> str:
+    """rc7 Phase 6: Generate a deterministic qualification run ID.
+
+    Format: qual-<date>-<commit-prefix>
+    This prevents accidental mixing of old crash matrix with new test results
+    even if they happen to have the same version string.
+    """
+    commit = _git_commit()[:12]
+    date = datetime.now(timezone.utc).strftime("%Y%m%d")
+    return f"qual-{date}-{commit}"
+
+
 def _base_artifact() -> dict:
-    """Common provenance fields for all gate artifacts."""
+    """rc7 Phase 6/7: Common identity header for all gate artifacts.
+
+    Every artifact must contain the same identity fields. If any field differs
+    between artifacts, qualification fails (Phase 33).
+    """
     return {
+        "release_version": _version(),
         "version": _version(),
         "git_commit": _git_commit(),
         "git_branch": _git_branch(),
+        "payload_tree_hash": _payload_tree_hash(),
+        "dependency_lock_hash": _lock_hash(),
+        "qualification_run_id": _qualification_run_id(),
         "generated_at": datetime.now(timezone.utc).isoformat(),
     }
 

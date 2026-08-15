@@ -183,13 +183,13 @@ def main() -> int:
     # 4a. Payload manifest (hashes ONLY the payload tree, not qualification artifacts).
     manifest_code, manifest_output = _run(
         [sys.executable, "scripts/release_manifest.py",
-         "--with-database", "--output", "MANIFEST.json"],
+         "--with-database", "--output", "PAYLOAD_MANIFEST.json"],
         env={"DATABASE_URL": db_url},
     )
     if manifest_code != 0:
         print(f"  WARNING: manifest generation failed: {manifest_output}")
     else:
-        print("  Manifest: MANIFEST.json")
+        print("  Manifest: PAYLOAD_MANIFEST.json")
 
     # 4b. Gate artifacts (TEST_RESULTS, CRASH_MATRIX, SECURITY_GATE, MIGRATION_GATE).
     gate_code, gate_output = _run(

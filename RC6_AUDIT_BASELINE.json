@@ -1,0 +1,35 @@
+{
+  "tag": "0.5.0-rc6-audit-baseline",
+  "git_sha": "a5671f6",
+  "git_branch": "v0.4-hardening",
+  "source_version": "0.5.0-rc6.dev0",
+  "audit_findings": [
+    "Manifest companion filename mismatch (MANIFEST.sha256 vs MANIFEST.json.sha256)",
+    "Circular manifest↔qualification report hashing",
+    "Stale rc5 gate artifacts mixed with rc6 qualification claims",
+    "DEFAULT_POLICY fallback for legacy approvals without policy_snapshot",
+    "Policy snapshot hash not validated against stored policy_hash",
+    "Negative-observation state not reset on positive remote observation",
+    "Known remote document disappearance treated as ordinary absence",
+    "Work-confirmation supersession does not enforce same-subject invariant",
+    "Progress billing conflates UNAVAILABLE with OVERBILLED",
+    "Skip classification lacks full pytest node IDs"
+  ],
+  "rc7_remediation_checklist": [
+    "Phase 1/2: Rename to PAYLOAD_MANIFEST.json with explicit constants",
+    "Phase 3: Create verify_payload_manifest.py",
+    "Phase 4: Separate verify-artifact / verify-schema / verify-runtime",
+    "Phase 6/7: qualification_run_id and identity headers",
+    "Phase 9: ZIP packaging with external hash",
+    "Phase 12: Strengthen decision fingerprint composition",
+    "Phase 15: Reconciliation provenance table",
+    "Phase 21: Typed recovery exceptions",
+    "Phase 22: Persist request_payload_hash",
+    "Phase 23: Bind idempotency key to payload hash",
+    "Phase 24: Single canonical ERP verification function",
+    "Phase 25: Pre-CONFIRMED invariant checks",
+    "Phase 33: Artifact consistency gate",
+    "Phase 35: Critical test classification map",
+    "Phase 43: ERP execution feature-gated"
+  ]
+}

@@ -32,11 +32,10 @@ def test_manifest_companion_filename_matches_exclusion():
     sys.path.insert(0, str(ROOT / "scripts"))
     try:
         import release_manifest
-        assert release_manifest.MANIFEST_COMPANION_FILENAME == "MANIFEST.json.sha256"
-        assert release_manifest.MANIFEST_COMPANION_FILENAME in release_manifest.SELF_EXCLUDED_ARTIFACTS
-        assert "MANIFEST.sha256" not in release_manifest.SELF_EXCLUDED_ARTIFACTS, (
-            "rc7: the old incorrect 'MANIFEST.sha256' must not be in the exclusion set"
-        )
+        assert release_manifest.PAYLOAD_MANIFEST_NAME == "PAYLOAD_MANIFEST.json"
+        assert release_manifest.PAYLOAD_MANIFEST_DIGEST_NAME == "PAYLOAD_MANIFEST.sha256"
+        assert release_manifest.PAYLOAD_MANIFEST_NAME in release_manifest.SELF_EXCLUDED_ARTIFACTS
+        assert release_manifest.PAYLOAD_MANIFEST_DIGEST_NAME in release_manifest.SELF_EXCLUDED_ARTIFACTS
     finally:
         sys.path.pop(0)
 
@@ -251,3 +250,116 @@ def test_supersession_allows_same_subject(repos, org_a):
     )
     assert second.supersedes_confirmation_id == first.confirmation_id
     assert second.status == "confirmed"
+
+
+# -- Phase 24: Single canonical ERP verification function tests --------------
+
+
+def test_verify_remote_invoice_function_exists():
+    """rc7 Phase 24: A single canonical verify_remote_invoice function must
+    exist and be callable from all execution paths."""
+    from construction_ai.executive.executor import verify_remote_invoice
+
+    expected = {
+        "supplier": "SUP-001", "invoice_number": "INV-001",
+        "currency": "CAD", "grand_total": "1000.00",
+        "net_total": "900.00", "total_tax": "100.00",
+        "purchase_order_id": "PO-001", "project_id": "PROJ-001",
+        "idempotency_key": "key-123",
+    }
+    actual = {**expected, "docstatus": 1}
+    success, mismatches = verify_remote_invoice(expected, actual)
+    assert success, f"expected match but got mismatches: {mismatches}"
+    assert mismatches == []
+
+
+def test_verify_remote_invoice_detects_mismatch():
+    """rc7 Phase 24: The verification function must detect field mismatches."""
+    from construction_ai.executive.executor import verify_remote_invoice
+
+    expected = {
+        "supplier": "SUP-001", "invoice_number": "INV-001",
+        "currency": "CAD", "grand_total": "1000.00",
+    }
+    actual = {
+        "supplier": "SUP-002", "invoice_number": "INV-001",
+        "currency": "CAD", "grand_total": "1000.00",
+        "docstatus": 1,
+    }
+    success, mismatches = verify_remote_invoice(expected, actual)
+    assert not success
+    assert any("supplier" in m for m in mismatches)
+
+
+def test_verify_remote_invoice_detects_wrong_docstatus():
+    """rc7 Phase 24: docstatus must be 1 (submitted) for confirmed actions."""
+    from construction_ai.executive.executor import verify_remote_invoice
+
+    expected = {"supplier": "SUP-001", "invoice_number": "INV-001"}
+    actual = {**expected, "docstatus": 0}  # draft, not submitted
+    success, mismatches = verify_remote_invoice(expected, actual)
+    assert not success
+    assert any("docstatus" in m for m in mismatches)
+
+
+# -- Phase 43: ERP execution feature-gated tests -----------------------------
+
+
+def test_erp_execution_disabled_by_default(monkeypatch):
+    """rc7 Phase 43: ERP execution must be disabled by default."""
+    monkeypatch.delenv("ERP_EXECUTION_ENABLED", raising=False)
+    from construction_ai.executive.executor import ExecutionDisabled, execute_approved_invoice
+    from unittest.mock import MagicMock
+
+    with pytest.raises(ExecutionDisabled):
+        execute_approved_invoice(
+            MagicMock(), scope=MagicMock(), approval_id=MagicMock(),
+            adapter=MagicMock(), erp_read_transport=MagicMock(),
+        )
+
+
+def test_erp_execution_enabled_when_env_set(monkeypatch):
+    """rc7 Phase 43: ERP execution proceeds when ERP_EXECUTION_ENABLED=true."""
+    monkeypatch.setenv("ERP_EXECUTION_ENABLED", "true")
+    from construction_ai.executive.executor import ExecutionDisabled, execute_approved_invoice
+    from unittest.mock import MagicMock
+
+    # Should NOT raise ExecutionDisabled — it should fail later for other
+    # reasons (approval not found, etc.) but the gate itself is open.
+    try:
+        execute_approved_invoice(
+            MagicMock(), scope=MagicMock(), approval_id=MagicMock(),
+            adapter=MagicMock(), erp_read_transport=MagicMock(),
+        )
+    except ExecutionDisabled:
+        pytest.fail("ExecutionDisabled should not be raised when ERP_EXECUTION_ENABLED=true")
+    except Exception:
+        pass  # Other failures are expected — we only check the gate.
+
+
+# -- Phase 33: Artifact consistency gate tests --------------------------------
+
+
+def test_artifact_consistency_gate_script_exists():
+    """rc7 Phase 33: The artifact consistency gate script must exist."""
+    p = ROOT / "scripts" / "artifact_consistency_gate.py"
+    assert p.exists(), "artifact_consistency_gate.py must exist"
+
+
+def test_payload_manifest_naming_constants():
+    """rc7 Phase 2: The manifest naming constants must be explicit."""
+    sys.path.insert(0, str(ROOT / "scripts"))
+    try:
+        import release_manifest
+        assert release_manifest.PAYLOAD_MANIFEST_NAME == "PAYLOAD_MANIFEST.json"
+        assert release_manifest.PAYLOAD_MANIFEST_DIGEST_NAME == "PAYLOAD_MANIFEST.sha256"
+        assert release_manifest.PAYLOAD_MANIFEST_NAME in release_manifest.SELF_EXCLUDED_ARTIFACTS
+        assert release_manifest.PAYLOAD_MANIFEST_DIGEST_NAME in release_manifest.SELF_EXCLUDED_ARTIFACTS
+    finally:
+        sys.path.pop(0)
+
+
+def test_verify_payload_manifest_script_exists():
+    """rc7 Phase 3: The payload manifest verifier script must exist."""
+    p = ROOT / "scripts" / "verify_payload_manifest.py"
+    assert p.exists(), "verify_payload_manifest.py must exist"
