@@ -1,9 +1,9 @@
 {
   "dependency_lock_hash": "3e4c9c397e2cbe493372df885a0c79b69388c701ed5c0ebea4436153f3a7f1b1",
   "exit_code": 0,
-  "generated_at": "2026-08-15T05:58:23.229044+00:00",
+  "generated_at": "2026-08-15T06:17:35.918424+00:00",
   "git_branch": "v0.4-hardening",
-  "git_commit": "48dff191282f8c06bcfeb343dac8af8b376a02e2",
+  "git_commit": "738877bc34ce367353935759516df331efb68e30",
   "migration_count": 28,
   "migration_fingerprint": "5ec8e1531a8025ce6eab83f0154fa1d18fd5172fe1b3367aadfe751c1c764b97",
   "migrations": [
@@ -150,8 +150,8 @@
   ],
   "output": "=== v0.4.7 Upgrade Gate ===\n\n  [PASS] migrations_sequential: 28 migrations, sequential 1-28\n  [PASS] all_migrations_applied: all 28 migrations applied\n  [PASS] migration_checksums: 28 checksums verified\n  [PASS] database_roles_exist: all 5 roles exist\n  [PASS] app_role_select: app role has SELECT on 24 tables\n  [PASS] no_pending_migrations: no pending migrations\n\nAll 6 upgrade checks passed.",
   "passed": true,
-  "payload_tree_hash": "883891034cbd36e53f5f3af4ad69d02e42183d10d6831c9be09aa47d082c1faa",
-  "qualification_run_id": "qual-20260815-48dff191282f",
+  "payload_tree_hash": "f32248b76974d7fcf4d23d7892d4a54a0b07975517a2959f790ad2cf7497425e",
+  "qualification_run_id": "qual-20260815-738877bc34ce",
   "release_version": "0.5.0-rc7.dev0",
   "summary": "upgrade gate passed",
   "version": "0.5.0-rc7.dev0"

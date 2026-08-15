@@ -162,32 +162,50 @@ def _reconcile_one(
     negative_confirmation_window_seconds: int = 30,
 ):
     """Reconcile a single UNKNOWN action with authoritative payload and supplier resolution."""
-    from construction_ai.executive.executor import reconstruct_expected_erp_payload
+    from construction_ai.executive.executor import PayloadReconstructionError, reconstruct_expected_erp_payload
     from construction_ai.executive.reconcile_unknown import reconcile_external_action
 
     action_id = action_row["action_id"]
     if isinstance(action_id, str):
         action_id = UUID(action_id)
 
-    # rc5 Phase 1 / rc6: Reconstruct authoritative expected payload.
+    # rc5 Phase 1 / rc6/rc7: Reconstruct authoritative expected payload.
     # rc6: Reconstruction now raises PayloadReconstructionError on failure.
-    # The recovery daemon catches it and lets reconciliation fail closed
-    # (the reconcile_external_action function will see expected_payload=None
-    # and route to manual reconciliation).
+    # rc7 Phase 21: Catch typed exceptions and classify the failure mode in
+    # the audit event. Unexpected exceptions are still caught but logged
+    # with their type so they surface loudly rather than being silently
+    # reduced to a generic payload-unavailable state.
     expected_payload = action_row.get("request_payload")
     if expected_payload is None:
         try:
             expected_payload = reconstruct_expected_erp_payload(repos, scope=scope, action=action_row)
-        except Exception as e:
-            # Log the error and leave expected_payload as None —
-            # reconcile_external_action will fail closed.
+        except PayloadReconstructionError as e:
+            # Typed failure — classify and audit with the specific cause.
+            failure_type = type(e).__name__
             repos.audit.append(
                 scope=scope,
                 event_type="EXTERNAL_ACTION_PAYLOAD_RECONSTRUCTION_FAILED",
                 actor="recovery_daemon",
                 object_type="external_action",
                 object_id=action_id,
-                payload={"action_id": str(action_id), "error": str(e)},
+                payload={"action_id": str(action_id), "error": str(e), "failure_type": failure_type},
+            )
+            expected_payload = None
+        except Exception as e:
+            # rc7 Phase 21: Unexpected exception — surface the type loudly.
+            # Do not silently reduce to generic payload-unavailable.
+            repos.audit.append(
+                scope=scope,
+                event_type="EXTERNAL_ACTION_PAYLOAD_RECONSTRUCTION_UNEXPECTED",
+                actor="recovery_daemon",
+                object_type="external_action",
+                object_id=action_id,
+                payload={
+                    "action_id": str(action_id),
+                    "error": str(e),
+                    "error_type": type(e).__name__,
+                    "traceback_module": getattr(e, "__traceback__", None) and e.__traceback__.tb_frame.f_globals.get("__name__", "unknown"),
+                },
             )
             expected_payload = None
 

@@ -1,6 +1,6 @@
 {
   "attestation_chain": "PayloadTree -> PAYLOAD_MANIFEST.json -> Qualification -> RELEASE_ATTESTATION.json",
-  "code_fingerprint": "090ae53ed3eca6ef9f303da29ff43a5c5c769a9990a5600c8123df61225fa2f6",
+  "code_fingerprint": "5497c440ef1ff68cae015748df71a8db2fc9f91e4e9a824a68d8e573a6f7d019",
   "dependencies": {
     "hypothesis": "6.151.4",
     "psycopg": "3.3.4",
@@ -55,8 +55,8 @@
       "size": 15
     },
     "apps/api/main.py": {
-      "sha256": "53131f7d8c626513197500d4de5e391454ad08a48d22fd84da016a92ca3fad5c",
-      "size": 23372
+      "sha256": "280b538350a289078ae232681fbb79f14382ea4d5ebf360ca891c392b10406de",
+      "size": 25303
     },
     "apps/erpnext_stub/__init__.py": {
       "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
@@ -183,8 +183,8 @@
       "size": 843
     },
     "construction_ai/executive/executor.py": {
-      "sha256": "9a176a891b2e187eb0bfe27ee18f5be5027a5f8c1aebf254fcb1e121ccd13d37",
-      "size": 37878
+      "sha256": "3192463b25701bee7266ae80947664a2d42bda4ccc2ae1d647f973fe5fb5bc08",
+      "size": 42258
     },
     "construction_ai/executive/invoice_pipeline.py": {
       "sha256": "806bcb6a41b86c330c33d0b7fa00c6961274fa2e1391d694f057a1966d63063b",
@@ -199,8 +199,8 @@
       "size": 4820
     },
     "construction_ai/executive/recovery_daemon.py": {
-      "sha256": "c9f09c338178059213748e9840ee3e38d219ed758731037da8814e7ce9d17c39",
-      "size": 18151
+      "sha256": "8d58023a49e7cb2f644de00bba6dc1441d28cdb21e1d3c4324269bbf0c4004c7",
+      "size": 19125
     },
     "construction_ai/extraction/__init__.py": {
       "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
@@ -367,8 +367,8 @@
       "size": 8256
     },
     "construction_ai/persistence/repositories/sov.py": {
-      "sha256": "de3a4750836b382882d8a9d21d22f4fb351d5a65242f1d7d87668ef0da96a057",
-      "size": 13757
+      "sha256": "0142b5be66c945de838788203a4ac05a6f584757ae3ecc76827f91b6c6a0b5d5",
+      "size": 15198
     },
     "construction_ai/persistence/serialization.py": {
       "sha256": "f171f2e48987406a24182be8f4d94fd29ec44820abd8916fdaaede1fba08d7e1",
@@ -451,8 +451,8 @@
       "size": 883
     },
     "construction_ai/work/repository.py": {
-      "sha256": "2b853209da556a824c5da1f67ba73adbc59d81c42f7686a023ee05af657e9ca7",
-      "size": 9536
+      "sha256": "90b635d145a6820f6787b1380adf4b89666559b2352ec4d15fd7f0692c3e9c04",
+      "size": 10962
     },
     "demo_vertical_slice.py": {
       "sha256": "6996553721a53e8d7f83b0b6de1e533a6b9e0f5ef33f439848a7452bc27d7e2d",
@@ -678,6 +678,10 @@
       "sha256": "7fdfc4d99d5914dea23c7eb86c7e087bbe40cde77d0ab4a1dc89ed71a76a8788",
       "size": 1650
     },
+    "scripts/critical_test_map.py": {
+      "sha256": "7d3767bc4f29c580e94201868722cb5e28a5e664ef77b9e4807c3e6e62c18236",
+      "size": 2722
+    },
     "scripts/evidence_bundle.py": {
       "sha256": "32ab2bf5f7d41ac499f5662ad9d0f546030c0f752ad7fe9c4b4f1d9d0e7c2bcc",
       "size": 9276
@@ -867,8 +871,8 @@
       "size": 22936
     },
     "tests/test_rc7_hardening.py": {
-      "sha256": "3f789318826fc5cf8817237632581a9515fc8df780cf28d6d7a8192bc54b5097",
-      "size": 15226
+      "sha256": "b3416e7bff511146a1d7b7e18eeba5dbc0eebea1918d193d0db7ea70d21891f7",
+      "size": 21654
     },
     "tests/test_reconcile_unknown.py": {
       "sha256": "ca42e6e0fb3c590bb478e5985164fbb29aa2011ec860b11aba5f66244180e1a5",
@@ -951,9 +955,9 @@
       "size": 461
     }
   },
-  "generated_at": "2026-08-15T05:57:33.347633+00:00",
+  "generated_at": "2026-08-15T06:16:53.483347+00:00",
   "git_branch": "v0.4-hardening",
-  "git_commit": "48dff191282f8c06bcfeb343dac8af8b376a02e2",
+  "git_commit": "738877bc34ce367353935759516df331efb68e30",
   "migration_count": 28,
   "migration_fingerprint": "5ec8e1531a8025ce6eab83f0154fa1d18fd5172fe1b3367aadfe751c1c764b97",
   "migrations": [
@@ -1087,7 +1091,7 @@
     "SECURITY_GATE.json",
     "TEST_RESULTS.json"
   ],
-  "test_fingerprint": "b8bdd865165f1acf9f6e340a2c575bfbb3e9899828a10b884410edbb31d5b7cf",
-  "tree_hash": "883891034cbd36e53f5f3af4ad69d02e42183d10d6831c9be09aa47d082c1faa",
+  "test_fingerprint": "644579e18521d1e318f7e83a36b86ad8228360e27944f6cbd81c04c77758efff",
+  "tree_hash": "f32248b76974d7fcf4d23d7892d4a54a0b07975517a2959f790ad2cf7497425e",
   "version": "0.5.0-rc7.dev0"
 }

@@ -363,3 +363,163 @@ def test_verify_payload_manifest_script_exists():
     """rc7 Phase 3: The payload manifest verifier script must exist."""
     p = ROOT / "scripts" / "verify_payload_manifest.py"
     assert p.exists(), "verify_payload_manifest.py must exist"
+
+
+# -- Phase 21: Typed recovery exceptions tests --------------------------------
+
+
+def test_typed_recovery_exceptions_exist():
+    """rc7 Phase 21: Typed recovery exception hierarchy must exist."""
+    from construction_ai.executive.executor import (
+        PayloadReconstructionError,
+        ApprovalMissing,
+        SupplierMappingMissing,
+        InvoiceMissing,
+        PolicyCorrupt,
+        PayloadCorrupt,
+        DatabaseUnavailable,
+        InvariantViolation,
+    )
+    # All should be subclasses of PayloadReconstructionError.
+    for cls in (ApprovalMissing, SupplierMappingMissing, InvoiceMissing,
+                PolicyCorrupt, PayloadCorrupt, DatabaseUnavailable, InvariantViolation):
+        assert issubclass(cls, PayloadReconstructionError)
+
+
+# -- Phase 23: Idempotency key binding tests ----------------------------------
+
+
+def test_idempotency_key_includes_payload_hash():
+    """rc7 Phase 23: The ERP idempotency key must include the payload hash."""
+    from construction_ai.executive.executor import _compute_erp_idempotency_key
+    key_without = _compute_erp_idempotency_key(
+        organization_id="org-1", invoice_id="inv-1",
+        approval_id="appr-1", operation="erp_invoice_submit",
+    )
+    key_with = _compute_erp_idempotency_key(
+        organization_id="org-1", invoice_id="inv-1",
+        approval_id="appr-1", operation="erp_invoice_submit",
+        request_payload_hash="abc123",
+    )
+    assert key_without != key_with, (
+        "rc7 Phase 23: idempotency key must change when payload hash is included"
+    )
+
+
+# -- Phase 25: Pre-CONFIRMED invariant tests ----------------------------------
+
+
+def test_pre_confirmed_invariant_checks_exist():
+    """rc7 Phase 25: The pre-CONFIRMED invariant checks must be present
+    in the executor."""
+    # We verify by checking that the InvariantViolation exception is importable
+    # and that the executor source contains the invariant checks.
+    import inspect
+    from construction_ai.executive import executor
+    source = inspect.getsource(executor.execute_approved_invoice)
+    assert "pre-CONFIRMED invariant" in source, (
+        "rc7 Phase 25: pre-CONFIRMED invariant checks must be in execute_approved_invoice"
+    )
+
+
+# -- Phase 17: Confirmation lifecycle tests -----------------------------------
+
+
+def test_confirmation_revoke(repos, org_a):
+    """rc7 Phase 17: A confirmed confirmation can be revoked."""
+    from uuid import UUID
+    project_id = UUID(str(org_a["project"].project_id))
+    company_id = UUID(str(org_a["company"].company_id))
+
+    contract = repos.contracts.create(
+        scope=org_a["scope"], project_id=project_id, company_id=company_id,
+        reference="CON-RC7-REV", name="RC7 Revoke Contract",
+        base_contract_value=10000, currency="CAD",
+    )
+    sov_item = repos.sov_items.create(
+        scope=org_a["scope"], contract_id=UUID(contract.contract_id),
+        reference="SOV-REV", name="Item Rev", base_value=10000, currency="CAD", sort_order=1,
+    )
+
+    confirmation = repos.work_confirmations.record(
+        scope=org_a["scope"], project_id=project_id,
+        sov_item_id=UUID(sov_item.sov_item_id),
+        confirmation_type="superintendent", percent_complete=50.0,
+    )
+    assert confirmation.status == "confirmed"
+
+    result = repos.work_confirmations.revoke(
+        scope=org_a["scope"], confirmation_id=confirmation.confirmation_id,
+    )
+    assert result is True
+
+
+def test_confirmation_revoke_already_superseded_fails(repos, org_a):
+    """rc7 Phase 17: Revoking a superseded confirmation should fail."""
+    from uuid import UUID
+    project_id = UUID(str(org_a["project"].project_id))
+    company_id = UUID(str(org_a["company"].company_id))
+
+    contract = repos.contracts.create(
+        scope=org_a["scope"], project_id=project_id, company_id=company_id,
+        reference="CON-RC7-SUP", name="RC7 Supersede Contract",
+        base_contract_value=10000, currency="CAD",
+    )
+    sov_item = repos.sov_items.create(
+        scope=org_a["scope"], contract_id=UUID(contract.contract_id),
+        reference="SOV-SUP", name="Item Sup", base_value=10000, currency="CAD", sort_order=1,
+    )
+
+    first = repos.work_confirmations.record(
+        scope=org_a["scope"], project_id=project_id,
+        sov_item_id=UUID(sov_item.sov_item_id),
+        confirmation_type="superintendent", percent_complete=50.0,
+    )
+    # Supersede it.
+    repos.work_confirmations.record(
+        scope=org_a["scope"], project_id=project_id,
+        sov_item_id=UUID(sov_item.sov_item_id),
+        confirmation_type="signed_inspection", percent_complete=100.0,
+        supersedes_confirmation_id=first.confirmation_id,
+    )
+    # Attempting to revoke the superseded confirmation should fail.
+    result = repos.work_confirmations.revoke(
+        scope=org_a["scope"], confirmation_id=first.confirmation_id,
+    )
+    assert result is False, "rc7 Phase 17: cannot revoke a superseded confirmation"
+
+
+# -- Phase 20: CO allocation currency check tests -----------------------------
+
+
+def test_co_allocation_currency_mismatch_rejected(repos, org_a):
+    """rc7 Phase 20: CO allocation with mismatched currency must be rejected."""
+    from uuid import UUID
+    from decimal import Decimal
+    project_id = UUID(str(org_a["project"].project_id))
+    company_id = UUID(str(org_a["company"].company_id))
+
+    contract = repos.contracts.create(
+        scope=org_a["scope"], project_id=project_id, company_id=company_id,
+        reference="CON-RC7-FX", name="RC7 FX Contract",
+        base_contract_value=10000, currency="CAD",
+    )
+    sov_item = repos.sov_items.create(
+        scope=org_a["scope"], contract_id=UUID(contract.contract_id),
+        reference="SOV-FX", name="Item FX", base_value=10000, currency="CAD", sort_order=1,
+    )
+    # Create a change order in USD (already approved by default).
+    co = repos.change_orders.create(
+        scope=org_a["scope"], contract_id=UUID(contract.contract_id),
+        reference="CO-FX-1", name="FX Change Order",
+        amount=Decimal("5000"), currency="USD", status="approved",
+    )
+
+    # Attempt to allocate in CAD (mismatch) — should fail.
+    with pytest.raises(ValueError, match="currency mismatch"):
+        repos.change_orders.allocate(
+            scope=org_a["scope"],
+            change_order_id=UUID(co.change_order_id),
+            sov_item_id=UUID(sov_item.sov_item_id),
+            amount=Decimal("5000"), currency="CAD",
+        )

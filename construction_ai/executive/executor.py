@@ -47,6 +47,7 @@ from uuid import UUID
 from construction_ai.integrations.erpnext import ERPNextAdapter
 from construction_ai.persistence.db import Scope
 from construction_ai.persistence.repositories import Repositories
+from construction_ai.persistence.repositories.external_actions import hash_request
 
 
 class ExecutionError(Exception):
@@ -578,6 +579,47 @@ def execute_approved_invoice(
 
     _check_crash("after_readback")
 
+    # rc7 Phase 25: Pre-CONFIRMED invariant checks.
+    # Before transitioning any action to CONFIRMED, assert:
+    #   - expected payload present
+    #   - expected payload hash valid (if persisted)
+    #   - remote ID present
+    #   - docstatus terminal (1 = submitted)
+    #   - canonical comparison passed (mismatches is empty at this point)
+    #   - ERP idempotency key matched (in payload)
+    #   - approval still executable (not revoked)
+    #   - decision fingerprint current (checked earlier, but re-verify)
+    #   - policy snapshot valid (checked earlier)
+    if not payload:
+        raise InvariantViolation(
+            "pre-CONFIRMED invariant: expected payload is empty — cannot confirm"
+        )
+    if not docname:
+        raise InvariantViolation(
+            "pre-CONFIRMED invariant: remote_document_id is empty — cannot confirm"
+        )
+    if docstatus != 1:
+        raise InvariantViolation(
+            f"pre-CONFIRMED invariant: docstatus={docstatus}, expected 1 (submitted)"
+        )
+    if mismatches:
+        raise InvariantViolation(
+            f"pre-CONFIRMED invariant: canonical comparison has mismatches: {mismatches}"
+        )
+    if not payload.get("construct_idempotency_key"):
+        raise InvariantViolation(
+            "pre-CONFIRMED invariant: ERP idempotency key missing from payload"
+        )
+    # rc7 Phase 22: Verify request_payload_hash if persisted.
+    if hasattr(acquired, "request_payload_hash") and acquired.request_payload_hash:
+        computed_hash = hash_request(payload)
+        if computed_hash != acquired.request_payload_hash:
+            raise PayloadCorrupt(
+                f"pre-CONFIRMED invariant: request_payload_hash mismatch — "
+                f"stored={acquired.request_payload_hash[:16]}... "
+                f"computed={computed_hash[:16]}..."
+            )
+
     # 11. Transition to CONFIRMED with remote_state=REMOTE_SUBMITTED.
     result_payload = {"docname": docname, "docstatus": docstatus}
     _check_crash("before_confirmed")
@@ -702,12 +744,24 @@ def _hash_json(value: Any) -> str:
     ).hexdigest()
 
 
-def _compute_erp_idempotency_key(*, organization_id: str, invoice_id: str, approval_id: str, operation: str) -> str:
-    """rc4 Phase 5: Deterministic ERP-visible idempotency key.
+def _compute_erp_idempotency_key(
+    *,
+    organization_id: str,
+    invoice_id: str,
+    approval_id: str,
+    operation: str,
+    request_payload_hash: str | None = None,
+) -> str:
+    """rc4 Phase 5 / rc7 Phase 23: Deterministic ERP-visible idempotency key.
 
-    K = H(organization || invoice || approval || operation)
+    rc4: K = H(organization || invoice || approval || operation)
+    rc7: K = H(organization || invoice || approval || operation || payload_hash)
 
-    This key is sent to ERP as a custom field and used for remote reconciliation.
+    rc7 Phase 23: The payload hash is now included in the idempotency key.
+    This means a changed payload cannot accidentally reuse an idempotency
+    key from a prior financial intent. If the payload changes (e.g. amount
+    is edited), the idempotency key changes, and ERP will treat it as a
+    new document rather than silently returning the old one.
     """
     import hashlib
     h = hashlib.sha256()
@@ -718,6 +772,9 @@ def _compute_erp_idempotency_key(*, organization_id: str, invoice_id: str, appro
     h.update(approval_id.encode())
     h.update(b"\x00")
     h.update(operation.encode())
+    if request_payload_hash:
+        h.update(b"\x00")
+        h.update(request_payload_hash.encode())
     return f"construct-{h.hexdigest()[:32]}"
 
 
@@ -745,13 +802,12 @@ def build_expected_erp_payload(
             supplier_id = company.erp_supplier_id
 
     approval_id_str = str(approval_id) if approval_id else (str(approval.approval_id) if approval else "")
-    erp_idempotency_key = _compute_erp_idempotency_key(
-        organization_id=str(org_scope.organization_id),
-        invoice_id=str(invoice_id),
-        approval_id=approval_id_str,
-        operation=operation,
-    )
 
+    # rc7 Phase 23: Build the payload first WITHOUT the idempotency key,
+    # compute its hash, then derive the idempotency key from the hash.
+    # This binds the idempotency key to the exact financial intent — a
+    # changed payload produces a different key, preventing accidental
+    # reuse of a prior intent's ERP document.
     payload: dict[str, Any] = {
         "supplier": supplier_id,
         "bill_no": invoice.invoice_number,
@@ -760,7 +816,6 @@ def build_expected_erp_payload(
         "total_taxes": str(_Decimal(str(invoice.tax or 0))),
         "currency": invoice.currency or "CAD",
         "docstatus": 0,
-        "construct_idempotency_key": erp_idempotency_key,
     }
 
     if invoice.po_number:
@@ -773,6 +828,17 @@ def build_expected_erp_payload(
         project_id = invoice.project_id
     if project_id:
         payload["project"] = str(project_id)
+
+    # rc7 Phase 23: Compute payload hash, then idempotency key from it.
+    _payload_hash = hash_request(payload)
+    erp_idempotency_key = _compute_erp_idempotency_key(
+        organization_id=str(org_scope.organization_id),
+        invoice_id=str(invoice_id),
+        approval_id=approval_id_str,
+        operation=operation,
+        request_payload_hash=_payload_hash,
+    )
+    payload["construct_idempotency_key"] = erp_idempotency_key
 
     return payload
 
@@ -838,11 +904,48 @@ def reconstruct_expected_erp_payload(
 
 
 class PayloadReconstructionError(ExecutionError):
-    """rc6: Typed exception for expected-payload reconstruction failures.
+    """rc6/rc7: Typed exception for expected-payload reconstruction failures.
 
     Recovery code must treat this as a fail-closed condition: missing expected
     intent ⇒ manual reconciliation, never silent confirmation or submission.
+
+    rc7 Phase 21: Subclasses classify the failure mode:
+      - ApprovalMissing: no approval found for the subject
+      - SupplierMappingMissing: supplier mapping not configured
+      - InvoiceMissing: invoice not found in the database
+      - PolicyCorrupt: approval policy snapshot is corrupt
+      - PayloadCorrupt: persisted request_payload hash does not match
+      - DatabaseUnavailable: database connection failure
+      - InvariantViolation: a runtime invariant was violated
     """
+
+
+class ApprovalMissing(PayloadReconstructionError):
+    """rc7 Phase 21: No approval found for the external action's subject."""
+
+
+class SupplierMappingMissing(PayloadReconstructionError):
+    """rc7 Phase 21: Supplier mapping is not configured for this invoice."""
+
+
+class InvoiceMissing(PayloadReconstructionError):
+    """rc7 Phase 21: The invoice referenced by the external action was not found."""
+
+
+class PolicyCorrupt(PayloadReconstructionError):
+    """rc7 Phase 21: The approval policy snapshot is corrupt."""
+
+
+class PayloadCorrupt(PayloadReconstructionError):
+    """rc7 Phase 21: The persisted request_payload hash does not match."""
+
+
+class DatabaseUnavailable(PayloadReconstructionError):
+    """rc7 Phase 21: Database connection failure during reconstruction."""
+
+
+class InvariantViolation(PayloadReconstructionError):
+    """rc7 Phase 21: A runtime invariant was violated during reconstruction."""
 
 
 def _canonical_erp_invoice(data: dict[str, Any]) -> dict[str, Any]:

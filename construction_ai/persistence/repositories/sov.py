@@ -149,8 +149,39 @@ class ChangeOrderRepository:
 
     def allocate(self, *, scope: Scope, change_order_id: UUID, sov_item_id: UUID,
                  amount: Any, currency: str = "CAD") -> ChangeOrderAllocation:
-        """rc5 Phase 2: Explicitly bind a change order to a specific SOV item."""
+        """rc5 Phase 2: Explicitly bind a change order to a specific SOV item.
+
+        rc7 Phase 20: Validates that the allocation currency matches the
+        change order currency and the SOV item currency. No silent conversion.
+        """
+        # rc7 Phase 20: Currency consistency check.
         with self.db.scoped(scope) as cur:
+            cur.execute(
+                """SELECT currency FROM change_orders
+                   WHERE organization_id = %s AND change_order_id = %s""",
+                (scope.organization_id, change_order_id),
+            )
+            co_row = row_to_dict(cur)
+            if co_row and co_row.get("currency") and co_row["currency"] != currency:
+                raise ValueError(
+                    f"currency mismatch: allocation currency={currency} "
+                    f"does not match change order currency={co_row['currency']} — "
+                    "rc7 Phase 20: no silent conversion"
+                )
+
+            cur.execute(
+                """SELECT currency FROM sov_items
+                   WHERE organization_id = %s AND sov_item_id = %s""",
+                (scope.organization_id, sov_item_id),
+            )
+            sov_row = row_to_dict(cur)
+            if sov_row and sov_row.get("currency") and sov_row["currency"] != currency:
+                raise ValueError(
+                    f"currency mismatch: allocation currency={currency} "
+                    f"does not match SOV item currency={sov_row['currency']} — "
+                    "rc7 Phase 20: no silent conversion"
+                )
+
             cur.execute(
                 """INSERT INTO change_order_allocations(organization_id, change_order_id, sov_item_id, amount, currency)
                    VALUES(%s,%s,%s,%s,%s)

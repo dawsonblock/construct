@@ -97,6 +97,37 @@ class WorkConfirmationRepository:
                 (scope.organization_id, confirmation_id),
             )
 
+    def revoke(self, *, scope: Scope, confirmation_id: UUID, reason: str | None = None) -> bool:
+        """rc7 Phase 17: Revoke a confirmation.
+
+        Only ACTIVE (confirmed) confirmations can be revoked.
+        SUPERSEDED → ACTIVE is not allowed without a dedicated restoration.
+        """
+        with self.db.scoped(scope) as cur:
+            cur.execute(
+                """UPDATE work_confirmations
+                   SET status = 'revoked', updated_at = now()
+                   WHERE organization_id = %s AND confirmation_id = %s AND status = 'confirmed'""",
+                (scope.organization_id, confirmation_id),
+            )
+            return cur.rowcount > 0
+
+    def retract(self, *, scope: Scope, confirmation_id: UUID, reason: str | None = None) -> bool:
+        """rc7 Phase 17: Retract a confirmation.
+
+        Only ACTIVE (confirmed) confirmations can be retracted.
+        This is distinct from revoke: retraction is initiated by the confirmer,
+        while revocation is an administrative action.
+        """
+        with self.db.scoped(scope) as cur:
+            cur.execute(
+                """UPDATE work_confirmations
+                   SET status = 'retracted', updated_at = now()
+                   WHERE organization_id = %s AND confirmation_id = %s AND status = 'confirmed'""",
+                (scope.organization_id, confirmation_id),
+            )
+            return cur.rowcount > 0
+
     def _validate_same_subject_before_supersede(
         self, *, scope: Scope, new_confirmation: WorkConfirmation, superseded_id: UUID,
     ) -> None:

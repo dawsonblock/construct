@@ -2,12 +2,12 @@
   "adversarial": {
     "exit_code": 0,
     "passed": true,
-    "summary": "49 passed in 2.08s"
+    "summary": "49 passed in 1.89s"
   },
   "crash_recovery": {
     "exit_code": 0,
     "passed": true,
-    "summary": "62 passed in 11.43s"
+    "summary": "62 passed in 8.64s"
   },
   "critical_skipped_count": 0,
   "critical_skips_allowed": 0,
@@ -15,7 +15,7 @@
   "external_effect": {
     "exit_code": 0,
     "passed": true,
-    "summary": "100 passed in 12.30s"
+    "summary": "100 passed in 4.17s"
   },
   "gates": {
     "CRASH_RECOVERY_PASS": true,
@@ -25,20 +25,20 @@
     "SECURITY_PASS": true,
     "UNIT_PASS": true
   },
-  "generated_at": "2026-08-15T05:58:25.261416+00:00",
+  "generated_at": "2026-08-15T06:17:38.112461+00:00",
   "git_branch": "v0.4-hardening",
-  "git_commit": "48dff191282f8c06bcfeb343dac8af8b376a02e2",
+  "git_commit": "738877bc34ce367353935759516df331efb68e30",
   "manifest_filename": "PAYLOAD_MANIFEST.json",
-  "manifest_sha": "cb1689f220a43d1059d2541fb0a70876c1f7999a363cef710750541bb7f0d4ed",
-  "manifest_tree_hash": "883891034cbd36e53f5f3af4ad69d02e42183d10d6831c9be09aa47d082c1faa",
+  "manifest_sha": "3837306c790ec4a0a2120fc5d91857ad90eacb918404a7c3bdb19570f892947b",
+  "manifest_tree_hash": "f32248b76974d7fcf4d23d7892d4a54a0b07975517a2959f790ad2cf7497425e",
   "noncritical_skipped_count": 5,
-  "payload_tree_hash": "883891034cbd36e53f5f3af4ad69d02e42183d10d6831c9be09aa47d082c1faa",
-  "qualification_run_id": "qual-20260815-48dff191282f",
+  "payload_tree_hash": "f32248b76974d7fcf4d23d7892d4a54a0b07975517a2959f790ad2cf7497425e",
+  "qualification_run_id": "qual-20260815-738877bc34ce",
   "qualified": true,
   "release_integrity": {
     "exit_code": 0,
     "passed": true,
-    "summary": "20 passed in 0.72s"
+    "summary": "20 passed in 0.62s"
   },
   "release_version": "0.5.0-rc7.dev0",
   "schema": {
@@ -48,7 +48,7 @@
   "security": {
     "exit_code": 0,
     "passed": true,
-    "summary": "26 passed in 0.86s"
+    "summary": "26 passed in 0.45s"
   },
   "skipped_tests": [
     {
@@ -91,16 +91,16 @@
     "error": 0,
     "exit_code": 0,
     "failed": 0,
-    "passed": 559,
+    "passed": 565,
     "run": true,
     "skipped": 5,
-    "summary": "559 passed, 5 skipped in 33.00s",
-    "total": 564
+    "summary": "565 passed, 5 skipped in 27.25s",
+    "total": 570
   },
   "unit_suite": {
     "exit_code": 0,
     "passed": true,
-    "summary": "82 passed in 16.20s"
+    "summary": "82 passed in 6.77s"
   },
   "version": "0.5.0-rc7.dev0"
 }

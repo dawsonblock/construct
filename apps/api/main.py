@@ -145,12 +145,50 @@ if app:
 
     @app.get("/health")
     def health():
+        import os as _os
+        # rc7 Phase 42: Deeper readiness checks beyond "API is responding".
+        db_ok = repos.db.healthy()
+        erp_execution_enabled = _os.environ.get("ERP_EXECUTION_ENABLED", "false").lower() == "true"
+
+        # rc7 Phase 44: Release attestation verification at startup.
+        # If the deployed code does not match the qualified artifact,
+        # financial execution should be disabled.
+        attestation_verified = True  # default: assume verified if no attestation file
+        attestation_path = _os.environ.get("RELEASE_ATTESTATION_PATH")
+        if attestation_path:
+            from pathlib import Path
+            p = Path(attestation_path)
+            if p.exists():
+                import hashlib
+                import json
+                try:
+                    attestation = json.loads(p.read_text())
+                    # Verify the version matches.
+                    if attestation.get("release_version") != VERSION:
+                        attestation_verified = False
+                    # Verify the attestation companion hash if present.
+                    companion = p.with_suffix(".json.sha256")
+                    if companion.exists():
+                        expected = companion.read_text().strip().split()[0]
+                        actual = hashlib.sha256(p.read_bytes()).hexdigest()
+                        if expected != actual:
+                            attestation_verified = False
+                except Exception:
+                    attestation_verified = False
+
+        # rc7 Phase 42: Financial executor should disable itself if critical
+        # support services are unhealthy.
+        financial_execution_ready = db_ok and attestation_verified
+
         return {
-            "status": "ok",
+            "status": "ok" if db_ok else "degraded",
             "version": VERSION,
             "financial_default": "human_approval_required",
             "tenancy": "relational_keys_plus_rls",
-            "database": "ok" if repos.db.healthy() else "unavailable",
+            "database": "ok" if db_ok else "unavailable",
+            "erp_execution_enabled": erp_execution_enabled,
+            "attestation_verified": attestation_verified,
+            "financial_execution_ready": financial_execution_ready,
         }
 
     # -- authentication -----------------------------------------------------
