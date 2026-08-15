@@ -523,3 +523,38 @@ def test_co_allocation_currency_mismatch_rejected(repos, org_a):
             sov_item_id=UUID(sov_item.sov_item_id),
             amount=Decimal("5000"), currency="CAD",
         )
+
+
+# -- Phase 29/30: ZIP testing + packaged payload verification -----------------
+
+
+def test_package_release_script_exists():
+    """rc7 Phase 9/29: The package release script must exist."""
+    p = ROOT / "scripts" / "package_release.py"
+    assert p.exists(), "package_release.py must exist"
+
+
+def test_zip_hash_is_external(tmp_path):
+    """rc7 Phase 9: The ZIP hash must be stored externally, not inside the ZIP.
+
+    The trust chain is:
+      FinalZIP -> ExternalZIPHash (not inside the ZIP)
+      Inside ZIP: ReleaseAttestation -> QualificationReport -> PayloadManifest -> PayloadFiles
+    No cycles.
+    """
+    import zipfile
+    # If a ZIP exists, verify the hash file is NOT inside it.
+    for zip_path in ROOT.glob("construct-*.zip"):
+        with zipfile.ZipFile(zip_path) as zf:
+            names = zf.namelist()
+            # The ZIP hash file must NOT be inside the ZIP.
+            hash_name = zip_path.name + ".sha256"
+            assert hash_name not in names, (
+                f"rc7 Phase 9: {hash_name} must not be inside the ZIP — "
+                "the final archive hash is external"
+            )
+            # PAYLOAD_MANIFEST must be inside.
+            assert "PAYLOAD_MANIFEST.json" in names, "PAYLOAD_MANIFEST.json must be in the ZIP"
+            # RELEASE_ATTESTATION must be inside.
+            assert "RELEASE_ATTESTATION.json" in names, "RELEASE_ATTESTATION.json must be in the ZIP"
+        break  # Only check the first ZIP found.

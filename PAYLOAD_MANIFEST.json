@@ -870,9 +870,13 @@
       "sha256": "c461617326a994106de1a040eb7b37eac7e8c54d2f2bf07d17069d6b2572e4cd",
       "size": 22936
     },
+    "tests/test_rc7_adversarial.py": {
+      "sha256": "6b7308147aca209a89834a905fe9a61cef9dc92a8b8ab55693fd86362f350c71",
+      "size": 15290
+    },
     "tests/test_rc7_hardening.py": {
-      "sha256": "b3416e7bff511146a1d7b7e18eeba5dbc0eebea1918d193d0db7ea70d21891f7",
-      "size": 21654
+      "sha256": "780d455648fd0a3f91bea506af36546003a8b0045576074aa0c9c6b9f9d768c6",
+      "size": 23122
     },
     "tests/test_reconcile_unknown.py": {
       "sha256": "ca42e6e0fb3c590bb478e5985164fbb29aa2011ec860b11aba5f66244180e1a5",
@@ -955,9 +959,9 @@
       "size": 461
     }
   },
-  "generated_at": "2026-08-15T06:25:30.865042+00:00",
+  "generated_at": "2026-08-15T06:29:32.444328+00:00",
   "git_branch": "v0.4-hardening",
-  "git_commit": "e886bd4802fad16dc73649084a868aad6510b168",
+  "git_commit": "26f8135d38e15537a892ca70782c632bcbdc3cac",
   "migration_count": 28,
   "migration_fingerprint": "5ec8e1531a8025ce6eab83f0154fa1d18fd5172fe1b3367aadfe751c1c764b97",
   "migrations": [
@@ -1091,7 +1095,7 @@
     "SECURITY_GATE.json",
     "TEST_RESULTS.json"
   ],
-  "test_fingerprint": "ec04936c9dfa5ce5432167dd58370ffd9552da4c336d7ebf0ad96e5bbcc5f21a",
-  "tree_hash": "a0a81f6c7dc00a3b3a550c558a3e7feffe3f79426affb816f7b1864779e5e5c7",
+  "test_fingerprint": "ca60a1045b0ffdddc1b19c736e4b099f37e44e2704dbd0ea0696248cc554b41f",
+  "tree_hash": "44ce0a3c8dca1676585b4119384803d8588461a73ecd69465a94cc61c7d58893",
   "version": "0.5.0-rc7.dev0"
 }
