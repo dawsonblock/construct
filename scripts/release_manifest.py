@@ -182,6 +182,8 @@ PAYLOAD_ROOTS = [
     "docs",
     "tests",
     "evaluation",
+    # rc9: Infrastructure configs are part of the release.
+    "infra",
 ]
 
 #: rc8: Explicit payload files at the repo root. These are individual files
@@ -197,6 +199,12 @@ PAYLOAD_FILES = [
     "README.md",
     "AGENTS.md",
     ".gitignore",
+    # rc9: Additional tracked root files that are part of the release.
+    "LICENSE",
+    ".env.example",
+    ".dockerignore",
+    "demo_vertical_slice.py",
+    "vendor/NOTICE.md",
 ]
 
 #: rc8: Glob patterns for files that must NEVER appear in the payload manifest,

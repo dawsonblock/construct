@@ -10,6 +10,14 @@
     "ruff": "unknown"
   },
   "files": {
+    ".dockerignore": {
+      "sha256": "04218e59a8644a9f60f4341af8ceb81d3ebb751762024c0a57fd3972fa0b39a8",
+      "size": 197
+    },
+    ".env.example": {
+      "sha256": "6efafa52f94cc24536fc0259b7ff0a641d926d98c714204b7da019361bb90ee7",
+      "size": 2730
+    },
     ".gitignore": {
       "sha256": "d875c0ebbbe84391b028265c1a991a21db3f35a35bfb014e96c9d800eb91eb60",
       "size": 484
@@ -22,9 +30,13 @@
       "sha256": "db0b523b69940028231bcd38bc15dde8fe4d54288b065b2e096c779f8cab5b62",
       "size": 1518
     },
+    "LICENSE": {
+      "sha256": "6f8c5b7240d54b75faf34636e9c0c03be94e9234323d5ed27ae3e7cd27aebfe5",
+      "size": 1068
+    },
     "Makefile": {
-      "sha256": "21b4e9b05a1d467956a63ba51cd6fc30f79282857378b2efbc9a24dbf32cd6f1",
-      "size": 10571
+      "sha256": "db3e5d04e12871f09da05e08d7a8fe23339d7be5ccc8065d9f1a5ee5f0f6bd3a",
+      "size": 10742
     },
     "README.md": {
       "sha256": "27fcb24bce883254d44f7a9280e9ae34011a20b0d1520236de4de11888f5ce86",
@@ -438,6 +450,10 @@
       "sha256": "84981c674e806e734ef659c5a779893a987dfbae02e6d95ce189173edcd4df1d",
       "size": 2042
     },
+    "demo_vertical_slice.py": {
+      "sha256": "6996553721a53e8d7f83b0b6de1e533a6b9e0f5ef33f439848a7452bc27d7e2d",
+      "size": 1283
+    },
     "docker-compose.yml": {
       "sha256": "76bf34105f27b4d642089347bad01f474823b0e775dac64512012631287542aa",
       "size": 4035
@@ -513,6 +529,10 @@
     "evaluation/generate_benchmark.py": {
       "sha256": "0ab0fc694c720443b04c9c09fda5896348645555e70e6a2dd4859fc698f6d4e4",
       "size": 252
+    },
+    "infra/docker-compose.yml": {
+      "sha256": "df6d5ba604d6b31152f3eb1d2f1435ffcfd3128ca2c22a582160ff2aa31760ab",
+      "size": 404
     },
     "migrations/001_control_plane.sql": {
       "sha256": "707cf2cfa332c6c9c9404de72f9d59f313d26b6dcc569f417dbc14c196e060d5",
@@ -703,8 +723,8 @@
       "size": 7418
     },
     "scripts/release_manifest.py": {
-      "sha256": "46256cf7702f2340e33518cbfe07d203e82a57a934122f5b26517edf503b9bc6",
-      "size": 16234
+      "sha256": "53b22f4a2f5f6e95c1c50ea2660601a43735ff25cd9fe3e61c4913b0025190ae",
+      "size": 16487
     },
     "scripts/reproducibility_check.py": {
       "sha256": "97ea72167021a4eea732e276c5189b12344f73b34e70cd7912159a0824911858",
@@ -727,8 +747,8 @@
       "size": 10849
     },
     "scripts/verify_payload_manifest.py": {
-      "sha256": "669e6100ee8280a90b3572ab597d46e25020542f22e4241c05bf084a4ad9e431",
-      "size": 6710
+      "sha256": "8e99e14611deaf7395715b6cf880d4769daba31b422f8c7f5a6bbac3820ef1a3",
+      "size": 7018
     },
     "scripts/verify_release_attestation.py": {
       "sha256": "ea63bf66d8e0fb3f3ca144f0f44787340cb97e44f04177e15106eb279181d292",
@@ -965,11 +985,15 @@
     "tests/test_worker_leases.py": {
       "sha256": "1ab3359cb7c18ad0f9f8dbdd24c58d4d446a1258aebe419c7f58a1206d7e72ca",
       "size": 10323
+    },
+    "vendor/NOTICE.md": {
+      "sha256": "4d489a3ba3c03b64d87c684f4d9b96cb07c5c55690f1f57d5fe29f395d695b52",
+      "size": 461
     }
   },
-  "generated_at": "2026-08-15T20:53:42.025185+00:00",
+  "generated_at": "2026-08-15T21:00:59.982154+00:00",
   "git_branch": "v0.4-hardening",
-  "git_commit": "ba2536bd048a7e00337b6f3d753fa6bd5475ad8f",
+  "git_commit": "b7b3a3c2dab15c3efb1de89c23c9d87904188a49",
   "migration_count": 29,
   "migration_fingerprint": "57c97591c127f8e0ee415096a7f95dea2e412f3e8449925feed4e2d7937a660c",
   "migrations": [
@@ -1114,6 +1138,6 @@
     "TEST_RESULTS.json"
   ],
   "test_fingerprint": "9911591db2e816511d5d50d69b2b91333d3550dced7793df3a0d38213b7a971d",
-  "tree_hash": "cda8ee0bd6a03cbf3a0fe0c2069ac7b85068d5d65c8e75e32ba3701fc888bac8",
+  "tree_hash": "c0904bf82f81ed0c9c5f0b7c2cd79873139041c26a424a08bc698b64331ff87b",
   "version": "0.5.0-rc9.dev0"
 }

@@ -126,6 +126,12 @@ def verify_manifest(manifest_path: Path, root: Path | None = None) -> tuple[bool
                 continue
             if t.startswith((".git", "__pycache__", ".pytest_cache", ".ruff_cache")):
                 continue
+            # rc9: release/ directory contains release-management files,
+            # not source payload. Stale MANIFEST.*.json files are historical.
+            if t.startswith("release/"):
+                continue
+            if t.startswith("MANIFEST.") and t.endswith(".json"):
+                continue
             if t not in files:
                 errors.append(f"undeclared tracked file not in manifest: {t}")
     except Exception:

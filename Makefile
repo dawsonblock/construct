@@ -137,13 +137,13 @@ qualify-release: ## Full release qualification: 17-step pipeline (requires full 
 	python scripts/verify_payload_manifest.py --manifest PAYLOAD_MANIFEST.json
 	@echo ""
 	@echo "=== 03/17 unit + 04/17 integration + 05/17 security + 06/17 adversarial + 07/17 crash-recovery + 08/17 external-effect + 09/17 migration ==="
+	rm -f TEST_RESULTS.json CRASH_MATRIX.json SECURITY_GATE.json MIGRATION_GATE.json QUALIFICATION_REPORT.json RELEASE_ATTESTATION.json RELEASE_ATTESTATION.json.sha256 QUALIFICATION_IDENTITY.json
 	DATABASE_URL="postgresql://construction:construction@localhost:5432/construction_ai" REQUIRE_INTEGRATION=1 ERP_STUB_URL=http://localhost:8100 python scripts/generate_gate_artifacts.py
 	@echo ""
-	@echo "=== 10/17 artifact-consistency ==="
-	python scripts/artifact_consistency_gate.py
-	@echo ""
-	@echo "=== 11/17 release-attestation ==="
+	@echo "=== 10/17 qualification-report ==="
 	DATABASE_URL="postgresql://construction:construction@localhost:5432/construction_ai" REQUIRE_INTEGRATION=1 ERP_STUB_URL=http://localhost:8100 python scripts/qualification_report.py --pytest --output QUALIFICATION_REPORT.json
+	@echo ""
+	@echo "=== 11/17 release-attestation + artifact-consistency ==="
 	python scripts/release_attestation.py --output RELEASE_ATTESTATION.json
 	python scripts/artifact_consistency_gate.py
 	@echo ""

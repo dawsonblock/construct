@@ -1,45 +1,45 @@
 {
   "attestation_chain": "PayloadTree -> PAYLOAD_MANIFEST.json -> Qualification -> RELEASE_ATTESTATION.json",
-  "attestation_root_hash": "f2e9aa3f994f94be9bdcc622ca7ccafe9ddbcf13faccf1e40d5221cb21489a43",
+  "attestation_root_hash": "ca97c82f772634255c99c2e1dbe7a9b99b5a75ebd2528d2ff28e6d0e5277a493",
   "dependency_lock_hash": "bcc8f6f02036e5e2447153bf0e4ce65f8dc123cd2fcf93eeabe6b1a224763b85",
   "evidence": {
     "CRASH_MATRIX.json": {
-      "sha256": "75ed2b906fdcd888aebacf18fe63ea593dada2a8ef5890e6f40836f14c14f887",
-      "size": 802
+      "sha256": "a7ec4b9cee86c10b7bce1fd5d0c0083318e0f303cd95f247e37ad984fa90bff6",
+      "size": 803
     },
     "MIGRATION_GATE.json": {
-      "sha256": "2e46f0574711be7acd34a0cd5d2f6d90ae5f4a15513f02660805b6e7c24da458",
+      "sha256": "6023e9d70bfa34b161c8e5fe0a92cc524e56b89fc2ff5f6ff64e48119ab2f4d9",
       "size": 5996
     },
     "PAYLOAD_MANIFEST.json": {
-      "sha256": "a8af40606bcaefca528b3fea0c9a40a933ec2e3abf81099f14f96955f8a8bebb",
-      "size": 42684
+      "sha256": "d202a7888f72a56826beb122ead2608c51281d1089c5753b02b03eca7b36559d",
+      "size": 43495
     },
     "PAYLOAD_MANIFEST.sha256": {
-      "sha256": "fb9a37f0d00d293670f7bf914aec2aced604d29f073b9cc2ddc9c005e727a03f",
+      "sha256": "4554507c7570782790e0edbbca23c51cc7102beb2f48e4326ce27ee2e0ecfea6",
       "size": 88
     },
     "QUALIFICATION_REPORT.json": {
-      "sha256": "3680036d1a41d48db4af1da7ba0aebc1f8a7b2aa0d07d07fe1ebd97389636257",
-      "size": 3704
+      "sha256": "478b622cce77657015fe6c9bdbb1aeb3d2c53bb0f86b0199726e2b1a24d9357f",
+      "size": 3705
     },
     "SECURITY_GATE.json": {
-      "sha256": "6b462308cdeff32628fbcbef3e7382b01465ff1cd54bef8a5856a35038fbd912",
+      "sha256": "441dad1dc836f2519db1e6049405e9bde63ab1796c8273bc0519f986f972e3b9",
       "size": 1285
     },
     "TEST_RESULTS.json": {
-      "sha256": "5657e200fa2a3fc443d2298c7e4e10f04d7e97ed5a6d729eafb12471e8a7bdbd",
+      "sha256": "858e84a5906abaa6d467e7913867a109771320cace909db059e6f196ceb5af06",
       "size": 792
     }
   },
-  "generated_at": "2026-08-15T20:57:02.525529+00:00",
+  "generated_at": "2026-08-15T21:04:07.867507+00:00",
   "git_branch": "v0.4-hardening",
-  "git_commit": "ba2536bd048a7e00337b6f3d753fa6bd5475ad8f",
-  "manifest_tree_hash": "cda8ee0bd6a03cbf3a0fe0c2069ac7b85068d5d65c8e75e32ba3701fc888bac8",
+  "git_commit": "b7b3a3c2dab15c3efb1de89c23c9d87904188a49",
+  "manifest_tree_hash": "c0904bf82f81ed0c9c5f0b7c2cd79873139041c26a424a08bc698b64331ff87b",
   "migration_fingerprint": "57c97591c127f8e0ee415096a7f95dea2e412f3e8449925feed4e2d7937a660c",
-  "payload_tree_hash": "cda8ee0bd6a03cbf3a0fe0c2069ac7b85068d5d65c8e75e32ba3701fc888bac8",
-  "qualification_manifest_sha": "a8af40606bcaefca528b3fea0c9a40a933ec2e3abf81099f14f96955f8a8bebb",
-  "qualification_run_id": "qual-20260815-ba2536bd048a",
+  "payload_tree_hash": "c0904bf82f81ed0c9c5f0b7c2cd79873139041c26a424a08bc698b64331ff87b",
+  "qualification_manifest_sha": "d202a7888f72a56826beb122ead2608c51281d1089c5753b02b03eca7b36559d",
+  "qualification_run_id": "qual-20260815-b7b3a3c2dab1",
   "release_version": "0.5.0-rc9.dev0",
   "schema_fingerprint": "72b9ed42a190d59a39ff2a3a915312183877ad4cd5c66f47cc62d78a028b5b96",
   "version": "0.5.0-rc9.dev0"
