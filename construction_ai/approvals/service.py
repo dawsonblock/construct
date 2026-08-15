@@ -207,7 +207,7 @@ def decide_approval(
             )
 
             decision_fingerprint = compute_decision_fingerprint_for_approval(
-                repos, scope=scope, approval=decided
+                repos, scope=scope, approval=decided, policy=policy,
             )
 
             with repos.db.scoped(scope) as cur:

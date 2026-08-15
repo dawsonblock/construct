@@ -34,6 +34,7 @@ import subprocess
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Any
 
 
 def _git_commit() -> str:
@@ -117,6 +118,51 @@ def _dependency_versions() -> dict[str, str]:
     return versions
 
 
+def _file_manifest() -> dict[str, dict[str, Any]]:
+    """Complete per-file manifest over all shipped files."""
+    root = Path(__file__).parent.parent
+    files: dict[str, dict[str, Any]] = {}
+    tracked_paths: list[Path] = []
+    try:
+        res = subprocess.run(["git", "ls-files"], capture_output=True, text=True, check=True, cwd=root)
+        lines = [l.strip() for l in res.stdout.splitlines() if l.strip()]
+        for line in lines:
+            p = root / line
+            if p.is_file():
+                tracked_paths.append(p)
+    except Exception:
+        patterns = [
+            "construction_ai/**/*.py",
+            "apps/**/*",
+            "scripts/**/*",
+            "tests/**/*",
+            "migrations/*.sql",
+            "docs/**/*",
+            "*.toml",
+            "*.txt",
+            "*.md",
+            "Dockerfile",
+            "docker-compose.yml",
+            "Makefile",
+            "VERSION",
+        ]
+        for pat in patterns:
+            for p in root.glob(pat):
+                if p.is_file():
+                    tracked_paths.append(p)
+
+    for p in sorted(set(tracked_paths)):
+        rel = str(p.relative_to(root))
+        if rel.startswith((".git", "__pycache__", ".pytest_cache", ".ruff_cache")):
+            continue
+        data = p.read_bytes()
+        files[rel] = {
+            "size": len(data),
+            "sha256": hashlib.sha256(data).hexdigest(),
+        }
+    return files
+
+
 def _schema_fingerprint() -> str:
     """SHA-256 over the database schema (DDL).
 
@@ -171,6 +217,7 @@ def generate_manifest(*, artifact_only: bool = False) -> dict:
         "schema_fingerprint": _schema_fingerprint_artifact_only() if artifact_only else _schema_fingerprint(),
         "dependencies": _dependency_versions(),
         "migrations": _migration_checksums(),
+        "files": _file_manifest(),
     }
 
 

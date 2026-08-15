@@ -10,7 +10,13 @@ from decimal import Decimal
 from typing import Any
 from uuid import UUID
 
-from construction_ai.domain.models import ChangeOrder, Contract, InvoiceAllocation, SOVItem
+from construction_ai.domain.models import (
+    ChangeOrder,
+    ChangeOrderAllocation,
+    Contract,
+    InvoiceAllocation,
+    SOVItem,
+)
 from construction_ai.persistence.db import Database, Scope, row_to_dict, rows_to_dicts
 
 
@@ -114,7 +120,8 @@ class ChangeOrderRepository:
         self.db = db
 
     def create(self, *, scope: Scope, contract_id: UUID, reference: str, amount: Any,
-               name: str = "", currency: str = "CAD", status: str = "approved") -> ChangeOrder:
+               name: str = "", currency: str = "CAD", status: str = "approved",
+               sov_item_id: UUID | None = None) -> ChangeOrder:
         with self.db.scoped(scope) as cur:
             cur.execute(
                 """INSERT INTO change_orders(organization_id, contract_id, reference, name,
@@ -128,7 +135,53 @@ class ChangeOrderRepository:
                 (scope.organization_id, contract_id, reference, name,
                  Decimal(str(amount)), currency, status),
             )
-            return _to_change_order(row_to_dict(cur))
+            co = _to_change_order(row_to_dict(cur))
+
+        if sov_item_id is not None:
+            self.allocate(
+                scope=scope,
+                change_order_id=UUID(co.change_order_id),
+                sov_item_id=sov_item_id,
+                amount=amount,
+                currency=currency,
+            )
+        return co
+
+    def allocate(self, *, scope: Scope, change_order_id: UUID, sov_item_id: UUID,
+                 amount: Any, currency: str = "CAD") -> ChangeOrderAllocation:
+        """rc5 Phase 2: Explicitly bind a change order to a specific SOV item."""
+        with self.db.scoped(scope) as cur:
+            cur.execute(
+                """INSERT INTO change_order_allocations(organization_id, change_order_id, sov_item_id, amount, currency)
+                   VALUES(%s,%s,%s,%s,%s)
+                   ON CONFLICT (organization_id, change_order_id, sov_item_id) DO UPDATE
+                     SET amount=EXCLUDED.amount, currency=EXCLUDED.currency
+                   RETURNING allocation_id, organization_id, change_order_id, sov_item_id, amount, currency""",
+                (scope.organization_id, change_order_id, sov_item_id, Decimal(str(amount)), currency),
+            )
+            return _to_change_order_allocation(row_to_dict(cur))
+
+    def allocations_for_sov_item(self, *, scope: Scope, sov_item_id: UUID) -> list[ChangeOrderAllocation]:
+        with self.db.scoped(scope) as cur:
+            cur.execute(
+                """SELECT allocation_id, organization_id, change_order_id, sov_item_id, amount, currency
+                   FROM change_order_allocations WHERE organization_id=%s AND sov_item_id=%s""",
+                (scope.organization_id, sov_item_id),
+            )
+            return [_to_change_order_allocation(r) for r in rows_to_dicts(cur)]
+
+    def approved_allocated_amount_for_sov_item(self, *, scope: Scope, sov_item_id: UUID) -> Decimal:
+        """Sum of approved change order amounts explicitly allocated to this SOV item."""
+        with self.db.scoped(scope) as cur:
+            cur.execute(
+                """SELECT COALESCE(SUM(coa.amount), 0) AS total
+                   FROM change_order_allocations coa
+                   JOIN change_orders co ON coa.organization_id = co.organization_id AND coa.change_order_id = co.change_order_id
+                   WHERE coa.organization_id = %s AND coa.sov_item_id = %s AND co.status = 'approved'""",
+                (scope.organization_id, sov_item_id),
+            )
+            r = row_to_dict(cur)
+            return Decimal(str(r["total"])) if r else Decimal("0")
 
     def approved_for_contract(self, *, scope: Scope, contract_id: UUID) -> list[ChangeOrder]:
         with self.db.scoped(scope) as cur:
@@ -208,6 +261,17 @@ def _to_change_order(row: dict[str, Any]) -> ChangeOrder:
         contract_id=str(row["contract_id"]), reference=row["reference"], name=row.get("name") or "",
         amount=_dec(row.get("amount")), currency=row.get("currency") or "CAD",
         status=row.get("status") or "approved",
+    )
+
+
+def _to_change_order_allocation(row: dict[str, Any]) -> ChangeOrderAllocation:
+    return ChangeOrderAllocation(
+        allocation_id=str(row["allocation_id"]),
+        organization_id=str(row["organization_id"]),
+        change_order_id=str(row["change_order_id"]),
+        sov_item_id=str(row["sov_item_id"]),
+        amount=_dec(row.get("amount")),
+        currency=row.get("currency") or "CAD",
     )
 
 

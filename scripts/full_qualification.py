@@ -55,6 +55,9 @@ TEST_CATEGORIES = {
         "tests/test_crash_injection.py",
         "tests/test_crash_injection_erp.py",
         "tests/test_replay_fingerprints.py",
+        "tests/test_rc4_leases_and_recovery.py",
+        "tests/test_rc4_reconciliation.py",
+        "tests/test_rc5_hardening.py",
     ],
     "release_integrity": [
         "tests/test_repository_integrity.py",

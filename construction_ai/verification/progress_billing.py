@@ -75,21 +75,24 @@ def evaluate_progress_billing(
         base = _dec(sov_item.base_value) or Decimal("0")
         currency = sov_item.currency or (contract.currency if contract else "CAD")
 
-        # AdjustedContractValue = base + approved change orders for the contract.
+        # rc5 Phase 2: Explicit ChangeOrder allocations to SOV items.
+        # AdjustedContractValue = base + approved change orders allocated to this specific SOV item.
+        # Proportional spreading across unrelated SOV items is strictly disallowed.
         adjusted = base
         if contract is not None:
-            change_orders = repos.change_orders.approved_for_contract(
-                scope=scope, contract_id=UUID(contract.contract_id)
+            allocated_co = repos.change_orders.approved_allocated_amount_for_sov_item(
+                scope=scope, sov_item_id=sov_item_id
             )
-            # Change orders are contract-level; distribute by base-value share so a
-            # single contract's adjustments are reflected proportionally per item.
-            contract_base = _dec(contract.base_contract_value) or Decimal("0")
-            all_items = repos.sov_items.for_contract(scope=scope, contract_id=UUID(contract.contract_id))
-            total_base = sum((_dec(i.base_value) or Decimal("0") for i in all_items), Decimal("0"))
-            co_total = sum((_dec(co.amount) or Decimal("0") for co in change_orders), Decimal("0"))
-            if total_base > 0 and contract_base > 0:
-                # Apply the contract-level change orders proportionally to this item.
-                adjusted = base + (co_total * (base / total_base))
+            if allocated_co > 0:
+                adjusted = base + allocated_co
+            else:
+                all_items = repos.sov_items.for_contract(scope=scope, contract_id=UUID(contract.contract_id))
+                if len(all_items) == 1:
+                    change_orders = repos.change_orders.approved_for_contract(
+                        scope=scope, contract_id=UUID(contract.contract_id)
+                    )
+                    co_total = sum((_dec(co.amount) or Decimal("0") for co in change_orders), Decimal("0"))
+                    adjusted = base + co_total
 
         # VerifiedPercentComplete — UNAVAILABLE (None) when no confirmation exists.
         pct = work_service.verified_percent_complete(scope=scope, sov_item_id=sov_item_id)

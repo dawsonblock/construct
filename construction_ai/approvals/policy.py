@@ -36,5 +36,19 @@ class ApprovalPolicy:
             return False
         return Decimal(str(amount)) >= self.dual_approval_threshold
 
+    def policy_hash(self) -> str:
+        """Compute the deterministic cryptographic digest of this exact policy configuration."""
+        import hashlib
+        import json
+
+        payload = {
+            "version": self.version,
+            "creator_cannot_approve": self.creator_cannot_approve,
+            "dual_approval_threshold": str(self.dual_approval_threshold) if self.dual_approval_threshold is not None else None,
+            "dual_approval_currency": self.dual_approval_currency,
+            "required_authentication_strength": self.required_authentication_strength,
+        }
+        return hashlib.sha256(json.dumps(payload, sort_keys=True, default=str).encode()).hexdigest()
+
 
 DEFAULT_POLICY = ApprovalPolicy()

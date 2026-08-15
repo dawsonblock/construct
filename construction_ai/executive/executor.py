@@ -247,49 +247,17 @@ def execute_approved_invoice(
     if invoice is None:
         raise ExecutionError(f"invoice {invoice_id} not found")
 
-    # 4. Build the idempotency key and ERP payload.
-    # Phase 14: Keep money as Decimal — convert to string at the serialization
-    # boundary, never to float.
-    # Phase 12: Use ERP supplier ID, not vendor name. The verification layer
-    # independently resolved the authoritative ERP supplier — use that exact
-    # identifier for the ERP write, not the vendor name.
-    from decimal import Decimal as _Decimal
-
-    # Look up the company to get the ERP supplier ID.
-    supplier_id = invoice.vendor_name  # fallback
-    if invoice.vendor_company_id:
-        company = repos.companies.get(scope=org_scope, company_id=UUID(invoice.vendor_company_id))
-        if company and company.erp_supplier_id:
-            supplier_id = company.erp_supplier_id
-
-    # rc4 Phase 5: ERP-visible idempotency key — deterministic over the exact
-    # approved intent. This is sent to ERP as a custom field and used for
-    # remote reconciliation.
-    erp_idempotency_key = _compute_erp_idempotency_key(
-        organization_id=str(org_scope.organization_id),
-        invoice_id=str(invoice_id),
-        approval_id=str(approval_id),
+    # 4. Build the idempotency key and ERP payload using the authoritative builder.
+    payload = build_expected_erp_payload(
+        repos,
+        scope=org_scope,
+        invoice_id=invoice_id,
+        approval_id=approval_id,
         operation=operation,
+        approval=approval,
     )
-
+    erp_idempotency_key = payload.get("construct_idempotency_key")
     idempotency_key = f"approval:{approval_id}"
-    payload = {
-        "supplier": supplier_id,
-        "bill_no": invoice.invoice_number,
-        "grand_total": str(_Decimal(str(invoice.total or 0))),
-        "net_total": str(_Decimal(str(invoice.subtotal or 0))),
-        "total_taxes": str(_Decimal(str(invoice.tax or 0))),
-        "currency": invoice.currency or "CAD",
-        "docstatus": 0,  # create as draft
-        # rc4 Phase 5: ERP-visible idempotency key.
-        "construct_idempotency_key": erp_idempotency_key,
-    }
-
-    # rc4 Phase 7: Add PO and project linkage to the ERP payload.
-    if invoice.po_number:
-        payload["po_no"] = invoice.po_number
-    if approval.project_id:
-        payload["project"] = str(approval.project_id)
 
     # 5. Reserve the external action atomically.
     #    INSERT ON CONFLICT DO NOTHING, then reload.
@@ -707,6 +675,99 @@ def _compute_erp_idempotency_key(*, organization_id: str, invoice_id: str, appro
     h.update(b"\x00")
     h.update(operation.encode())
     return f"construct-{h.hexdigest()[:32]}"
+
+
+def build_expected_erp_payload(
+    repos: Repositories,
+    *,
+    scope: Scope,
+    invoice_id: UUID,
+    approval_id: UUID | str | None = None,
+    operation: str = "erp_invoice_submit",
+    approval: Any | None = None,
+) -> dict[str, Any]:
+    """Build the exact authoritative ERP payload for an invoice and approval intent."""
+    from decimal import Decimal as _Decimal
+
+    org_scope = scope.organization_only
+    invoice = repos.invoices.get(scope=org_scope, invoice_id=invoice_id)
+    if invoice is None:
+        raise ExecutionError(f"invoice {invoice_id} not found")
+
+    supplier_id = invoice.vendor_name  # fallback
+    if invoice.vendor_company_id:
+        company = repos.companies.get(scope=org_scope, company_id=UUID(str(invoice.vendor_company_id)))
+        if company and company.erp_supplier_id:
+            supplier_id = company.erp_supplier_id
+
+    approval_id_str = str(approval_id) if approval_id else (str(approval.approval_id) if approval else "")
+    erp_idempotency_key = _compute_erp_idempotency_key(
+        organization_id=str(org_scope.organization_id),
+        invoice_id=str(invoice_id),
+        approval_id=approval_id_str,
+        operation=operation,
+    )
+
+    payload: dict[str, Any] = {
+        "supplier": supplier_id,
+        "bill_no": invoice.invoice_number,
+        "grand_total": str(_Decimal(str(invoice.total or 0))),
+        "net_total": str(_Decimal(str(invoice.subtotal or 0))),
+        "total_taxes": str(_Decimal(str(invoice.tax or 0))),
+        "currency": invoice.currency or "CAD",
+        "docstatus": 0,
+        "construct_idempotency_key": erp_idempotency_key,
+    }
+
+    if invoice.po_number:
+        payload["po_no"] = invoice.po_number
+
+    project_id = None
+    if approval and getattr(approval, "project_id", None):
+        project_id = approval.project_id
+    elif getattr(invoice, "project_id", None):
+        project_id = invoice.project_id
+    if project_id:
+        payload["project"] = str(project_id)
+
+    return payload
+
+
+def reconstruct_expected_erp_payload(
+    repos: Repositories,
+    *,
+    scope: Scope,
+    action: Any,
+) -> dict[str, Any] | None:
+    """Reconstruct or retrieve the canonical expected ERP payload for an external action."""
+    # 1. If the action row has persisted request_payload, use it.
+    if isinstance(action, dict):
+        if action.get("request_payload"):
+            return action["request_payload"]
+        subject_id = action.get("subject_id")
+        operation = action.get("operation", "erp_invoice_submit")
+    else:
+        if getattr(action, "request_payload", None):
+            return action.request_payload
+        subject_id = getattr(action, "subject_id", None)
+        operation = getattr(action, "operation", "erp_invoice_submit")
+
+    if not subject_id:
+        return None
+
+    if isinstance(subject_id, str):
+        subject_id = UUID(subject_id)
+
+    org_scope = scope.organization_only
+    try:
+        approval = repos.approvals.for_subject(scope=org_scope, subject_type="invoice", subject_id=subject_id)
+        approval_id = approval.approval_id if approval else None
+        return build_expected_erp_payload(
+            repos, scope=org_scope, invoice_id=subject_id, approval_id=approval_id,
+            operation=operation, approval=approval,
+        )
+    except Exception:
+        return None
 
 
 def _canonical_erp_invoice(data: dict[str, Any]) -> dict[str, Any]:

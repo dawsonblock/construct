@@ -310,6 +310,16 @@ class ChangeOrder:
 
 
 @dataclass(frozen=True)
+class ChangeOrderAllocation:
+    allocation_id: str
+    organization_id: str
+    change_order_id: str
+    sov_item_id: str
+    amount: Any = None  # Decimal
+    currency: str = "CAD"
+
+
+@dataclass(frozen=True)
 class InvoiceAllocation:
     allocation_id: str
     organization_id: str

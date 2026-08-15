@@ -34,14 +34,13 @@ import json
 from typing import Any
 from uuid import UUID
 
+from construction_ai.approvals.policy import ApprovalPolicy, DEFAULT_POLICY
 from construction_ai.domain.models import Approval, Evidence, Invoice
 from construction_ai.persistence.db import Scope
 from construction_ai.persistence.repositories import Repositories
 
-#: The policy version under which decisions are currently made. Bumped when the
-#: authority policy (limits, roles, separation-of-duties rules) changes — every
-#: existing approval becomes stale by construction.
-POLICY_VERSION = "construction-ai/authority/v1"
+#: The default policy version under which decisions are made.
+POLICY_VERSION = "authority:v1"
 
 
 def _canonical_json(value: Any) -> str:
@@ -99,26 +98,43 @@ def compute_decision_fingerprint(
     evidence: list[Evidence],
     approval: Approval,
     verification_packet_hash: str | None,
-    policy_version: str = POLICY_VERSION,
+    policy_version: str | None = None,
+    policy_hash: str | None = None,
+    policy: ApprovalPolicy | None = None,
 ) -> str:
-    """Compute the decision fingerprint from its five components.
+    """Compute the decision fingerprint from its authoritative components.
 
-    The verification_packet_hash is the canonical_hash of the immutable versioned
-    verification packet (Phase 19). When no packet is bound (legacy path), None
-    is hashed — the fingerprint still binds the other four components.
+    The fingerprint binds:
+    1. InvoiceSnapshot (financial fields)
+    2. VerificationPacket (canonical hash of immutable verification packet)
+    3. EvidenceSet (sorted evidence IDs and content hashes)
+    4. PolicyVersion & PolicyHash (exact active policy configuration and digest)
+    5. ApprovalRequirements (amount, currency, quorum, subject)
     """
+    if policy is not None:
+        p_version = policy.version
+        p_hash = policy.policy_hash()
+    else:
+        p_version = policy_version or POLICY_VERSION
+        p_hash = policy_hash or DEFAULT_POLICY.policy_hash()
+
     payload = {
         "invoice_snapshot": invoice_snapshot(invoice),
         "verification_packet_hash": verification_packet_hash,
         "evidence_set": evidence_set(evidence),
-        "policy_version": policy_version,
+        "policy_version": p_version,
+        "policy_hash": p_hash,
         "approval_requirements": approval_requirements(approval),
     }
     return hashlib.sha256(_canonical_json(payload).encode()).hexdigest()
 
 
 def compute_decision_fingerprint_for_approval(
-    repos: Repositories, *, scope: Scope, approval: Approval
+    repos: Repositories,
+    *,
+    scope: Scope,
+    approval: Approval,
+    policy: ApprovalPolicy = DEFAULT_POLICY,
 ) -> str:
     """Recompute the decision fingerprint from current authoritative rows.
 
@@ -147,4 +163,5 @@ def compute_decision_fingerprint_for_approval(
     return compute_decision_fingerprint(
         invoice=invoice, evidence=evidence, approval=approval,
         verification_packet_hash=packet_hash,
+        policy=policy,
     )

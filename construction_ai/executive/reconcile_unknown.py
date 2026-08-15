@@ -44,6 +44,7 @@ from construction_ai.persistence.repositories import Repositories
 
 # Reconciliation outcome classifications.
 PROVEN_ABSENT = "proven_absent"
+OBSERVATION_IN_PROGRESS = "observation_in_progress"
 REMOTE_DRAFT = "remote_draft"
 REMOTE_SUBMITTED = "remote_submitted"
 REMOTE_MISMATCH = "remote_mismatch"
@@ -53,8 +54,8 @@ AMBIGUOUS = "ambiguous"
 @dataclass(frozen=True)
 class ReconciliationOutcome:
     action_id: UUID
-    classification: str  # PROVEN_ABSENT, REMOTE_DRAFT, REMOTE_SUBMITTED, REMOTE_MISMATCH, AMBIGUOUS
-    new_status: str  # confirmed, failed_retryable, or failed_terminal
+    classification: str  # PROVEN_ABSENT, OBSERVATION_IN_PROGRESS, REMOTE_DRAFT, REMOTE_SUBMITTED, REMOTE_MISMATCH, AMBIGUOUS
+    new_status: str  # confirmed, failed_retryable, failed_terminal, or unknown
     remote_document_id: str | None
     reason: str
     searched_by: list[str]  # which identifiers were tried
@@ -70,11 +71,13 @@ def reconcile_external_action(
     supplier: str | None = None,
     erp_idempotency_key: str | None = None,
     expected_payload: dict[str, Any] | None = None,
+    negative_confirmation_threshold: int = 1,
 ) -> ReconciliationOutcome:
     """Reconcile an UNKNOWN external action by searching ERP.
 
     Uses bounded reconciliation: tries each identifier in priority order, then
-    classifies the result. Only PROVEN_ABSENT may become safely retryable.
+    classifies the result. Only PROVEN_ABSENT after meeting the negative confirmation
+    observation threshold may become safely retryable.
 
     Args:
         repos: Repository bundle.
@@ -82,10 +85,12 @@ def reconcile_external_action(
         action_id: The external action to reconcile.
         erp_read_transport: Read transport for ERP queries.
         invoice_number: The invoice number to search for (bill_no in ERP).
-        supplier: The supplier name to search for.
+        supplier: The supplier name/ID to search for.
         erp_idempotency_key: The ERP-visible idempotency key (rc4 Phase 5).
         expected_payload: The original ERP payload sent during execution, used
-            to verify field match on reconciliation (rc4 Phase 8).
+            to verify field match on reconciliation (rc4 Phase 8 / rc5 Phase 1).
+        negative_confirmation_threshold: Number of search observation rounds required
+            before declaring PROVEN_ABSENT.
 
     Returns:
         ReconciliationOutcome with classification and new status.
@@ -100,6 +105,18 @@ def reconcile_external_action(
             f"external action {action_id} is {action.status}, not unknown — "
             "reconciliation is only for UNKNOWN actions"
         )
+
+    # rc5 Phase 1: Reconstruct expected payload if not supplied.
+    if expected_payload is None:
+        from construction_ai.executive.executor import reconstruct_expected_erp_payload
+        expected_payload = reconstruct_expected_erp_payload(repos, scope=org_scope, action=action)
+
+    if expected_payload:
+        erp_idempotency_key = erp_idempotency_key or expected_payload.get("construct_idempotency_key") or action.erp_idempotency_key
+        invoice_number = invoice_number or expected_payload.get("bill_no")
+        supplier = supplier or expected_payload.get("supplier")
+    else:
+        erp_idempotency_key = erp_idempotency_key or action.erp_idempotency_key
 
     searched_by: list[str] = []
     all_matches: list[dict[str, Any]] = []
@@ -138,11 +155,28 @@ def reconcile_external_action(
 
     # 4. Classify the result.
     if len(all_matches) == 0:
-        # rc4 Phase 4: NoSearchResult ≠ ProvenAbsent — but if we've exhausted
-        # all available identifiers, we classify as PROVEN_ABSENT.
+        # rc5 Phase 2: Bounded negative confirmation.
+        current_attempts = (getattr(action, "recovery_attempts", 0) or 0) + 1
+        if current_attempts < negative_confirmation_threshold:
+            _transition_to(repos, org_scope, action_id, "unknown",
+                           last_error=f"reconciliation: no matching ERP document found (observation {current_attempts}/{negative_confirmation_threshold})",
+                           remote_state="remote_unknown",
+                           recovery_attempts=current_attempts)
+            _audit_reconciliation(repos, org_scope, action_id, "unknown", "unknown",
+                                  OBSERVATION_IN_PROGRESS, searched_by, None)
+            return ReconciliationOutcome(
+                action_id=action_id,
+                classification=OBSERVATION_IN_PROGRESS,
+                new_status="unknown",
+                remote_document_id=None,
+                reason=f"no matching ERP document found (observation {current_attempts}/{negative_confirmation_threshold}) — awaiting negative confirmation",
+                searched_by=searched_by,
+            )
+
         _transition_to(repos, org_scope, action_id, "failed_retryable",
                         last_error="reconciliation: no matching ERP document found after exhaustive search",
-                        remote_state="no_remote_effect")
+                        remote_state="no_remote_effect",
+                        recovery_attempts=current_attempts)
         _audit_reconciliation(repos, org_scope, action_id, "unknown", "failed_retryable",
                               PROVEN_ABSENT, searched_by, None)
         return ReconciliationOutcome(
@@ -260,13 +294,13 @@ def reconcile_external_action(
 def _transition_to(
     repos: Repositories, scope: Scope, action_id: UUID, to_status: str,
     *, remote_document_id: str | None = None, last_error: str | None = None,
-    remote_state: str | None = None,
+    remote_state: str | None = None, recovery_attempts: int | None = None,
 ) -> None:
     """Transition an UNKNOWN action to a new status."""
     repos.external_actions.transition(
         scope=scope, action_id=action_id, from_status="unknown", to_status=to_status,
         remote_document_id=remote_document_id, last_error=last_error,
-        remote_state=remote_state,
+        remote_state=remote_state, recovery_attempts=recovery_attempts,
     )
 
 

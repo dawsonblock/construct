@@ -1,11 +1,11 @@
 {
   "all_applied": true,
-  "applied_migrations": 24,
-  "git_commit": "cc9f64f55c358aca641d6e824a5667ec22fb00fe",
-  "migration_count": 24,
-  "migration_fingerprint": "fbf99a2c5b56b3ab0f98082e6e60866af18198660d88cfeeae81546aff6646ac",
+  "applied_migrations": 25,
+  "git_commit": "63bff29b7df244afe3640861d085bcf11af0f37d",
+  "migration_count": 25,
+  "migration_fingerprint": "476ca1ec413855f644f98d0aae24cf6040730419e3e16a52937dfd1cdf8a7de1",
   "pending_migrations": 0,
-  "schema_fingerprint": "9b6f8347bcddb59e9b070d80421c07a335d99b958e78b5e1d5b5ada7fa6ca3a4",
-  "timestamp": "2026-08-14T23:43:44.452245+00:00",
-  "version": "0.5.0-rc4.dev0"
+  "schema_fingerprint": "ef35e84866b3820b15e41ecb2fd71a498d12e28fd313bd218f9747825a24df28",
+  "timestamp": "2026-08-15T01:50:52.082409+00:00",
+  "version": "0.5.0-rc5.dev0"
 }

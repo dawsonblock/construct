@@ -157,6 +157,35 @@ def _run_pytest_subset(test_paths: list[str]) -> dict:
     }
 
 
+def _collect_skipped_tests() -> list[dict[str, str]]:
+    """Discover and classify exact skipped tests and reasons."""
+    import re
+    result = subprocess.run(
+        [sys.executable, "-m", "pytest", "-rs", "--tb=no"],
+        capture_output=True, text=True, cwd=ROOT, timeout=300,
+    )
+    skipped = []
+    for line in result.stdout.splitlines():
+        if line.startswith("SKIPPED"):
+            m = re.search(r"SKIPPED\s+\[\d+\]\s+([^:]+):(\d+):\s*(.*)", line)
+            if m:
+                test_file = m.group(1).strip()
+                line_no = m.group(2).strip()
+                reason = m.group(3).strip()
+                classification = (
+                    "NONCRITICAL_ALLOWED"
+                    if "no PostgreSQL reachable" in reason or "test_ui_security" in test_file
+                    else "CRITICAL"
+                )
+                skipped.append({
+                    "test_file": test_file,
+                    "line": line_no,
+                    "reason": reason,
+                    "classification": classification,
+                })
+    return skipped
+
+
 def generate_report(*, run_tests: bool = False) -> dict:
     """Generate the qualification report.
 
@@ -211,16 +240,17 @@ def generate_report(*, run_tests: bool = False) -> dict:
             "tests/test_external_action_properties.py",
         ])
 
-        # rc4 Phase 14/18: Crash/recovery subset — includes the real crash matrix.
+        # rc4 Phase 14/18 / rc5: Crash/recovery subset — includes the real crash matrix.
         report["crash_recovery"] = _run_pytest_subset([
             "tests/test_crash_injection.py",
             "tests/test_crash_injection_erp.py",
             "tests/test_rc4_crash_matrix.py",
             "tests/test_rc4_leases_and_recovery.py",
+            "tests/test_rc5_hardening.py",
         ])
         report["gates"]["CRASH_RECOVERY_PASS"] = report["crash_recovery"].get("passed", False)
 
-        # rc4 Phase 1-12: External-effect subset — includes rc4 lease/recon tests.
+        # rc4 Phase 1-12 / rc5: External-effect subset — includes rc4 lease/recon and rc5 unified readback tests.
         report["external_effect"] = _run_pytest_subset([
             "tests/test_executor.py",
             "tests/test_reconciliation.py",
@@ -231,6 +261,7 @@ def generate_report(*, run_tests: bool = False) -> dict:
             "tests/test_external_action_state_machine.py",
             "tests/test_rc4_reconciliation.py",
             "tests/test_rc4_external_action_properties.py",
+            "tests/test_rc5_hardening.py",
         ])
         report["gates"]["EXTERNAL_EFFECT_PASS"] = report["external_effect"].get("passed", False)
 
@@ -247,14 +278,15 @@ def generate_report(*, run_tests: bool = False) -> dict:
         ])
         report["gates"]["RELEASE_INTEGRITY_PASS"] = report["release_integrity"].get("passed", False)
 
-        # rc4 Phase 20: QUALIFIED=true only if every required gate passes.
+        # rc4/rc5: QUALIFIED=true only if every required gate passes.
         all_gates_passed = all(report["gates"].values())
-        # rc4 Phase 20: Critical skipped tests fail qualification.
-        critical_skips = report["test_suite"].get("skipped", 0)
-        report["qualified"] = all_gates_passed and critical_skips == 0 or (all_gates_passed and critical_skips <= 5)
-        # Note: 5 skips are allowed for non-critical stack-dependent tests in
-        # local runs. Clean-slate qualification must have 0 critical skips.
-        report["critical_skips_allowed"] = 5
+        skipped_details = _collect_skipped_tests()
+        critical_skips = [s for s in skipped_details if s.get("classification") != "NONCRITICAL_ALLOWED"]
+        report["skipped_tests"] = skipped_details
+        report["critical_skipped_count"] = len(critical_skips)
+        report["noncritical_skipped_count"] = len(skipped_details) - len(critical_skips)
+        report["critical_skips_allowed"] = 0
+        report["qualified"] = all_gates_passed and len(critical_skips) == 0
     else:
         report["test_suite"] = {"run": False}
         report["adversarial"] = {"run": False}

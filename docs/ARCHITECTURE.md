@@ -1,4 +1,4 @@
-# Architecture — v0.4.1-dev
+# Architecture — v0.5.0-rc5.dev0
 
 Construction AI Ops separates authoritative transactional systems from an evidence-first AI control plane.
 

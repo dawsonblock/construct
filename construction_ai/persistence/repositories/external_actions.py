@@ -74,6 +74,8 @@ class ExternalAction:
     # rc4 Phase 16: Final audit completion.
     final_audit_event_id: UUID | None = None
     finalized_at: datetime | None = None
+    # rc5 Phase 1: Request payload for unified recovery readback.
+    request_payload: dict[str, Any] | None = None
 
 
 def hash_request(payload: dict[str, Any]) -> str:
@@ -114,16 +116,19 @@ class ExternalActionRepository(Repository):
 
 
         req_hash = hash_request(request_payload) if request_payload else None
+        from psycopg.types.json import Jsonb
+        from construction_ai.persistence.serialization import dumps
+
         with self.db.scoped(scope) as cur:
             # Atomic insert-or-nothing.
             cur.execute(
                 """INSERT INTO external_actions(
                        organization_id, action_type, operation, target_system,
-                       idempotency_key, request_hash, status,
+                       idempotency_key, request_hash, request_payload, status,
                        subject_type, subject_id, remote_system,
                        remote_state, reserved_at
                    )
-                   VALUES(%s, %s, %s, %s, %s, %s, 'pending', %s, %s, %s, 'no_remote_effect', now())
+                   VALUES(%s, %s, %s, %s, %s, %s, %s, 'pending', %s, %s, %s, 'no_remote_effect', now())
                    ON CONFLICT (organization_id, action_type, idempotency_key) DO NOTHING
                    RETURNING action_id""",
                 (
@@ -133,6 +138,7 @@ class ExternalActionRepository(Repository):
                     remote_system,
                     idempotency_key,
                     req_hash,
+                    Jsonb(request_payload, dumps=dumps) if request_payload else None,
                     subject_type,
                     subject_id,
                     remote_system,
@@ -195,6 +201,7 @@ class ExternalActionRepository(Repository):
         erp_idempotency_key: str | None = None,
         readback_hash: str | None = None,
         final_audit_event_id: UUID | None = None,
+        recovery_attempts: int | None = None,
     ) -> ExternalAction | None:
         """Transition an external action to a new status.
 
@@ -244,6 +251,9 @@ class ExternalActionRepository(Repository):
         if final_audit_event_id is not None:
             sets.append("final_audit_event_id = %s")
             params.append(final_audit_event_id)
+        if recovery_attempts is not None:
+            sets.append("recovery_attempts = %s")
+            params.append(recovery_attempts)
 
         clause, clause_params = self._tenant_clause(scope)
         params.extend(clause_params)
@@ -538,7 +548,7 @@ class ExternalActionRepository(Repository):
             "attempt_count, reserved_at, last_attempt_at, confirmed_at, last_error, "
             "execution_owner, lease_acquired_at, lease_expires_at, heartbeat_at, "
             "recovery_attempts, remote_state, erp_idempotency_key, readback_hash, "
-            "final_audit_event_id, finalized_at"
+            "final_audit_event_id, finalized_at, request_payload"
         )
 
     def _select_sql(self) -> str:
@@ -577,4 +587,5 @@ def _to_action(row: dict[str, Any]) -> ExternalAction:
         readback_hash=row.get("readback_hash"),
         final_audit_event_id=row["final_audit_event_id"] if isinstance(row.get("final_audit_event_id"), UUID) else (UUID(str(row["final_audit_event_id"])) if row.get("final_audit_event_id") else None),
         finalized_at=row.get("finalized_at"),
+        request_payload=row.get("request_payload"),
     )
