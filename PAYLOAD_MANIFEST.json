@@ -23,8 +23,8 @@
       "size": 484
     },
     "AGENTS.md": {
-      "sha256": "d3de6df5ac3005ec779482ccc37e75e48af7ae05eb33beb3d387fd2477da0ae8",
-      "size": 2814
+      "sha256": "63a0abc969ae60d96a9d18dbf5cf0121918072d50e0a28c19a562c2eb636e740",
+      "size": 3007
     },
     "Dockerfile": {
       "sha256": "db0b523b69940028231bcd38bc15dde8fe4d54288b065b2e096c779f8cab5b62",
@@ -667,8 +667,8 @@
       "size": 18902
     },
     "scripts/artifact_consistency_gate.py": {
-      "sha256": "b0ebe09ed8b89b3b95cf99ce19ca103ef738e5db445faac52d16ee9f619cdc6a",
-      "size": 3690
+      "sha256": "b83f6eed80f5252dd7df591345e6e5ae78c6ee230e2ae3e752fb72560c3b3791",
+      "size": 3868
     },
     "scripts/bootstrap_app_role.py": {
       "sha256": "ee1e324b4a926ef687f5b345c844a1d040ce962d0e88e32b940dbb9962b4b0e6",
@@ -895,8 +895,8 @@
       "size": 7421
     },
     "tests/test_rc7_hardening.py": {
-      "sha256": "3959e76479fe0512b778afd72d6ecb7e48645d74a401251c9dae99cc43b9e296",
-      "size": 69736
+      "sha256": "057f2f69ee1e5a106dc8008c9e852aa8537d19041f92125784746caf735d7d7e",
+      "size": 70233
     },
     "tests/test_rc7_upgrade_qualification.py": {
       "sha256": "2a8ba63f95a1a4e2fd2181235d8ea8e91e33b43c6c56d96aba9cf8f68b7c6a25",
@@ -995,9 +995,9 @@
       "size": 461
     }
   },
-  "generated_at": "2026-08-15T22:42:03.037702+00:00",
+  "generated_at": "2026-08-15T23:07:15.405812+00:00",
   "git_branch": "v0.4-hardening",
-  "git_commit": "edff87138ab30b7805d3c6149890d4a7d136cf58",
+  "git_commit": "0dc252031457f80e72ae7f420d1e0136f279e781",
   "migration_count": 29,
   "migration_fingerprint": "57c97591c127f8e0ee415096a7f95dea2e412f3e8449925feed4e2d7937a660c",
   "migrations": [
@@ -1141,7 +1141,7 @@
     "SECURITY_GATE.json",
     "TEST_RESULTS.json"
   ],
-  "test_fingerprint": "7bcde3ac04841e1ec4ceb205e5f01b2ebf5e914ca46f32d75dfd52ace72d2e95",
-  "tree_hash": "08b8aced586eed818afb26289707323a0be938ce1c07a6796e4d1b25c160fbe3",
+  "test_fingerprint": "424eb53753c19d3545f2765cea9db3abe16648e0e7e6c6cfe4fccc18116f41c5",
+  "tree_hash": "0695604fbc952570f44a6b3a2d399b05d833ff1d5c35c3283a8c0250449a7be6",
   "version": "0.5.0-rc9.dev0"
 }

@@ -23,6 +23,7 @@
 - `python scripts/qualification_report.py --pytest --output QUALIFICATION_REPORT.json` — generate qualification report (runs tests)
 - `make qualify` — run all tests + generate qualification report (requires full stack)
 - `make qualify-full` — full clean-slate: reset DB + run all categories + report (requires full stack)
+- `make qualify-release` — 18-step release pipeline: manifest → gates → attestation → package → verify extracted ZIP → smoke tests → receipt (requires full stack)
 
 ## Full stack
 - `make up` — start Docker Compose stack (PostgreSQL, Redis, MinIO, ERP stub, API, worker)
@@ -50,7 +51,7 @@ All version surfaces must agree (enforced by test_repository_integrity.py):
 
 ## Migrations
 Migrations are transactional and forward-only. Never edit an applied migration.
-Current count: 29 (through 029_rc8_supersession_uniqueness.sql).
+Current count: 29 (through 029_rc8_supersession_uniqueness.sql, applied in rc8).
 
 ## Test categories
 - Unit tests (pure functions, no DB)

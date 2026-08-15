@@ -36,6 +36,9 @@ GATE_FILES = [
     "MIGRATION_GATE.json",
     "QUALIFICATION_REPORT.json",
     "RELEASE_ATTESTATION.json",
+    # rc9: QUALIFICATION_IDENTITY.json is the canonical identity file.
+    # It must be checked for consistency alongside all other artifacts.
+    "QUALIFICATION_IDENTITY.json",
 ]
 
 IDENTITY_FIELDS = [

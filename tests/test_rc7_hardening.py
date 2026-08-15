@@ -1,6 +1,6 @@
-"""v0.5.0-rc7 Hardening Tests.
+"""Release Hardening Tests (rc7 through rc9).
 
-Tests the rc7 release-engineering and runtime fixes:
+Tests the release-engineering and runtime fixes across rc7–rc9:
 
 1. Release attestation chain is acyclic (no circular manifest↔report hashing).
 2. Manifest companion filename matches the exclusion set.
@@ -12,6 +12,15 @@ Tests the rc7 release-engineering and runtime fixes:
 8. Work-confirmation supersession enforces same-subject invariant.
 9. Progress billing distinguishes UNAVAILABLE from OVERBILLED.
 10. Skip classification includes full pytest node IDs.
+
+rc9 additions:
+11. Supersession state-machine validation (terminal states, illegal transitions).
+12. Revoke-vs-supersede race condition (two-connection FOR UPDATE locking).
+13. Supersession audit atomicity (same-transaction audit append).
+14. Operational supersession integrity checks.
+15. Packaged-release end-to-end verification (strict attestation matching).
+16. ZIP hash is external to the ZIP (no circular hashes).
+17. No generated artifacts in payload manifest.
 """
 from __future__ import annotations
 
