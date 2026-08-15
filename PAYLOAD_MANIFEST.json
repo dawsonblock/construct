@@ -1,6 +1,6 @@
 {
   "attestation_chain": "PayloadTree -> PAYLOAD_MANIFEST.json -> Qualification -> RELEASE_ATTESTATION.json",
-  "code_fingerprint": "264894fd2dca6c24751f4788b3ac9f4567a49ced3bbd32b1dd998c8428988fd2",
+  "code_fingerprint": "93002f933f030bdd14e07288c713bcab5b442f23156ae63bce587ffd223cd8ff",
   "dependencies": {
     "hypothesis": "6.151.4",
     "psycopg": "3.3.4",
@@ -431,8 +431,8 @@
       "size": 883
     },
     "construction_ai/work/repository.py": {
-      "sha256": "619e94fe1c05c1e4268cdeefd87b104f3648eb5ffc94995ddd2613251594c1e1",
-      "size": 14570
+      "sha256": "b9fd5d002163df076e8ff2ed055fe3f043e4e347488ab83530b3d8b75d9d3ee4",
+      "size": 14502
     },
     "docker-compose.yml": {
       "sha256": "76bf34105f27b4d642089347bad01f474823b0e775dac64512012631287542aa",
@@ -671,8 +671,8 @@
       "size": 11534
     },
     "scripts/generate_gate_artifacts.py": {
-      "sha256": "cd71fa5f663f137b3f3b76b20fe1d1d067948f629f600a5ac88a85e575f06697",
-      "size": 11516
+      "sha256": "f37b21bd987ab8935671a690c8c22f143289135007800d194b10d407a8244c9c",
+      "size": 13558
     },
     "scripts/migrate.py": {
       "sha256": "4f9b6e2eb0655cb22f594c90e42f6f28639cb981ca3dd01f6d275879d1569ebc",
@@ -715,8 +715,8 @@
       "size": 6968
     },
     "scripts/verify_packaged_release.py": {
-      "sha256": "46db455e19d50b05ca1144245b11ae2f7996fb5f888ae6441309e66d0b1a0784",
-      "size": 7475
+      "sha256": "e8b486b8ac58237a00e10df315290e277e1b6fa1d1ce08498346d4369685a676",
+      "size": 7418
     },
     "scripts/verify_payload_manifest.py": {
       "sha256": "669e6100ee8280a90b3572ab597d46e25020542f22e4241c05bf084a4ad9e431",
@@ -863,8 +863,8 @@
       "size": 7421
     },
     "tests/test_rc7_hardening.py": {
-      "sha256": "3338d6ae7f2c7fa71029206fd2fd485b80a093756ab0d0c8e9d48b418f875878",
-      "size": 33608
+      "sha256": "8811d80def796caeb42317f766939a38b35f90f9ec119cf37ac6261d9ae91554",
+      "size": 37751
     },
     "tests/test_rc7_upgrade_qualification.py": {
       "sha256": "2a8ba63f95a1a4e2fd2181235d8ea8e91e33b43c6c56d96aba9cf8f68b7c6a25",
@@ -947,9 +947,9 @@
       "size": 10323
     }
   },
-  "generated_at": "2026-08-15T08:28:07.914269+00:00",
+  "generated_at": "2026-08-15T09:21:52.888296+00:00",
   "git_branch": "v0.4-hardening",
-  "git_commit": "58ae474b0f2cc2a983258506f496f2e4112b4d09",
+  "git_commit": "77a61b8b23e3d73911a76f43c846a2e1c53a78c4",
   "migration_count": 29,
   "migration_fingerprint": "57c97591c127f8e0ee415096a7f95dea2e412f3e8449925feed4e2d7937a660c",
   "migrations": [
@@ -1091,7 +1091,7 @@
     "SECURITY_GATE.json",
     "TEST_RESULTS.json"
   ],
-  "test_fingerprint": "a77789da761fae1f0f853684a7a695f06c679a992a3f405fe650bf73ee10623d",
-  "tree_hash": "6bc2476cedc0828313e64c5c1ea866d2debd4f1d22438b6c6ad9c9f973f106fd",
+  "test_fingerprint": "59454301de7305cc3498f5bb61cff44bb5d15fce0a414ee29acdcf14c6600023",
+  "tree_hash": "74574d7209500ad28f0af7305421866d11b0d7d98717ba4601e05a479b1b2e71",
   "version": "0.5.0-rc7.dev0"
 }

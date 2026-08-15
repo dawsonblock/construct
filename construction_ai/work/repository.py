@@ -64,6 +64,9 @@ class WorkConfirmationRepository:
                 superseded_id=supersedes_confirmation_id,
             )
 
+        # rc8: Insert AND mark old as superseded in the SAME scoped() context
+        # so they are in the same transaction. If mark_superseded fails, the
+        # insert rolls back too. No partial writes.
         with self.db.scoped(scope) as cur:
             cur.execute(
                 """INSERT INTO work_confirmations(
@@ -88,18 +91,15 @@ class WorkConfirmationRepository:
             )
             confirmation = _to_confirmation(row_to_dict(cur))
 
-        # rc8: Mark the old confirmation as superseded AFTER the new one is
-        # inserted. Both operations are within the same transaction context
-        # if an outer transaction exists. If no outer transaction, the new
-        # confirmation is committed first, then the old one is marked.
-        # This is acceptable because:
-        # 1. Validation already passed (same subject).
-        # 2. The new confirmation existing without the old being superseded
-        #    is a recoverable state (reconciliation can fix it).
-        # 3. The old confirmation being superseded without a new one is NOT
-        #    possible because _mark_superseded runs after insert.
-        if supersedes_confirmation_id is not None:
-            self._mark_superseded(scope=scope, confirmation_id=supersedes_confirmation_id)
+            # rc8: Mark old as superseded in the SAME transaction.
+            # If this fails, the insert rolls back too — no partial write.
+            if supersedes_confirmation_id is not None:
+                cur.execute(
+                    """UPDATE work_confirmations
+                       SET status = 'superseded', updated_at = now()
+                       WHERE organization_id = %s AND confirmation_id = %s AND status = 'confirmed'""",
+                    (scope.organization_id, supersedes_confirmation_id),
+                )
         return confirmation
 
     def _mark_superseded(self, *, scope: Scope, confirmation_id: UUID) -> None:

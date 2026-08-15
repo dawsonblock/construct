@@ -801,3 +801,102 @@ def test_supersession_invalid_does_not_persist(repos, org_a):
         f"rc8: invalid supersession must not persist: "
         f"before={count_before}, after={count_after}"
     )
+
+
+def test_supersession_target_must_be_confirmed(repos, org_a):
+    """rc8: Cannot supersede a confirmation that is not in 'confirmed' status."""
+    from uuid import UUID
+    project_id = UUID(str(org_a["project"].project_id))
+    company_id = UUID(str(org_a["company"].company_id))
+
+    contract = repos.contracts.create(
+        scope=org_a["scope"], project_id=project_id, company_id=company_id,
+        reference="CON-RC8-TGT", name="RC8 Target Contract",
+        base_contract_value=10000, currency="CAD",
+    )
+    sov_item = repos.sov_items.create(
+        scope=org_a["scope"], contract_id=UUID(contract.contract_id),
+        reference="SOV-TGT-1", name="Target Item", base_value=5000, currency="CAD", sort_order=1,
+    )
+
+    first = repos.work_confirmations.record(
+        scope=org_a["scope"], project_id=project_id,
+        sov_item_id=UUID(sov_item.sov_item_id),
+        confirmation_type="superintendent", percent_complete=50.0,
+    )
+
+    # Retract the first confirmation.
+    repos.work_confirmations.retract(
+        scope=org_a["scope"], confirmation_id=first.confirmation_id,
+    )
+
+    # Attempt to supersede the retracted confirmation — must fail.
+    with pytest.raises(ValueError, match="not 'confirmed'"):
+        repos.work_confirmations.record(
+            scope=org_a["scope"], project_id=project_id,
+            sov_item_id=UUID(sov_item.sov_item_id),
+            confirmation_type="signed_inspection", percent_complete=100.0,
+            supersedes_confirmation_id=first.confirmation_id,
+        )
+
+
+def test_supersession_target_missing(repos, org_a):
+    """rc8: Superseding a non-existent confirmation must fail with ValueError."""
+    from uuid import UUID, uuid4
+    project_id = UUID(str(org_a["project"].project_id))
+
+    with pytest.raises(ValueError, match="not found"):
+        repos.work_confirmations.record(
+            scope=org_a["scope"], project_id=project_id,
+            confirmation_type="signed_inspection", percent_complete=100.0,
+            supersedes_confirmation_id=uuid4(),
+        )
+
+
+def test_concurrent_supersession_unique_successor(repos, org_a):
+    """rc8: Two confirmations cannot supersede the same active confirmation.
+
+    Migration 029 adds a UNIQUE INDEX on supersedes_confirmation_id WHERE
+    NOT NULL. The second supersession attempt must fail with a database
+    constraint violation, enforcing OneConfirmation <= OneDirectSuccessor.
+    """
+    from uuid import UUID
+    import psycopg
+    project_id = UUID(str(org_a["project"].project_id))
+    company_id = UUID(str(org_a["company"].company_id))
+
+    contract = repos.contracts.create(
+        scope=org_a["scope"], project_id=project_id, company_id=company_id,
+        reference="CON-RC8-CONC", name="RC8 Concurrent Contract",
+        base_contract_value=10000, currency="CAD",
+    )
+    sov_item = repos.sov_items.create(
+        scope=org_a["scope"], contract_id=UUID(contract.contract_id),
+        reference="SOV-CONC-1", name="Concurrent Item", base_value=5000, currency="CAD", sort_order=1,
+    )
+
+    # Create first confirmation.
+    first = repos.work_confirmations.record(
+        scope=org_a["scope"], project_id=project_id,
+        sov_item_id=UUID(sov_item.sov_item_id),
+        confirmation_type="superintendent", percent_complete=50.0,
+    )
+
+    # First supersession succeeds.
+    second = repos.work_confirmations.record(
+        scope=org_a["scope"], project_id=project_id,
+        sov_item_id=UUID(sov_item.sov_item_id),
+        confirmation_type="signed_inspection", percent_complete=75.0,
+        supersedes_confirmation_id=first.confirmation_id,
+    )
+    assert second.status == "confirmed"
+
+    # Second supersession of the SAME original confirmation must fail
+    # due to the unique constraint on supersedes_confirmation_id.
+    with pytest.raises((psycopg.errors.UniqueViolation, Exception)):
+        repos.work_confirmations.record(
+            scope=org_a["scope"], project_id=project_id,
+            sov_item_id=UUID(sov_item.sov_item_id),
+            confirmation_type="signed_inspection", percent_complete=90.0,
+            supersedes_confirmation_id=first.confirmation_id,
+        )

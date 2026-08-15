@@ -133,9 +133,30 @@ def _base_artifact() -> dict:
     Every artifact must contain the same identity fields. If any field differs
     between artifacts, qualification fails (Phase 33).
 
-    rc8: Added schema_fingerprint to the identity fields. The artifact
-    consistency gate now checks this field.
+    rc8: If QUALIFICATION_IDENTITY.json exists, read identity from it
+    instead of independently computing each field. This ensures all gates
+    share one immutable identity object.
     """
+    # rc8: Try to read from QUALIFICATION_IDENTITY.json first.
+    identity_path = ROOT / "QUALIFICATION_IDENTITY.json"
+    if identity_path.exists():
+        try:
+            identity = json.loads(identity_path.read_text())
+            return {
+                "release_version": identity.get("release_version", _version()),
+                "version": identity.get("release_version", _version()),
+                "git_commit": identity.get("git_commit", _git_commit()),
+                "git_branch": identity.get("git_branch", _git_branch()),
+                "payload_tree_hash": identity.get("payload_tree_hash", _payload_tree_hash()),
+                "dependency_lock_hash": identity.get("dependency_lock_hash", _lock_hash()),
+                "schema_fingerprint": identity.get("schema_fingerprint", _schema_fingerprint()),
+                "qualification_run_id": identity.get("qualification_run_id", _qualification_run_id()),
+                "generated_at": datetime.now(timezone.utc).isoformat(),
+            }
+        except Exception:
+            pass
+
+    # Fallback: compute identity fields independently.
     return {
         "release_version": _version(),
         "version": _version(),
@@ -296,8 +317,25 @@ def main() -> int:
     print(f"  git_commit: {_git_commit()[:12]}")
     print()
 
+    # rc8: Generate QUALIFICATION_IDENTITY.json first.
+    # All gate artifacts read from this file to ensure one immutable identity.
+    print("[0/5] Generating QUALIFICATION_IDENTITY.json...")
+    from qualification_identity import generate_qualification_identity, write_qualification_identity
+    tree_hash = _payload_tree_hash() or ""
+    schema_fp = _schema_fingerprint()
+    mig_fp = _migration_fingerprint()
+    identity = generate_qualification_identity(
+        payload_tree_hash=tree_hash,
+        schema_fingerprint=schema_fp,
+        migration_fingerprint=mig_fp,
+    )
+    write_qualification_identity(identity)
+    print(f"  qualification_run_id: {identity['qualification_run_id']}")
+    print(f"  dependency_lock_hash: {identity['dependency_lock_hash'][:16]}...")
+    print(f"  schema_fingerprint: {identity['schema_fingerprint'][:16]}...")
+
     # 1. TEST_RESULTS.json
-    print("[1/4] Generating TEST_RESULTS.json (full test suite)...")
+    print("[1/5] Generating TEST_RESULTS.json (full test suite)...")
     test_results = generate_test_results()
     (ROOT / "TEST_RESULTS.json").write_text(
         json.dumps(test_results, indent=2, sort_keys=True, default=str)
@@ -305,7 +343,7 @@ def main() -> int:
     print(f"  {test_results['summary']}")
 
     # 2. CRASH_MATRIX.json
-    print("[2/4] Generating CRASH_MATRIX.json (crash/recovery)...")
+    print("[2/5] Generating CRASH_MATRIX.json (crash/recovery)...")
     crash_matrix = generate_crash_matrix()
     (ROOT / "CRASH_MATRIX.json").write_text(
         json.dumps(crash_matrix, indent=2, sort_keys=True, default=str)
@@ -313,7 +351,7 @@ def main() -> int:
     print(f"  {crash_matrix['summary']}")
 
     # 3. SECURITY_GATE.json
-    print("[3/4] Generating SECURITY_GATE.json...")
+    print("[3/5] Generating SECURITY_GATE.json...")
     security_gate = generate_security_gate()
     (ROOT / "SECURITY_GATE.json").write_text(
         json.dumps(security_gate, indent=2, sort_keys=True, default=str)
@@ -321,7 +359,7 @@ def main() -> int:
     print(f"  passed: {security_gate['passed']}")
 
     # 4. MIGRATION_GATE.json
-    print("[4/4] Generating MIGRATION_GATE.json...")
+    print("[4/5] Generating MIGRATION_GATE.json...")
     migration_gate = generate_migration_gate()
     (ROOT / "MIGRATION_GATE.json").write_text(
         json.dumps(migration_gate, indent=2, sort_keys=True, default=str)

@@ -1,0 +1,13 @@
+{
+  "dependency_lock_hash": "bcc8f6f02036e5e2447153bf0e4ce65f8dc123cd2fcf93eeabe6b1a224763b85",
+  "dev_lock_hash": "530aa66ad37250817446613e569eaaccd9f47ae19b1d41e10cc8ffbfe8df0fa6",
+  "generated_at": "2026-08-15T09:21:54.469058+00:00",
+  "git_branch": "v0.4-hardening",
+  "git_commit": "77a61b8b23e3d73911a76f43c846a2e1c53a78c4",
+  "migration_fingerprint": "57c97591c127f8e0ee415096a7f95dea2e412f3e8449925feed4e2d7937a660c",
+  "payload_tree_hash": "74574d7209500ad28f0af7305421866d11b0d7d98717ba4601e05a479b1b2e71",
+  "qualification_run_id": "qual-20260815-77a61b8b23e3",
+  "release_version": "0.5.0-rc7.dev0",
+  "runtime_lock_hash": "3e4c9c397e2cbe493372df885a0c79b69388c701ed5c0ebea4436153f3a7f1b1",
+  "schema_fingerprint": "72b9ed42a190d59a39ff2a3a915312183877ad4cd5c66f47cc62d78a028b5b96"
+}
