@@ -643,8 +643,8 @@
       "size": 18902
     },
     "scripts/artifact_consistency_gate.py": {
-      "sha256": "bbd5226ad4f7d1eccbc7e3c952a151ab70885863f14a4303dcaceaaf667475d4",
-      "size": 3661
+      "sha256": "1d8c48f2206d5f3044473b84bb645a9054a5c62ef11e9f507c5ae64fee9dc202",
+      "size": 3690
     },
     "scripts/bootstrap_app_role.py": {
       "sha256": "ee1e324b4a926ef687f5b345c844a1d040ce962d0e88e32b940dbb9962b4b0e6",
@@ -671,8 +671,8 @@
       "size": 11534
     },
     "scripts/generate_gate_artifacts.py": {
-      "sha256": "f37b21bd987ab8935671a690c8c22f143289135007800d194b10d407a8244c9c",
-      "size": 13558
+      "sha256": "a010c3e10423353a49f63128fc30db29bb145587024c171ccc55a804af23b3d2",
+      "size": 13723
     },
     "scripts/migrate.py": {
       "sha256": "4f9b6e2eb0655cb22f594c90e42f6f28639cb981ca3dd01f6d275879d1569ebc",
@@ -687,12 +687,12 @@
       "size": 4302
     },
     "scripts/qualification_report.py": {
-      "sha256": "9da982ee3e9f04aca2333bd4cae6c456a3028c33835ecc8ceac641620acbdf52",
-      "size": 19385
+      "sha256": "64d9efd69a6949759c4269ba604bc7a00c1a765fa1a359a19c338c0cd1fa3e66",
+      "size": 20538
     },
     "scripts/release_attestation.py": {
-      "sha256": "6761cd4f4ace325beaae81a2d81f7208623c9caa1643f380cb8fd58806c53f58",
-      "size": 7141
+      "sha256": "07f3d9265cdf107c816566ea744d853bfc992d637b3f41dcb6454fffd602fd78",
+      "size": 7418
     },
     "scripts/release_manifest.py": {
       "sha256": "20145df878977b70d019a3966a344f337301fb07af3651db0f88e5f69a9fe959",
@@ -947,9 +947,9 @@
       "size": 10323
     }
   },
-  "generated_at": "2026-08-15T09:21:52.888296+00:00",
+  "generated_at": "2026-08-15T19:05:17.294848+00:00",
   "git_branch": "v0.4-hardening",
-  "git_commit": "77a61b8b23e3d73911a76f43c846a2e1c53a78c4",
+  "git_commit": "1c79c73655d549391784c244b8c98a347cd19829",
   "migration_count": 29,
   "migration_fingerprint": "57c97591c127f8e0ee415096a7f95dea2e412f3e8449925feed4e2d7937a660c",
   "migrations": [
@@ -1092,6 +1092,6 @@
     "TEST_RESULTS.json"
   ],
   "test_fingerprint": "59454301de7305cc3498f5bb61cff44bb5d15fce0a414ee29acdcf14c6600023",
-  "tree_hash": "74574d7209500ad28f0af7305421866d11b0d7d98717ba4601e05a479b1b2e71",
+  "tree_hash": "095ffb502780409800e55fe4282f1881289e58d81689107cacb87f84a36652b8",
   "version": "0.5.0-rc7.dev0"
 }

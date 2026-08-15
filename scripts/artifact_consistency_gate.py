@@ -45,6 +45,7 @@ IDENTITY_FIELDS = [
     "qualification_run_id",
     "dependency_lock_hash",
     "schema_fingerprint",
+    "migration_fingerprint",
 ]
 
 

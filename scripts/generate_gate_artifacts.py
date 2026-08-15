@@ -150,6 +150,7 @@ def _base_artifact() -> dict:
                 "payload_tree_hash": identity.get("payload_tree_hash", _payload_tree_hash()),
                 "dependency_lock_hash": identity.get("dependency_lock_hash", _lock_hash()),
                 "schema_fingerprint": identity.get("schema_fingerprint", _schema_fingerprint()),
+                "migration_fingerprint": identity.get("migration_fingerprint", _migration_fingerprint()),
                 "qualification_run_id": identity.get("qualification_run_id", _qualification_run_id()),
                 "generated_at": datetime.now(timezone.utc).isoformat(),
             }
@@ -165,6 +166,7 @@ def _base_artifact() -> dict:
         "payload_tree_hash": _payload_tree_hash(),
         "dependency_lock_hash": _lock_hash(),
         "schema_fingerprint": _schema_fingerprint(),
+        "migration_fingerprint": _migration_fingerprint(),
         "qualification_run_id": _qualification_run_id(),
         "generated_at": datetime.now(timezone.utc).isoformat(),
     }

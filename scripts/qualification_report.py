@@ -349,15 +349,27 @@ def generate_report(*, run_tests: bool = False) -> dict:
     schema = _schema_version()
     manifest_binding = _manifest_binding()
 
+    # rc8: Read identity from QUALIFICATION_IDENTITY.json if it exists.
+    # This ensures the qualification report shares the exact same identity
+    # object as all gate artifacts, preventing identity drift.
+    identity = {}
+    identity_path = ROOT / "QUALIFICATION_IDENTITY.json"
+    if identity_path.exists():
+        try:
+            identity = json.loads(identity_path.read_text())
+        except Exception:
+            identity = {}
+
     report: dict = {
-        "release_version": _version(),
-        "version": _version(),
-        "git_commit": _git_commit(),
-        "git_branch": _git_branch(),
-        "payload_tree_hash": manifest_binding["manifest_tree_hash"],
-        "dependency_lock_hash": _lock_hash(),
-        "schema_fingerprint": schema.get("fingerprint", "offline"),
-        "qualification_run_id": _qualification_run_id(),
+        "release_version": identity.get("release_version", _version()),
+        "version": identity.get("release_version", _version()),
+        "git_commit": identity.get("git_commit", _git_commit()),
+        "git_branch": identity.get("git_branch", _git_branch()),
+        "payload_tree_hash": identity.get("payload_tree_hash", manifest_binding["manifest_tree_hash"]),
+        "dependency_lock_hash": identity.get("dependency_lock_hash", _lock_hash()),
+        "schema_fingerprint": identity.get("schema_fingerprint", schema.get("fingerprint", "offline")),
+        "migration_fingerprint": identity.get("migration_fingerprint", schema.get("migration_fingerprint", "unknown")),
+        "qualification_run_id": identity.get("qualification_run_id", _qualification_run_id()),
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "schema": schema,
         "manifest_sha": manifest_binding["manifest_sha"],
@@ -368,12 +380,13 @@ def generate_report(*, run_tests: bool = False) -> dict:
         # completes, verification can check these have not changed.
         # If the working tree mutates during qualification: QUALIFICATION INVALID.
         "identity_snapshot": {
-            "release_version": _version(),
-            "git_commit": _git_commit(),
-            "payload_tree_hash": manifest_binding["manifest_tree_hash"],
-            "dependency_lock_hash": _lock_hash(),
-            "schema_fingerprint": schema.get("fingerprint"),
-            "qualification_run_id": _qualification_run_id(),
+            "release_version": identity.get("release_version", _version()),
+            "git_commit": identity.get("git_commit", _git_commit()),
+            "payload_tree_hash": identity.get("payload_tree_hash", manifest_binding["manifest_tree_hash"]),
+            "dependency_lock_hash": identity.get("dependency_lock_hash", _lock_hash()),
+            "schema_fingerprint": identity.get("schema_fingerprint", schema.get("fingerprint")),
+            "migration_fingerprint": identity.get("migration_fingerprint", schema.get("migration_fingerprint")),
+            "qualification_run_id": identity.get("qualification_run_id", _qualification_run_id()),
         },
         # rc4 Phase 20: gate categories.
         "gates": {

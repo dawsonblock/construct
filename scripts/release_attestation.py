@@ -111,6 +111,7 @@ def generate_attestation() -> dict:
     payload_tree_hash = None
     dependency_lock_hash = None
     schema_fingerprint = None
+    migration_fingerprint = None
     try:
         for name in ("PAYLOAD_MANIFEST.json", "MANIFEST.json"):
             p = ROOT / name
@@ -119,6 +120,7 @@ def generate_attestation() -> dict:
                 manifest_tree_hash = manifest.get("tree_hash")
                 payload_tree_hash = manifest.get("tree_hash")
                 schema_fingerprint = manifest.get("schema_fingerprint")
+                migration_fingerprint = manifest.get("migration_fingerprint")
                 break
     except Exception:
         pass
@@ -129,6 +131,8 @@ def generate_attestation() -> dict:
         dependency_lock_hash = report.get("dependency_lock_hash")
         if not schema_fingerprint:
             schema_fingerprint = report.get("schema_fingerprint")
+        if not migration_fingerprint:
+            migration_fingerprint = report.get("migration_fingerprint")
     except Exception:
         pass
 
@@ -158,6 +162,7 @@ def generate_attestation() -> dict:
         "payload_tree_hash": payload_tree_hash,
         "dependency_lock_hash": dependency_lock_hash,
         "schema_fingerprint": schema_fingerprint,
+        "migration_fingerprint": migration_fingerprint,
         "qualification_run_id": qualification_run_id,
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "attestation_chain": "PayloadTree -> PAYLOAD_MANIFEST.json -> Qualification -> RELEASE_ATTESTATION.json",
