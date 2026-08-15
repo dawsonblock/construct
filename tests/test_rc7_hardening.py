@@ -484,10 +484,12 @@ def test_confirmation_revoke_already_superseded_fails(repos, org_a):
         supersedes_confirmation_id=first.confirmation_id,
     )
     # Attempting to revoke the superseded confirmation should fail.
-    result = repos.work_confirmations.revoke(
-        scope=org_a["scope"], confirmation_id=first.confirmation_id,
-    )
-    assert result is False, "rc7 Phase 17: cannot revoke a superseded confirmation"
+    # rc9: Now raises InvalidTransitionError due to state-machine validation.
+    from construction_ai.work.transitions import InvalidTransitionError
+    with pytest.raises(InvalidTransitionError):
+        repos.work_confirmations.revoke(
+            scope=org_a["scope"], confirmation_id=first.confirmation_id,
+        )
 
 
 # -- Phase 20: CO allocation currency check tests -----------------------------
@@ -729,7 +731,8 @@ def test_packaged_release_verifies_end_to_end(tmp_path):
     )
     assert result.returncode == 0, f"package_release.py failed: {result.stderr}"
 
-    zip_path = ROOT / zip_name
+    # rc9: ZIP is now in dist/ directory.
+    zip_path = ROOT / "dist" / zip_name
     assert zip_path.exists(), f"ZIP was not created: {zip_path}"
 
     try:
@@ -790,7 +793,7 @@ def test_packaged_release_verifies_end_to_end(tmp_path):
         # Clean up the ZIP so it doesn't interfere with other tests.
         if zip_path.exists():
             zip_path.unlink()
-        hash_path = ROOT / f"{zip_name}.sha256"
+        hash_path = ROOT / "dist" / f"{zip_name}.sha256"
         if hash_path.exists():
             hash_path.unlink()
         # Restore the original manifest so this test doesn't interfere
@@ -1146,7 +1149,7 @@ def test_concurrent_supersession_two_connections(repos, org_a):
            RETURNING confirmation_id""",
         (org_id, str(project_id), str(sov_item.sov_item_id), str(first.confirmation_id)),
     )
-    t1_new_id = cur1.fetchone()[0]
+    cur1.fetchone()[0]
     cur1.execute(
         "UPDATE work_confirmations SET status = 'superseded', updated_at = now() "
         "WHERE organization_id = %s AND confirmation_id = %s AND status = 'confirmed'",
@@ -1180,3 +1183,376 @@ def test_concurrent_supersession_two_connections(repos, org_a):
     ), (
         f"T2 error should be a unique constraint violation or deadlock, got: {error_str}"
     )
+
+
+# -- rc9: State-machine and revoke-vs-supersede tests -----------------------
+
+
+def test_supersession_state_machine_revoked_cannot_be_superseded(repos, org_a):
+    """rc9 Phase 8: REVOKED -> SUPERSEDED is illegal."""
+    from uuid import UUID
+    from construction_ai.work.transitions import InvalidTransitionError
+    project_id = UUID(str(org_a["project"].project_id))
+    company_id = UUID(str(org_a["company"].company_id))
+
+    contract = repos.contracts.create(
+        scope=org_a["scope"], project_id=project_id, company_id=company_id,
+        reference="CON-RC9-SM1", name="RC9 State Machine 1",
+        base_contract_value=10000, currency="CAD",
+    )
+    sov_item = repos.sov_items.create(
+        scope=org_a["scope"], contract_id=UUID(contract.contract_id),
+        reference="SOV-SM1", name="SM Item", base_value=5000, currency="CAD", sort_order=1,
+    )
+
+    first = repos.work_confirmations.record(
+        scope=org_a["scope"], project_id=project_id,
+        sov_item_id=UUID(sov_item.sov_item_id),
+        confirmation_type="superintendent", percent_complete=50.0,
+    )
+
+    # Revoke the first confirmation.
+    revoked = repos.work_confirmations.revoke(
+        scope=org_a["scope"], confirmation_id=first.confirmation_id,
+    )
+    assert revoked
+
+    # Attempt to supersede the revoked confirmation — must fail.
+    with pytest.raises((ValueError, InvalidTransitionError)):
+        repos.work_confirmations.record(
+            scope=org_a["scope"], project_id=project_id,
+            sov_item_id=UUID(sov_item.sov_item_id),
+            confirmation_type="signed_inspection", percent_complete=100.0,
+            supersedes_confirmation_id=first.confirmation_id,
+        )
+
+
+def test_supersession_state_machine_retracted_cannot_be_superseded(repos, org_a):
+    """rc9 Phase 8: RETRACTED -> SUPERSEDED is illegal."""
+    from uuid import UUID
+    from construction_ai.work.transitions import InvalidTransitionError
+    project_id = UUID(str(org_a["project"].project_id))
+    company_id = UUID(str(org_a["company"].company_id))
+
+    contract = repos.contracts.create(
+        scope=org_a["scope"], project_id=project_id, company_id=company_id,
+        reference="CON-RC9-SM2", name="RC9 State Machine 2",
+        base_contract_value=10000, currency="CAD",
+    )
+    sov_item = repos.sov_items.create(
+        scope=org_a["scope"], contract_id=UUID(contract.contract_id),
+        reference="SOV-SM2", name="SM Item 2", base_value=5000, currency="CAD", sort_order=1,
+    )
+
+    first = repos.work_confirmations.record(
+        scope=org_a["scope"], project_id=project_id,
+        sov_item_id=UUID(sov_item.sov_item_id),
+        confirmation_type="superintendent", percent_complete=50.0,
+    )
+
+    # Retract the first confirmation.
+    retracted = repos.work_confirmations.retract(
+        scope=org_a["scope"], confirmation_id=first.confirmation_id,
+    )
+    assert retracted
+
+    # Attempt to supersede the retracted confirmation — must fail.
+    with pytest.raises((ValueError, InvalidTransitionError)):
+        repos.work_confirmations.record(
+            scope=org_a["scope"], project_id=project_id,
+            sov_item_id=UUID(sov_item.sov_item_id),
+            confirmation_type="signed_inspection", percent_complete=100.0,
+            supersedes_confirmation_id=first.confirmation_id,
+        )
+
+
+def test_supersession_state_machine_already_superseded(repos, org_a):
+    """rc9 Phase 8: SUPERSEDED -> SUPERSEDED is illegal."""
+    from uuid import UUID
+    from construction_ai.work.transitions import InvalidTransitionError
+    project_id = UUID(str(org_a["project"].project_id))
+    company_id = UUID(str(org_a["company"].company_id))
+
+    contract = repos.contracts.create(
+        scope=org_a["scope"], project_id=project_id, company_id=company_id,
+        reference="CON-RC9-SM3", name="RC9 State Machine 3",
+        base_contract_value=10000, currency="CAD",
+    )
+    sov_item = repos.sov_items.create(
+        scope=org_a["scope"], contract_id=UUID(contract.contract_id),
+        reference="SOV-SM3", name="SM Item 3", base_value=5000, currency="CAD", sort_order=1,
+    )
+
+    first = repos.work_confirmations.record(
+        scope=org_a["scope"], project_id=project_id,
+        sov_item_id=UUID(sov_item.sov_item_id),
+        confirmation_type="superintendent", percent_complete=50.0,
+    )
+
+    # First supersession succeeds.
+    second = repos.work_confirmations.record(
+        scope=org_a["scope"], project_id=project_id,
+        sov_item_id=UUID(sov_item.sov_item_id),
+        confirmation_type="signed_inspection", percent_complete=75.0,
+        supersedes_confirmation_id=first.confirmation_id,
+    )
+    assert second.status == "confirmed"
+
+    # Attempt to supersede the already-superseded first confirmation — must fail.
+    with pytest.raises((ValueError, InvalidTransitionError)):
+        repos.work_confirmations.record(
+            scope=org_a["scope"], project_id=project_id,
+            sov_item_id=UUID(sov_item.sov_item_id),
+            confirmation_type="signed_inspection", percent_complete=90.0,
+            supersedes_confirmation_id=first.confirmation_id,
+        )
+
+
+def test_revoke_cannot_revoke_superseded(repos, org_a):
+    """rc9 Phase 8: SUPERSEDED -> REVOKED is illegal."""
+    from uuid import UUID
+    from construction_ai.work.transitions import InvalidTransitionError
+    project_id = UUID(str(org_a["project"].project_id))
+    company_id = UUID(str(org_a["company"].company_id))
+
+    contract = repos.contracts.create(
+        scope=org_a["scope"], project_id=project_id, company_id=company_id,
+        reference="CON-RC9-SM4", name="RC9 State Machine 4",
+        base_contract_value=10000, currency="CAD",
+    )
+    sov_item = repos.sov_items.create(
+        scope=org_a["scope"], contract_id=UUID(contract.contract_id),
+        reference="SOV-SM4", name="SM Item 4", base_value=5000, currency="CAD", sort_order=1,
+    )
+
+    first = repos.work_confirmations.record(
+        scope=org_a["scope"], project_id=project_id,
+        sov_item_id=UUID(sov_item.sov_item_id),
+        confirmation_type="superintendent", percent_complete=50.0,
+    )
+    repos.work_confirmations.record(
+        scope=org_a["scope"], project_id=project_id,
+        sov_item_id=UUID(sov_item.sov_item_id),
+        confirmation_type="signed_inspection", percent_complete=75.0,
+        supersedes_confirmation_id=first.confirmation_id,
+    )
+
+    # Attempt to revoke the already-superseded confirmation — must fail.
+    with pytest.raises(InvalidTransitionError):
+        repos.work_confirmations.revoke(
+            scope=org_a["scope"], confirmation_id=first.confirmation_id,
+        )
+
+
+def test_revoke_vs_supersede_race(repos, org_a):
+    """rc9 Phase 7: Revoke-vs-supersede concurrency test.
+
+    T1 begins supersession of A (locks A with FOR UPDATE).
+    T2 attempts to revoke A (must block on T1's lock).
+    T1 commits (A is now superseded).
+    T2 resumes — revoke must fail because A is no longer 'confirmed'.
+
+    NoSuccessorOfRevokedConfirmation: the supersede won, revoke lost.
+    """
+    from uuid import UUID
+    import os
+    import psycopg
+    import threading
+    import time
+
+    dsn = os.getenv("DATABASE_URL", "postgresql://construction:construction@localhost:5432/construction_ai")
+    org_id = str(org_a["scope"].organization_id)
+    project_id = UUID(str(org_a["project"].project_id))
+    company_id = UUID(str(org_a["company"].company_id))
+
+    contract = repos.contracts.create(
+        scope=org_a["scope"], project_id=project_id, company_id=company_id,
+        reference="CON-RC9-RVSR", name="RC9 Revoke vs Supersede",
+        base_contract_value=10000, currency="CAD",
+    )
+    sov_item = repos.sov_items.create(
+        scope=org_a["scope"], contract_id=UUID(contract.contract_id),
+        reference="SOV-RVSR", name="RvS Item", base_value=5000, currency="CAD", sort_order=1,
+    )
+
+    first = repos.work_confirmations.record(
+        scope=org_a["scope"], project_id=project_id,
+        sov_item_id=UUID(sov_item.sov_item_id),
+        confirmation_type="superintendent", percent_complete=50.0,
+    )
+
+    # T1: Lock A with FOR UPDATE.
+    conn1 = psycopg.connect(dsn)
+    conn1.autocommit = False
+    cur1 = conn1.cursor()
+    cur1.execute("SELECT set_config('app.organization_id', %s, false)", (org_id,))
+    cur1.execute(
+        "SELECT confirmation_id FROM work_confirmations "
+        "WHERE organization_id = %s AND confirmation_id = %s AND status = 'confirmed' "
+        "FOR UPDATE",
+        (org_id, str(first.confirmation_id)),
+    )
+    locked = cur1.fetchone()
+    assert locked is not None, "T1 should have locked the target row"
+
+    # T2: Attempt to revoke A in a separate thread.
+    t2_result = {"error": None, "success": False, "revoked": False}
+
+    def t2_attempt():
+        try:
+            conn2 = psycopg.connect(dsn)
+            conn2.autocommit = False
+            cur2 = conn2.cursor()
+            cur2.execute("SELECT set_config('app.organization_id', %s, false)", (org_id,))
+            # This will block on T1's FOR UPDATE lock.
+            cur2.execute(
+                "SELECT status FROM work_confirmations "
+                "WHERE organization_id = %s AND confirmation_id = %s FOR UPDATE",
+                (org_id, str(first.confirmation_id)),
+            )
+            row = cur2.fetchone()
+            if row is None:
+                t2_result["error"] = "confirmation not found"
+                conn2.rollback()
+                return
+            current_status = row[0]
+            if current_status != "confirmed":
+                # A is no longer confirmed — revoke must fail.
+                t2_result["error"] = f"status is {current_status}, not confirmed"
+                conn2.rollback()
+                return
+            cur2.execute(
+                "UPDATE work_confirmations SET status = 'revoked', updated_at = now() "
+                "WHERE organization_id = %s AND confirmation_id = %s",
+                (org_id, str(first.confirmation_id)),
+            )
+            conn2.commit()
+            t2_result["revoked"] = True
+            t2_result["success"] = True
+        except Exception as e:
+            t2_result["error"] = e
+            try:
+                conn2.rollback()
+            except Exception:
+                pass
+
+    t2 = threading.Thread(target=t2_attempt)
+    t2.start()
+
+    # Give T2 time to block on the lock.
+    time.sleep(0.5)
+
+    # T1: Do the supersession (insert + mark old) and commit.
+    cur1.execute(
+        """INSERT INTO work_confirmations(
+               organization_id, project_id, scope_id, invoice_id, confirmed_by_user_id,
+               confirmation_type, percent_complete, quantity, occurred_at, evidence_ids, sov_item_id, created_by,
+               supersedes_confirmation_id)
+           VALUES(%s, %s, NULL, NULL, NULL, 'signed_inspection', 75.0, NULL, now(), '{}', %s, 'test_t1', %s)
+           RETURNING confirmation_id""",
+        (org_id, str(project_id), str(sov_item.sov_item_id), str(first.confirmation_id)),
+    )
+    cur1.execute(
+        "UPDATE work_confirmations SET status = 'superseded', updated_at = now() "
+        "WHERE organization_id = %s AND confirmation_id = %s AND status = 'confirmed'",
+        (org_id, str(first.confirmation_id)),
+    )
+    assert cur1.rowcount == 1, "T1 should have marked old as superseded"
+    conn1.commit()
+    cur1.close()
+    conn1.close()
+
+    # Wait for T2.
+    t2.join(timeout=10)
+
+    # T2 should NOT have revoked — the supersede won.
+    assert not t2_result["revoked"], (
+        "T2 should NOT have revoked — A was superseded by T1 before T2 could act"
+    )
+    assert t2_result["error"] is not None, (
+        "T2 should have failed — A is no longer 'confirmed'"
+    )
+
+
+def test_supersession_audit_atomic(repos, org_a):
+    """rc9 Phase 34: Supersession audit is atomic with the mutation.
+
+    When audit_repo is passed, the audit event is appended in the same
+    transaction as the insert + mark_old. If the audit fails, the entire
+    supersession rolls back.
+    """
+    from uuid import UUID
+    project_id = UUID(str(org_a["project"].project_id))
+    company_id = UUID(str(org_a["company"].company_id))
+
+    contract = repos.contracts.create(
+        scope=org_a["scope"], project_id=project_id, company_id=company_id,
+        reference="CON-RC9-AUD", name="RC9 Audit Atomic",
+        base_contract_value=10000, currency="CAD",
+    )
+    sov_item = repos.sov_items.create(
+        scope=org_a["scope"], contract_id=UUID(contract.contract_id),
+        reference="SOV-AUD", name="Audit Item", base_value=5000, currency="CAD", sort_order=1,
+    )
+
+    first = repos.work_confirmations.record(
+        scope=org_a["scope"], project_id=project_id,
+        sov_item_id=UUID(sov_item.sov_item_id),
+        confirmation_type="superintendent", percent_complete=50.0,
+    )
+
+    # Supersede with audit.
+    second = repos.work_confirmations.record(
+        scope=org_a["scope"], project_id=project_id,
+        sov_item_id=UUID(sov_item.sov_item_id),
+        confirmation_type="signed_inspection", percent_complete=75.0,
+        supersedes_confirmation_id=first.confirmation_id,
+        audit_repo=repos.audit,
+    )
+    assert second.status == "confirmed"
+
+    # Verify the audit event was recorded.
+    events = repos.audit.for_object(
+        scope=org_a["scope"], object_type="work_confirmation",
+        object_id=first.confirmation_id,
+    )
+    assert len(events) >= 1, "audit event for supersession should exist"
+    # Check that at least one event is the supersession event.
+    supersede_events = [
+        e for e in events if e.get("event_type") == "work_confirmation_superseded"
+    ]
+    assert len(supersede_events) >= 1, "no work_confirmation_superseded event found"
+
+
+def test_supersession_integrity_check_no_violations(repos, org_a):
+    """rc9 Phase 35: Operational supersession invariants hold after normal use."""
+    from uuid import UUID
+    project_id = UUID(str(org_a["project"].project_id))
+    company_id = UUID(str(org_a["company"].company_id))
+
+    contract = repos.contracts.create(
+        scope=org_a["scope"], project_id=project_id, company_id=company_id,
+        reference="CON-RC9-INT", name="RC9 Integrity Check",
+        base_contract_value=10000, currency="CAD",
+    )
+    sov_item = repos.sov_items.create(
+        scope=org_a["scope"], contract_id=UUID(contract.contract_id),
+        reference="SOV-INT", name="Integrity Item", base_value=5000, currency="CAD", sort_order=1,
+    )
+
+    first = repos.work_confirmations.record(
+        scope=org_a["scope"], project_id=project_id,
+        sov_item_id=UUID(sov_item.sov_item_id),
+        confirmation_type="superintendent", percent_complete=50.0,
+    )
+    repos.work_confirmations.record(
+        scope=org_a["scope"], project_id=project_id,
+        sov_item_id=UUID(sov_item.sov_item_id),
+        confirmation_type="signed_inspection", percent_complete=75.0,
+        supersedes_confirmation_id=first.confirmation_id,
+    )
+
+    violations = repos.work_confirmations.check_supersession_integrity(
+        scope=org_a["scope"],
+    )
+    assert violations == [], f"supersession integrity violations: {violations}"

@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""v0.5.0-rc7 — generate the final detached release attestation.
+"""v0.5.0-rc9 — generate the final detached release attestation.
 
 The rc7 attestation architecture is acyclic:
 

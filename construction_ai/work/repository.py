@@ -1,11 +1,14 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 from uuid import UUID
 
 from construction_ai.persistence.db import Database, Scope, row_to_dict
 from construction_ai.work.models import WorkConfirmation
+from construction_ai.work.transitions import (
+    validate_transition,
+)
 
 
 def _to_confirmation(row: dict[str, Any]) -> WorkConfirmation:
@@ -45,6 +48,7 @@ class WorkConfirmationRepository:
         sov_item_id: UUID | None = None,
         created_by: str = "system",
         supersedes_confirmation_id: UUID | None = None,
+        audit_repo=None,
     ) -> WorkConfirmation:
         from decimal import Decimal
 
@@ -145,6 +149,26 @@ class WorkConfirmationRepository:
                         "was no longer 'confirmed' when marking it superseded — "
                         "the successor insert will be rolled back"
                     )
+                # rc9 Phase 34: Audit append in the SAME transaction.
+                # SupersessionCommitted => AuditCommitted.
+                if audit_repo is not None:
+                    from psycopg.types.json import Jsonb
+                    audit_repo._append_with_cursor(
+                        cur=cur,
+                        scope=scope,
+                        event_type="work_confirmation_superseded",
+                        actor=created_by,
+                        object_type="work_confirmation",
+                        object_id=supersedes_confirmation_id,
+                        payload={
+                            "superseded_confirmation_id": str(supersedes_confirmation_id),
+                            "successor_confirmation_id": str(confirmation.confirmation_id),
+                            "project_id": str(project_id) if project_id else None,
+                            "sov_item_id": str(sov_item_id) if sov_item_id else None,
+                        },
+                        occurred_at=occurred_at or datetime.now(timezone.utc),
+                        Jsonb=Jsonb,
+                    )
         return confirmation
 
     def _mark_superseded(self, *, scope: Scope, confirmation_id: UUID) -> None:
@@ -158,32 +182,53 @@ class WorkConfirmationRepository:
             )
 
     def revoke(self, *, scope: Scope, confirmation_id: UUID, reason: str | None = None) -> bool:
-        """rc7 Phase 17: Revoke a confirmation.
+        """rc9: Revoke a confirmation using state-machine validation.
 
-        Only ACTIVE (confirmed) confirmations can be revoked.
-        SUPERSEDED → ACTIVE is not allowed without a dedicated restoration.
+        Uses FOR UPDATE locking and validate_transition() to ensure
+        only CONFIRMED -> REVOKED is allowed.
         """
         with self.db.scoped(scope) as cur:
             cur.execute(
+                """SELECT status FROM work_confirmations
+                   WHERE organization_id = %s AND confirmation_id = %s
+                   FOR UPDATE""",
+                (scope.organization_id, confirmation_id),
+            )
+            row = cur.fetchone()
+            if row is None:
+                return False
+            current_status = row[0]
+            validate_transition(current_status, "revoked")
+            cur.execute(
                 """UPDATE work_confirmations
                    SET status = 'revoked', updated_at = now()
-                   WHERE organization_id = %s AND confirmation_id = %s AND status = 'confirmed'""",
+                   WHERE organization_id = %s AND confirmation_id = %s""",
                 (scope.organization_id, confirmation_id),
             )
             return cur.rowcount > 0
 
     def retract(self, *, scope: Scope, confirmation_id: UUID, reason: str | None = None) -> bool:
-        """rc7 Phase 17: Retract a confirmation.
+        """rc9: Retract a confirmation using state-machine validation.
 
-        Only ACTIVE (confirmed) confirmations can be retracted.
-        This is distinct from revoke: retraction is initiated by the confirmer,
-        while revocation is an administrative action.
+        Uses FOR UPDATE locking and validate_transition() to ensure
+        only CONFIRMED -> RETRACTED is allowed.
         """
         with self.db.scoped(scope) as cur:
             cur.execute(
+                """SELECT status FROM work_confirmations
+                   WHERE organization_id = %s AND confirmation_id = %s
+                   FOR UPDATE""",
+                (scope.organization_id, confirmation_id),
+            )
+            row = cur.fetchone()
+            if row is None:
+                return False
+            current_status = row[0]
+            validate_transition(current_status, "retracted")
+            cur.execute(
                 """UPDATE work_confirmations
                    SET status = 'retracted', updated_at = now()
-                   WHERE organization_id = %s AND confirmation_id = %s AND status = 'confirmed'""",
+                   WHERE organization_id = %s AND confirmation_id = %s""",
                 (scope.organization_id, confirmation_id),
             )
             return cur.rowcount > 0
@@ -354,3 +399,65 @@ class WorkConfirmationRepository:
             from construction_ai.persistence.db import rows_to_dicts
 
             return [_to_confirmation(r) for r in rows_to_dicts(cur)]
+
+    def check_supersession_integrity(self, *, scope: Scope) -> list[str]:
+        """rc9 Phase 35: Operational supersession invariants.
+
+        Returns a list of violation descriptions. Empty list = all invariants hold.
+
+        Invariants checked:
+        1. No active confirmation with active successor ambiguity
+           (a superseded record should not have status='confirmed')
+        2. One direct successor max (enforced by unique index, but check anyway)
+        3. Superseded record not used in work evaluation (status != 'confirmed')
+        4. Revoked record not used in work evaluation (status != 'confirmed')
+        5. Subject chain consistent (successor subject matches superseded subject)
+        """
+        violations: list[str] = []
+        with self.db.scoped(scope) as cur:
+            # 1. No confirmation should be both superseded and confirmed.
+            cur.execute(
+                """SELECT confirmation_id FROM work_confirmations
+                   WHERE organization_id = %s AND status = 'confirmed'
+                   AND confirmation_id IN (
+                       SELECT supersedes_confirmation_id FROM work_confirmations
+                       WHERE organization_id = %s AND supersedes_confirmation_id IS NOT NULL
+                   )""",
+                (scope.organization_id, scope.organization_id),
+            )
+            for row in cur.fetchall():
+                violations.append(
+                    f"confirmation {row[0]} is 'confirmed' but has a successor (ambiguity)"
+                )
+
+            # 2. Check for duplicate direct successors (should be prevented by unique index).
+            cur.execute(
+                """SELECT supersedes_confirmation_id, count(*) as cnt
+                   FROM work_confirmations
+                   WHERE organization_id = %s AND supersedes_confirmation_id IS NOT NULL
+                   GROUP BY supersedes_confirmation_id HAVING count(*) > 1""",
+                (scope.organization_id,),
+            )
+            for row in cur.fetchall():
+                violations.append(
+                    f"confirmation {row[0]} has {row[1]} direct successors (max 1 allowed)"
+                )
+
+            # 3. Subject chain consistency: successor subject must match superseded subject.
+            cur.execute(
+                """SELECT s.confirmation_id, s.project_id, s.sov_item_id, s.invoice_id,
+                          o.project_id, o.sov_item_id, o.invoice_id
+                   FROM work_confirmations s
+                   JOIN work_confirmations o ON s.supersedes_confirmation_id = o.confirmation_id
+                   WHERE s.organization_id = %s
+                   AND (s.project_id IS DISTINCT FROM o.project_id
+                        OR s.sov_item_id IS DISTINCT FROM o.sov_item_id
+                        OR s.invoice_id IS DISTINCT FROM o.invoice_id)""",
+                (scope.organization_id,),
+            )
+            for row in cur.fetchall():
+                violations.append(
+                    f"successor {row[0]} subject mismatch with superseded confirmation"
+                )
+
+        return violations

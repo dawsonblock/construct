@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""v0.5.0-rc7 — full-stack clean-slate qualification runner (Phase 30).
+"""v0.5.0-rc9 — full-stack clean-slate qualification runner (Phase 30).
 
 Orchestrates a complete clean-slate qualification run against a fresh
 PostgreSQL, Redis, object storage, migration state, and ERPNext stub.
@@ -199,7 +199,7 @@ def _verify_payload_frozen(freeze: dict) -> bool:
 
 def main() -> int:
     print("=" * 70)
-    print("v0.5.0-rc7 Full-Stack Clean-Slate Qualification")
+    print("v0.5.0-rc9 Full-Stack Clean-Slate Qualification")
     print("=" * 70)
 
     # 1. Check stack.

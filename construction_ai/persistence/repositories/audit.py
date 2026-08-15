@@ -114,40 +114,55 @@ class AuditRepository(Repository):
         payload = payload or {}
         occurred_at = occurred_at or datetime.now(timezone.utc)
         with self.db.scoped(scope) as cur:
-            # Serialize appends within this organization's chain. Without it two
-            # concurrent writers can read the same head and race on `sequence`;
-            # the unique constraint would reject one, losing the event.
-            cur.execute("SELECT pg_advisory_xact_lock(hashtextextended(%s, 0))", (str(scope.organization_id),))
-            cur.execute(
-                "SELECT sequence, entry_hash FROM audit_events WHERE organization_id = %s ORDER BY sequence DESC LIMIT 1",
-                (scope.organization_id,),
+            return self._append_with_cursor(
+                cur=cur, scope=scope, event_type=event_type, actor=actor,
+                object_type=object_type, object_id=object_id,
+                payload=payload, occurred_at=occurred_at, Jsonb=Jsonb,
             )
-            head = cur.fetchone()
-            sequence = (head[0] + 1) if head else 1
-            prev_hash = head[1] if head else None
-            entry_hash = chain_hash(
-                prev_hash=prev_hash,
-                event_type=event_type,
-                actor=actor,
-                organization_id=scope.organization_id,
-                project_id=scope.project_id,
-                object_type=object_type,
-                object_id=object_id,
-                payload=payload,
-                occurred_at=occurred_at,
-            )
-            cur.execute(
-                """INSERT INTO audit_events(organization_id, sequence, project_id, event_type, actor,
-                       object_type, object_id, payload, occurred_at, prev_hash, entry_hash)
-                   VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
-                   RETURNING audit_event_id""",
-                (
-                    scope.organization_id, sequence, scope.project_id, event_type, actor,
-                    object_type, object_id, Jsonb(payload, dumps=dumps), occurred_at, prev_hash, entry_hash,
-                ),
-            )
-            event_id_row = cur.fetchone()
-            audit_event_id = event_id_row[0] if event_id_row else None
+
+    def _append_with_cursor(
+        self, *, cur, scope: Scope, event_type: str, actor: str,
+        object_type: str, object_id: UUID | None,
+        payload: dict[str, Any], occurred_at: datetime, Jsonb,
+    ) -> AuditEvent:
+        """Append an audit event using an existing cursor (same transaction).
+
+        rc9: This enables atomic audit logging for supersession — the audit
+        append runs in the same transaction as the insert + mark_old,
+        so SupersessionCommitted => AuditCommitted.
+        """
+        # Serialize appends within this organization's chain.
+        cur.execute("SELECT pg_advisory_xact_lock(hashtextextended(%s, 0))", (str(scope.organization_id),))
+        cur.execute(
+            "SELECT sequence, entry_hash FROM audit_events WHERE organization_id = %s ORDER BY sequence DESC LIMIT 1",
+            (scope.organization_id,),
+        )
+        head = cur.fetchone()
+        sequence = (head[0] + 1) if head else 1
+        prev_hash = head[1] if head else None
+        entry_hash = chain_hash(
+            prev_hash=prev_hash,
+            event_type=event_type,
+            actor=actor,
+            organization_id=scope.organization_id,
+            project_id=scope.project_id,
+            object_type=object_type,
+            object_id=object_id,
+            payload=payload,
+            occurred_at=occurred_at,
+        )
+        cur.execute(
+            """INSERT INTO audit_events(organization_id, sequence, project_id, event_type, actor,
+                   object_type, object_id, payload, occurred_at, prev_hash, entry_hash)
+               VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+               RETURNING audit_event_id""",
+            (
+                scope.organization_id, sequence, scope.project_id, event_type, actor,
+                object_type, object_id, Jsonb(payload, dumps=dumps), occurred_at, prev_hash, entry_hash,
+            ),
+        )
+        event_id_row = cur.fetchone()
+        audit_event_id = event_id_row[0] if event_id_row else None
         return AuditEvent(sequence, event_type, actor, object_type, object_id, occurred_at, entry_hash, prev_hash, scope.project_id, payload, audit_event_id=audit_event_id)
 
     def verify_chain(self, *, scope: Scope) -> bool:

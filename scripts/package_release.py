@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""v0.5.0-rc7 Phase 9 — package the release ZIP and hash it externally.
+"""v0.5.0-rc9 Phase 9 — package the release ZIP and hash it externally.
 
 The trust chain is:
     FinalZIP → ExternalZIPHash
@@ -10,8 +10,11 @@ Inside the ZIP:
 No cycles: the ZIP hash is computed AFTER packaging and stored in a separate
 file that is NOT included in the ZIP.
 
+rc9: The ZIP and its hash are written to dist/ — not the source root.
+This keeps SourcePayload separate from ReleaseOutputs.
+
 Usage:
-    python scripts/package_release.py --version 0.5.0-rc7
+    python scripts/package_release.py --version 0.5.0-rc9.dev0
 """
 from __future__ import annotations
 
@@ -22,6 +25,7 @@ import zipfile
 from pathlib import Path
 
 ROOT = Path(__file__).parent.parent
+DIST = ROOT / "dist"
 
 
 def _git_commit() -> str:
@@ -38,18 +42,21 @@ def _git_commit() -> str:
 def package_release(version: str) -> tuple[Path, str]:
     """Package the release ZIP and return (zip_path, sha256).
 
-    rc8: Reads the payload file list from PAYLOAD_MANIFEST.json instead of
-    using `git ls-files`. This ensures the ZIP contains exactly the files
-    listed in the payload manifest — no more, no less. The previous rc7
-    approach used `git ls-files`, which missed untracked new files and
-    included generated ZIPs that were accidentally tracked.
+    rc9: Writes to dist/ directory. Reads the payload file list from
+    PAYLOAD_MANIFEST.json. The ZIP contains exactly:
+      PayloadFiles (from manifest) ∪ AttestationFiles (generated artifacts)
+
+    No build outputs, no ZIPs, no dist/ paths appear in the payload.
     """
     import json
 
     zip_name = f"construct-{version}.zip"
-    zip_path = ROOT / zip_name
 
-    # rc8: Read the payload file list from the manifest.
+    # rc9: Write to dist/ directory, not source root.
+    DIST.mkdir(exist_ok=True)
+    zip_path = DIST / zip_name
+
+    # rc9: Read the payload file list from the manifest.
     manifest_path = ROOT / "PAYLOAD_MANIFEST.json"
     if manifest_path.exists():
         manifest = json.loads(manifest_path.read_text())
@@ -63,9 +70,11 @@ def package_release(version: str) -> tuple[Path, str]:
             payload_files = set()
 
     # Also include generated attestation artifacts (not in payload manifest).
+    # rc9: Include QUALIFICATION_IDENTITY.json as an attestation file.
     artifacts = [
         "PAYLOAD_MANIFEST.json",
         "PAYLOAD_MANIFEST.sha256",
+        "QUALIFICATION_IDENTITY.json",
         "QUALIFICATION_REPORT.json",
         "TEST_RESULTS.json",
         "CRASH_MATRIX.json",
@@ -80,8 +89,14 @@ def package_release(version: str) -> tuple[Path, str]:
         if (ROOT / a).exists():
             all_files.add(a)
 
-    # Exclude any ZIP files or ZIP hash files (hard exclusion).
-    all_files = {f for f in all_files if not f.endswith(".zip") and not f.endswith(".zip.sha256")}
+    # Exclude any ZIP files, ZIP hash files, and dist/ paths (hard exclusion).
+    all_files = {
+        f for f in all_files
+        if not f.endswith(".zip")
+        and not f.endswith(".zip.sha256")
+        and not f.startswith("dist/")
+        and not f.startswith("build/")
+    }
 
     with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
         for f in sorted(all_files):
@@ -92,8 +107,8 @@ def package_release(version: str) -> tuple[Path, str]:
     # Compute the external hash (NOT included in the ZIP).
     sha256 = hashlib.sha256(zip_path.read_bytes()).hexdigest()
 
-    # Write the external hash file.
-    hash_file = ROOT / f"{zip_name}.sha256"
+    # Write the external hash file in dist/.
+    hash_file = DIST / f"{zip_name}.sha256"
     hash_file.write_text(f"{sha256}  {zip_name}\n")
 
     return zip_path, sha256
@@ -119,7 +134,7 @@ def main() -> int:
     print(f"  Hash file: {zip_path}.sha256")
     print()
     print("Trust chain (acyclic):")
-    print(f"  construct-{version}.zip → construct-{version}.zip.sha256")
+    print(f"  {zip_path.name} → {zip_path.name}.sha256")
     print("  Inside ZIP: RELEASE_ATTESTATION → QUALIFICATION_REPORT → PAYLOAD_MANIFEST → PayloadFiles")
     return 0
 

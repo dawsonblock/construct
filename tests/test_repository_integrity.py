@@ -112,3 +112,67 @@ def test_dockerfile_label_defaults_match_version():
     assert match.group(1) == CANONICAL_VERSION, (
         f"Dockerfile APP_VERSION default {match.group(1)!r} != VERSION {CANONICAL_VERSION!r}"
     )
+
+
+def test_readme_version_matches():
+    """rc9: README.md must reference the current version."""
+    text = (ROOT / "README.md").read_text()
+    assert CANONICAL_VERSION in text, (
+        f"README.md does not contain {CANONICAL_VERSION!r}"
+    )
+
+
+def test_architecture_doc_version_matches():
+    """rc9: docs/ARCHITECTURE.md must reference the current version."""
+    text = (ROOT / "docs" / "ARCHITECTURE.md").read_text()
+    assert CANONICAL_VERSION in text, (
+        f"docs/ARCHITECTURE.md does not contain {CANONICAL_VERSION!r}"
+    )
+
+
+def test_pinned_versions_doc_matches():
+    """rc9: docs/PINNED_VERSIONS.md must reference the current version."""
+    text = (ROOT / "docs" / "PINNED_VERSIONS.md").read_text()
+    assert CANONICAL_VERSION in text, (
+        f"docs/PINNED_VERSIONS.md does not contain {CANONICAL_VERSION!r}"
+    )
+
+
+def test_all_version_surfaces_agree():
+    """rc9: Every version-bearing surface must agree on exactly one version.
+
+    This is the universal test: for all VersionSurface_i, Version_i = CANONICAL_VERSION.
+    Qualification must fail on any mismatch.
+    """
+    surfaces = {
+        "VERSION": CANONICAL_VERSION,
+        "pyproject.toml": _pyproject_version(),
+        "construction_ai/__init__.py": None,
+        "apps/erpnext_stub/main.py": None,
+        "Dockerfile": None,
+        "README.md": None,
+        "docs/ARCHITECTURE.md": None,
+        "docs/PINNED_VERSIONS.md": None,
+    }
+
+    from construction_ai import __version__
+    surfaces["construction_ai/__init__.py"] = __version__
+
+    stub_text = (ROOT / "apps" / "erpnext_stub" / "main.py").read_text()
+    stub_match = re.search(r'version="([^"]+)"', stub_text)
+    surfaces["apps/erpnext_stub/main.py"] = stub_match.group(1) if stub_match else None
+
+    docker_text = (ROOT / "Dockerfile").read_text()
+    docker_match = re.search(r"ARG APP_VERSION=([^\s]+)", docker_text)
+    surfaces["Dockerfile"] = docker_match.group(1) if docker_match else None
+
+    for name, path in [("README.md", "README.md"), ("docs/ARCHITECTURE.md", "docs/ARCHITECTURE.md"), ("docs/PINNED_VERSIONS.md", "docs/PINNED_VERSIONS.md")]:
+        text = (ROOT / path).read_text()
+        if CANONICAL_VERSION in text:
+            surfaces[name] = CANONICAL_VERSION
+
+    mismatches = {k: v for k, v in surfaces.items() if v != CANONICAL_VERSION}
+    assert not mismatches, (
+        f"Version surface mismatches: {mismatches}. "
+        f"Expected all surfaces to be {CANONICAL_VERSION!r}"
+    )

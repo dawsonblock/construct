@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""v0.5.0-rc7 — qualification report generator with gate categories and manifest binding.
+"""v0.5.0-rc9 — qualification report generator with gate categories and manifest binding.
 
 Generates a qualification report that captures the full state of the system
 after running the test suite. The report is the qualification artifact: a

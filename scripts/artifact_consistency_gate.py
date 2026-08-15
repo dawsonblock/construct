@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""v0.5.0-rc7 Phase 33 — exhaustive release gate artifact consistency check.
+"""v0.5.0-rc9 Phase 33 — exhaustive release gate artifact consistency check.
 
 Opens every artifact and asserts:
     Version_i = Version_release

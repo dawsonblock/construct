@@ -165,6 +165,9 @@ SELF_EXCLUDED_ARTIFACTS = {
     "FINAL_ARCHIVE.sha256",
     "RC6_AUDIT_BASELINE.json",
     "QUALIFICATION_IDENTITY.json",
+    # rc9: Release receipt is a build output, not payload.
+    "RELEASE_RECEIPT.json",
+    "RELEASE_RECEIPT.sha256",
 }
 
 #: rc8: Explicit payload roots. Instead of relying on `git ls-files` (which

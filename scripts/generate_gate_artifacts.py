@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""v0.5.0-rc7 — generate all gate evidence artifacts from the current build.
+"""v0.5.0-rc9 — generate all gate evidence artifacts from the current build.
 
 This script regenerates the supporting qualification artifacts so they all
 refer to the same exact commit, version, and migration count. The rc6 archive
