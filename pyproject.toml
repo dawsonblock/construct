@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "construction-ai-ops"
-version = "0.5.0-rc6.dev0"
+version = "0.5.0-rc7.dev0"
 description = "Evidence-first construction operations AI control plane"
 requires-python = ">=3.12,<3.13"
 # Exact pins only. The transitive closure lives in requirements.lock.txt and is

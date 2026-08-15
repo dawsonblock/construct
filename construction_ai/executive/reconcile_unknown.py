@@ -192,6 +192,34 @@ def reconcile_external_action(
 
     # 4. Classify the result.
     if len(all_matches) == 0:
+        # rc7: If the action previously had a remote_document_id (we positively
+        # observed a remote document before), its disappearance is NOT ordinary
+        # absence — it is a remote state inconsistency that requires manual
+        # reconciliation. A document that was visible cannot quietly become
+        # PROVEN_ABSENT using historical negative observations.
+        if action.remote_document_id:
+            _transition_to(repos, org_scope, action_id, "failed_terminal",
+                            last_error=(
+                                f"reconciliation: previously observed remote document "
+                                f"{action.remote_document_id} is no longer visible — "
+                                f"remote state is inconsistent (rc7: disappearance of a "
+                                f"known document is not ordinary absence)"
+                            ),
+                            remote_state="remote_inconsistent")
+            _audit_reconciliation(repos, org_scope, action_id, "unknown", "failed_terminal",
+                                  "remote_state_inconsistent", searched_by, action.remote_document_id)
+            return ReconciliationOutcome(
+                action_id=action_id,
+                classification="remote_state_inconsistent",
+                new_status="failed_terminal",
+                remote_document_id=action.remote_document_id,
+                reason=(
+                    f"previously observed remote document {action.remote_document_id} "
+                    "is no longer visible — manual reconciliation required"
+                ),
+                searched_by=searched_by,
+            )
+
         # rc5 Phase 2 / rc6: Bounded negative confirmation is now BOTH
         # attempt-bounded AND time-bounded. Two queries microseconds apart
         # must not declare PROVEN_ABSENT when ERP read-after-write visibility
@@ -267,6 +295,17 @@ def reconcile_external_action(
             reason=f"multiple matching ERP documents: {match_names} — manual reconciliation required",
             searched_by=searched_by,
         )
+
+    # rc7: A positive remote document was found. Reset the negative-observation
+    # state so that if the document later disappears, the next no-match sweep
+    # starts fresh rather than using historical negative observations to
+    # immediately declare PROVEN_ABSENT. The semantic state has changed from
+    # "never seen" to "known to have existed", which is a different condition.
+    if getattr(action, "first_negative_observation_at", None) is not None or getattr(action, "recovery_attempts", 0):
+        _transition_to(repos, org_scope, action_id, "unknown",
+                       remote_state="remote_unknown",
+                       recovery_attempts=0,
+                       reset_negative_observation=True)
 
     # Exactly one match — classify by docstatus and field comparison.
     doc = all_matches[0]
@@ -378,6 +417,7 @@ def _transition_to(
     *, remote_document_id: str | None = None, last_error: str | None = None,
     remote_state: str | None = None, recovery_attempts: int | None = None,
     first_negative_observation_at: datetime | None = None,
+    reset_negative_observation: bool = False,
 ) -> None:
     """Transition an UNKNOWN action to a new status."""
     repos.external_actions.transition(
@@ -385,6 +425,7 @@ def _transition_to(
         remote_document_id=remote_document_id, last_error=last_error,
         remote_state=remote_state, recovery_attempts=recovery_attempts,
         first_negative_observation_at=first_negative_observation_at,
+        reset_negative_observation=reset_negative_observation,
     )
 
 

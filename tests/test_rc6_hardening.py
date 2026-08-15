@@ -52,11 +52,18 @@ def test_manifest_excludes_itself_from_files_map():
     assert "MANIFEST.json" not in manifest["files"], (
         "MANIFEST.json must not be in its own per-file map — self-reference"
     )
-    assert "tree_hash" in manifest, "rc6 manifest must include a tree_hash"
+    assert "tree_hash" in manifest, "rc6/rc7 manifest must include a tree_hash"
     assert len(manifest["tree_hash"]) == 64, "tree_hash must be SHA-256 hex"
-    assert "post_manifest_artifacts" in manifest
+    # rc7: post_manifest_artifacts removed — the acyclic attestation chain
+    # uses RELEASE_ATTESTATION.json instead. The manifest now has
+    # attestation_chain and self_excluded_artifacts.
     assert "self_excluded_artifacts" in manifest
     assert "MANIFEST.json" in manifest["self_excluded_artifacts"]
+    assert "MANIFEST.json.sha256" in manifest["self_excluded_artifacts"], (
+        "rc7: the companion filename must match the actual generated file"
+    )
+    assert "RELEASE_ATTESTATION.json" in manifest["self_excluded_artifacts"]
+    assert "attestation_chain" in manifest
 
 
 def test_manifest_tree_hash_is_deterministic():

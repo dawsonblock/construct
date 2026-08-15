@@ -66,7 +66,7 @@ def evaluate_progress_billing(
                 verified_percent_complete=None, earned_value=Decimal("0"),
                 previously_approved_billing=Decimal("0"), retainage=Decimal("0"),
                 current_billable=Decimal("0"), invoice_amount=_dec(alloc.amount) or Decimal("0"),
-                overbilled=True, currency=alloc.currency,
+                overbilled=True, currency=alloc.currency, status="UNAVAILABLE",
             ))
             overbilled = True
             continue
@@ -110,14 +110,19 @@ def evaluate_progress_billing(
         invoice_amount = _dec(alloc.amount) or Decimal("0")
 
         if earned is None:
-            # No verified completion → cannot establish a billable ceiling.
+            # rc7: No verified completion → cannot establish a billable ceiling.
+            # This is UNAVAILABLE, not OVERBILLED. The invoice is held because
+            # the ceiling cannot be established, not because it exceeds a known
+            # ceiling. The distinction matters for analytics and explanations.
             current_billable = None
             retainage = None
             item_overbilled = True  # cannot prove the invoice is within earned value
+            item_status = "UNAVAILABLE"
         else:
             retainage = (earned * retainage_pct) / Decimal("100")
             current_billable = earned - prior - retainage
             item_overbilled = invoice_amount > current_billable
+            item_status = "OVERBILLED" if item_overbilled else "PASS"
 
         if item_overbilled:
             overbilled = True
@@ -130,6 +135,7 @@ def evaluate_progress_billing(
             retainage=(retainage if retainage is not None else Decimal("0")),
             current_billable=(current_billable if current_billable is not None else Decimal("0")),
             invoice_amount=invoice_amount, overbilled=item_overbilled, currency=currency,
+            status=item_status,
         ))
 
     return ProgressBillingOutcome(per_item=per_item, overbilled=overbilled, evaluated=True)

@@ -92,13 +92,22 @@ qualify-external-effects: ## Full clean-slate qualification of external-effect s
 		tests/test_replay_fingerprints.py
 	@echo "==> External-effect qualification passed."
 
-qualify: ## Full qualification: generate manifest + run all tests + generate qualification report (requires full stack)
-	@echo "==> Full qualification: generating manifest, running all tests, and generating report"
+qualify: ## Full qualification: acyclic attestation chain (requires full stack)
+	@echo "==> Full qualification: acyclic attestation chain"
+	@echo "    rc7: PayloadTree -> MANIFEST -> Qualification -> RELEASE_ATTESTATION"
 	@echo "    This target requires the full stack to be running (make up)."
-	@echo "    rc6: manifest is generated FIRST so the qualification report binds to it."
+	@echo ""
+	@echo "[1/3] Generating payload manifest (MANIFEST.json)..."
 	DATABASE_URL="postgresql://construction:construction@localhost:5432/construction_ai" python scripts/release_manifest.py --output MANIFEST.json
+	@echo ""
+	@echo "[2/3] Generating gate artifacts and qualification report..."
+	python scripts/generate_gate_artifacts.py
 	python scripts/qualification_report.py --pytest --output QUALIFICATION_REPORT.json
-	@echo "==> Manifest and qualification report written"
+	@echo ""
+	@echo "[3/3] Generating release attestation (RELEASE_ATTESTATION.json)..."
+	python scripts/release_attestation.py --output RELEASE_ATTESTATION.json
+	@echo ""
+	@echo "==> Release attestation chain complete"
 	@cat QUALIFICATION_REPORT.json | python -c "import json,sys; r=json.load(sys.stdin); print(f'Qualified: {r[\"qualified\"]}')"
 
 qualify-full: ## Full clean-slate qualification: reset DB + run all categories + report (requires full stack)

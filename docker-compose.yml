@@ -1,4 +1,4 @@
-# Full local stack for the v0.5.0-rc6 hardening branch.
+# Full local stack for the v0.5.0-rc7 hardening branch.
 #   cp .env.example .env && docker compose up
 # Images are pinned by digest — see docs/PINNED_VERSIONS.md.
 #

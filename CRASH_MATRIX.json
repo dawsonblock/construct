@@ -1,23 +1,10 @@
 {
-  "crash_points_tested": [
-    "after_reservation",
-    "after_lease_acquire",
-    "after_erp_create",
-    "before_erp_submit",
-    "after_erp_submit",
-    "before_readback",
-    "after_readback",
-    "before_confirmed",
-    "before_audit"
-  ],
+  "description": "Crash injection and recovery tests using production mechanisms",
   "exit_code": 0,
-  "failed": 0,
-  "git_commit": "63bff29b7df244afe3640861d085bcf11af0f37d",
-  "no_manual_state_mutations": true,
-  "passed": 42,
-  "skipped": 0,
-  "summary": "42 passed in 7.87s",
-  "timestamp": "2026-08-15T01:50:50.865744+00:00",
-  "uses_production_reaper": true,
-  "version": "0.5.0-rc5.dev0"
+  "generated_at": "2026-08-15T04:51:28.864744+00:00",
+  "git_branch": "v0.4-hardening",
+  "git_commit": "9aae468536e44e76e1814eccee182a212dd5e0cc",
+  "passed": true,
+  "summary": "62 passed in 8.54s",
+  "version": "0.5.0-rc7.dev0"
 }

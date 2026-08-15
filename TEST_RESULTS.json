@@ -2,11 +2,12 @@
   "error": 0,
   "exit_code": 0,
   "failed": 0,
-  "git_commit": "63bff29b7df244afe3640861d085bcf11af0f37d",
-  "passed": 530,
-  "skipped": 5,
-  "summary": "530 passed, 5 skipped in 24.88s",
-  "timestamp": "2026-08-15T01:50:42.302499+00:00",
-  "total": 535,
-  "version": "0.5.0-rc5.dev0"
+  "generated_at": "2026-08-15T04:51:00.833401+00:00",
+  "git_branch": "v0.4-hardening",
+  "git_commit": "9aae468536e44e76e1814eccee182a212dd5e0cc",
+  "passed": 556,
+  "skipped": 0,
+  "summary": "556 passed in 27.19s",
+  "total": 556,
+  "version": "0.5.0-rc7.dev0"
 }

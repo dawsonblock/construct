@@ -1,11 +1,149 @@
 {
-  "all_applied": true,
-  "applied_migrations": 25,
-  "git_commit": "63bff29b7df244afe3640861d085bcf11af0f37d",
-  "migration_count": 25,
-  "migration_fingerprint": "476ca1ec413855f644f98d0aae24cf6040730419e3e16a52937dfd1cdf8a7de1",
-  "pending_migrations": 0,
-  "schema_fingerprint": "ef35e84866b3820b15e41ecb2fd71a498d12e28fd313bd218f9747825a24df28",
-  "timestamp": "2026-08-15T01:50:52.082409+00:00",
-  "version": "0.5.0-rc5.dev0"
+  "exit_code": 0,
+  "generated_at": "2026-08-15T04:51:38.423316+00:00",
+  "git_branch": "v0.4-hardening",
+  "git_commit": "9aae468536e44e76e1814eccee182a212dd5e0cc",
+  "migration_count": 27,
+  "migration_fingerprint": "bf473ceada93adc703f4d28bdaf4bbff40dc2cebb568d1d8380bcecef2712033",
+  "migrations": [
+    {
+      "filename": "001_control_plane.sql",
+      "sha256": "707cf2cfa332c6c9c9404de72f9d59f313d26b6dcc569f417dbc14c196e060d5",
+      "size": 978
+    },
+    {
+      "filename": "002_runtime_state.sql",
+      "sha256": "8a55a930316cadf067f0e26afecb9877d921a10f20a7328a8e0e674e954a0072",
+      "size": 2363
+    },
+    {
+      "filename": "003_tenancy.sql",
+      "sha256": "730c92bae857de01b1f817af1e09bdbccabebd8d602962f77038ad34e557f956",
+      "size": 33045
+    },
+    {
+      "filename": "004_graph_currency.sql",
+      "sha256": "40acd5c692f9a718615338607c589423efa375469388747ac52ea5afce9defc8",
+      "size": 1156
+    },
+    {
+      "filename": "005_evidence_subject.sql",
+      "sha256": "7618d5d96c878ba7cb99d140565f2e14f8c9f48f7471a21873e1646ffb84cbfd",
+      "size": 889
+    },
+    {
+      "filename": "006_matching.sql",
+      "sha256": "ab6a4cfa762409049d51002c983bd924a80c388a35423c356a0c3bac975f762c",
+      "size": 1590
+    },
+    {
+      "filename": "007_authority.sql",
+      "sha256": "9e19acf0d960060ace5ed7292ae0522b5516bb1227337ab2803378e2b8488677",
+      "size": 10424
+    },
+    {
+      "filename": "008_identity_bindings_grants.sql",
+      "sha256": "c6f88e6dc761e782eb3cd9272008e8a08a42aa3d452b326dc07a791ed74ea59e",
+      "size": 818
+    },
+    {
+      "filename": "009_external_entity_mappings.sql",
+      "sha256": "857f3b8aeceb449fb62061a6ae5d3c8dd595e6b4811ce65a25c8eb47ebc86db7",
+      "size": 2445
+    },
+    {
+      "filename": "010_work_confirmations.sql",
+      "sha256": "5834e9cee0c8d0655f428e5f73ac2d6d1f9a3e992435172c105f92ed7da2b8cb",
+      "size": 3189
+    },
+    {
+      "filename": "011_audit_hardening.sql",
+      "sha256": "8f7ced85368f2ff91a29cdfd326c47bfcc3c0d7cec8a41d03d26a1e76e1afbd8",
+      "size": 3220
+    },
+    {
+      "filename": "012_audit_checkpoints.sql",
+      "sha256": "3b467d223d54b0f9c143185c3615165931e442d1c23ab5f9452084966fc51cdf",
+      "size": 1986
+    },
+    {
+      "filename": "013_outbox.sql",
+      "sha256": "f8a3d950dfa1d6ba5d8745fbe6a58c36fb0b1c1842714af0839a00db0d3d6618",
+      "size": 2471
+    },
+    {
+      "filename": "014_job_leases.sql",
+      "sha256": "275beaab37f5f5b09136a1d38b2497d6da5efd5b187f94ef041d1946870c5076",
+      "size": 1946
+    },
+    {
+      "filename": "015_external_actions.sql",
+      "sha256": "a653b3ee508ded111e7a9ba23f66e2ff9d811523506c1c8810bae62e9cdc0ecd",
+      "size": 2155
+    },
+    {
+      "filename": "016_document_blobs.sql",
+      "sha256": "2b2fe3092ddb0c36a448321b1b98413b5886e5abd7c8bde7515809d8273e09f2",
+      "size": 2981
+    },
+    {
+      "filename": "017_decision_fingerprints.sql",
+      "sha256": "c706f4a6cb418d0ed95c62a78002e879f243dca10356602fd7eb1db76aef23f5",
+      "size": 1448
+    },
+    {
+      "filename": "018_approval_state_fingerprints.sql",
+      "sha256": "5e49dd9e8728ded4ec4fca502ba2ab1253ef467bf2adfea2ad7b1086e91213c1",
+      "size": 842
+    },
+    {
+      "filename": "019_external_action_state_machine.sql",
+      "sha256": "3262d38a6810884f2c4a1e20428aac0eb47b537afa9229cb109d0acafe6e4b2a",
+      "size": 3385
+    },
+    {
+      "filename": "020_approval_quorum.sql",
+      "sha256": "6477be5d0a6ea15aa0ec457ee68877b5d95c86b02727adeb4a90457d5b372302",
+      "size": 2449
+    },
+    {
+      "filename": "021_schedule_of_values.sql",
+      "sha256": "0c5c54871830892b5b8ed75ef98a27c7a8b6840542b139191e1734627f785ce1",
+      "size": 8678
+    },
+    {
+      "filename": "022_verification_packet_immutable.sql",
+      "sha256": "6788c572a4ae3c4417816d3fe2279c3925eda041a57b39b886f2a955ec203256",
+      "size": 1586
+    },
+    {
+      "filename": "023_decision_fingerprint.sql",
+      "sha256": "8054faee6e901028db3dfe2d903bd7e39b10fd3433df24b20fcc75bbf60bf433",
+      "size": 1095
+    },
+    {
+      "filename": "024_external_action_leases.sql",
+      "sha256": "c20c0366914f9146680a887ba84dedbf62869e3bcf0a0a702a607acbe7a0dc74",
+      "size": 3273
+    },
+    {
+      "filename": "025_recovery_and_accounting_hardening.sql",
+      "sha256": "263123bb6b072b13cd16d823b01d657df7fa87d39763cf691f9bab494de6dc2f",
+      "size": 2563
+    },
+    {
+      "filename": "026_rc6_authority_and_release_integrity.sql",
+      "sha256": "34c97c543d428c8c9666f68a5c4737eb0cccfeb5297229a6d34a90fb4178a009",
+      "size": 3039
+    },
+    {
+      "filename": "027_rc6_approval_decisions_append_only.sql",
+      "sha256": "4550aacc710fdacd7c31654c85ec688303da0c1a80a521c3ed28a86c7a65b4aa",
+      "size": 595
+    }
+  ],
+  "output": "=== v0.4.7 Upgrade Gate ===\n\n  [PASS] migrations_sequential: 27 migrations, sequential 1-27\n  [PASS] all_migrations_applied: all 27 migrations applied\n  [PASS] migration_checksums: 27 checksums verified\n  [PASS] database_roles_exist: all 5 roles exist\n  [PASS] app_role_select: app role has SELECT on 24 tables\n  [PASS] no_pending_migrations: no pending migrations\n\nAll 6 upgrade checks passed.",
+  "passed": true,
+  "summary": "upgrade gate passed",
+  "version": "0.5.0-rc7.dev0"
 }

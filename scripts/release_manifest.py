@@ -125,21 +125,42 @@ def _dependency_versions() -> dict[str, str]:
     return versions
 
 
-#: Files that are generated *after* the manifest and therefore cannot be
-#: included in their own per-file hash without a self-referential paradox.
-#: The manifest deliberately excludes these from `files` and instead records
-#: their hashes in a separate `post_manifest_artifacts` section that is NOT
-#: covered by `tree_hash`. Verification tooling must check both sections
-#: against the extracted archive.
+#: The canonical name of the release manifest file. Used by both the
+#: generation logic and the exclusion logic so they can never disagree.
+MANIFEST_FILENAME = "MANIFEST.json"
+
+#: The canonical name of the detached manifest companion hash file.
+#: rc7: This was previously "MANIFEST.sha256" in the exclusion set but
+#: the actual file written was "MANIFEST.json.sha256" — a mismatch that
+#: caused the companion to be included in the tree hash with a stale value.
+#: Now both the writer and the exclusion use this single constant.
+MANIFEST_COMPANION_FILENAME = "MANIFEST.json.sha256"
+
+#: Files that are generated *after* the payload manifest and therefore
+#: cannot be included in the payload tree hash. These are the qualification
+#: evidence files and the manifest itself (which cannot contain its own
+#: hash). The rc7 attestation architecture is acyclic:
+#:
+#:   PayloadTree → MANIFEST.json → Qualification → RELEASE_ATTESTATION.json
+#:
+#: The manifest hashes ONLY the payload tree (source, migrations, configs,
+#: docs, tests, scripts, locks). It does NOT hash qualification artifacts.
+#: Qualification artifacts are hashed by RELEASE_ATTESTATION.json, which
+#: also hashes the manifest. This breaks the rc6 circular dependency:
+#:
+#:   rc6 (broken): Manifest → Hash(Report) while Report → Hash(Manifest)
+#:   rc7 (acyclic): Manifest → PayloadTree, Attestation → Hash(Manifest + Report + Gates)
 SELF_EXCLUDED_ARTIFACTS = {
-    "MANIFEST.json",
-    "MANIFEST.sha256",
+    MANIFEST_FILENAME,
+    MANIFEST_COMPANION_FILENAME,
     "MANIFEST.sig",
     "QUALIFICATION_REPORT.json",
     "TEST_RESULTS.json",
     "CRASH_MATRIX.json",
     "SECURITY_GATE.json",
     "MIGRATION_GATE.json",
+    "RELEASE_ATTESTATION.json",
+    "RELEASE_ATTESTATION.sha256",
 }
 
 
@@ -209,23 +230,33 @@ def _file_manifest() -> tuple[dict[str, dict[str, Any]], str]:
 
 
 def _post_manifest_artifacts() -> dict[str, dict[str, Any]]:
-    """Hashes of artifacts generated after the manifest.
+    """Hashes of post-manifest artifacts that exist at manifest-generation time.
 
-    These cannot be in `files` (the manifest cannot hash itself), but they
-    ARE part of the shipped archive. Verification tooling must check both
-    `files` and `post_manifest_artifacts` against the extracted archive.
-    The manifest's own entry here is computed against the FINAL written file
-    by an external `MANIFEST.sha256` companion, not embedded in the JSON.
+    rc7: These are NOT included in the manifest's `files` map or `tree_hash`
+    because they are generated after the manifest. The manifest does NOT
+    hash QUALIFICATION_REPORT.json — that was the rc6 circular dependency.
+    Instead, RELEASE_ATTESTATION.json (generated last) hashes both the
+    manifest and all qualification artifacts, creating an acyclic chain:
+
+      PayloadTree → MANIFEST.json → Qualification → RELEASE_ATTESTATION.json
+
+    Any post-manifest artifacts that already exist on disk (e.g. from a
+    previous run) are recorded here for informational purposes, but the
+    canonical binding is via RELEASE_ATTESTATION.json, not this section.
     """
     root = Path(__file__).parent.parent
     artifacts: dict[str, dict[str, Any]] = {}
     for name in SELF_EXCLUDED_ARTIFACTS:
+        if name == MANIFEST_FILENAME:
+            # The manifest cannot hash itself.
+            continue
         path = root / name
-        if path.is_file() and name != "MANIFEST.json":
+        if path.is_file():
             data = path.read_bytes()
             artifacts[name] = {
                 "size": len(data),
                 "sha256": hashlib.sha256(data).hexdigest(),
+                "note": "stale from previous run — canonical binding is via RELEASE_ATTESTATION.json",
             }
     return artifacts
 
@@ -265,7 +296,15 @@ def _schema_fingerprint_artifact_only() -> str:
 
 
 def generate_manifest(*, artifact_only: bool = False) -> dict:
-    """Generate a release manifest.
+    """Generate a release manifest (payload manifest).
+
+    rc7: The manifest hashes ONLY the payload tree (source, migrations,
+    configs, docs, tests, scripts, locks). It does NOT hash qualification
+    artifacts. This breaks the rc6 circular dependency where the manifest
+    hashed the qualification report while the report hashed the manifest.
+
+    The acyclic attestation chain is:
+      PayloadTree → MANIFEST.json → Qualification → RELEASE_ATTESTATION.json
 
     Args:
         artifact_only: If True, skip database access (schema_fingerprint will
@@ -287,8 +326,11 @@ def generate_manifest(*, artifact_only: bool = False) -> dict:
         "migrations": _migration_checksums(),
         "files": files,
         "tree_hash": tree_hash,
-        "post_manifest_artifacts": _post_manifest_artifacts(),
+        # rc7: self_excluded_artifacts lists what is NOT in `files` and why.
+        # The canonical binding for post-manifest artifacts is via
+        # RELEASE_ATTESTATION.json, not via this manifest.
         "self_excluded_artifacts": sorted(SELF_EXCLUDED_ARTIFACTS),
+        "attestation_chain": "PayloadTree -> MANIFEST.json -> Qualification -> RELEASE_ATTESTATION.json",
     }
 
 
@@ -307,11 +349,10 @@ def main() -> int:
     manifest_json = json.dumps(manifest, indent=2, sort_keys=True, default=str)
     if output:
         Path(output).write_text(manifest_json)
-        # rc6: write a detached companion hash of the FINAL manifest bytes.
-        # This is the canonical way to bind the manifest to the archive
-        # without a self-referential paradox: the manifest does not contain
-        # its own hash, but the companion file does.
-        companion = Path(output + ".sha256")
+        # rc7: Write detached companion hash using the CANONICAL constant.
+        # The companion filename must match SELF_EXCLUDED_ARTIFACTS exactly
+        # so it is never accidentally included in the tree hash.
+        companion = Path(output).parent / MANIFEST_COMPANION_FILENAME
         final_bytes = Path(output).read_bytes()
         companion_hash = hashlib.sha256(final_bytes).hexdigest()
         companion.write_text(f"{companion_hash}  {Path(output).name}\n")

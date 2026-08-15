@@ -1,0 +1,40 @@
+{
+  "attestation_chain": "PayloadTree -> MANIFEST.json -> Qualification -> RELEASE_ATTESTATION.json",
+  "attestation_root_hash": "c00b44ce65d5b70f1d2f4e86fb8f7092828f4e5dce98b4bbaaad9d1d6bb8d672",
+  "evidence": {
+    "CRASH_MATRIX.json": {
+      "sha256": "bdb0fd862a8499474a8f7a7d9e6b2c17b4e4ee99dde6b0f49961c9f7df226812",
+      "size": 335
+    },
+    "MANIFEST.json": {
+      "sha256": "b10e4efb47b0feb130e63cae69d106a3e1cbacd7f231b86dd4cbee292c2fd1b8",
+      "size": 40088
+    },
+    "MANIFEST.json.sha256": {
+      "sha256": "8e269ecabaa5b8947ede48a3ca4b40318cd4722f1e2321659d83b5d2bc61c33e",
+      "size": 80
+    },
+    "MIGRATION_GATE.json": {
+      "sha256": "775264748ed06fb24122ddce4fc4da0248de07f4b43c62bdd6103c5697d39967",
+      "size": 5260
+    },
+    "QUALIFICATION_REPORT.json": {
+      "sha256": "c3b77cf38b1b1fde3e156039315baee019d2daca98b71daf2eec03cd0a333a31",
+      "size": 3113
+    },
+    "SECURITY_GATE.json": {
+      "sha256": "8b8d1e2352b53f65de063c6529c3e2e5b8e9fc14c174a9ce65b01c7985a94ab5",
+      "size": 818
+    },
+    "TEST_RESULTS.json": {
+      "sha256": "f150a8bade16091014c9346cc96f9ba6d8b161853a978be48d7d93415b2110ed",
+      "size": 314
+    }
+  },
+  "generated_at": "2026-08-15T04:53:08.096636+00:00",
+  "git_branch": "v0.4-hardening",
+  "git_commit": "9aae468536e44e76e1814eccee182a212dd5e0cc",
+  "manifest_tree_hash": "c35495b0376d9fe19968b3f9f1633ad2118c835646478703750a0ddd270ed30a",
+  "qualification_manifest_sha": "b10e4efb47b0feb130e63cae69d106a3e1cbacd7f231b86dd4cbee292c2fd1b8",
+  "version": "0.5.0-rc7.dev0"
+}

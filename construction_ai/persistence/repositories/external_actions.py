@@ -207,6 +207,7 @@ class ExternalActionRepository(Repository):
         final_audit_event_id: UUID | None = None,
         recovery_attempts: int | None = None,
         first_negative_observation_at: datetime | None = None,
+        reset_negative_observation: bool = False,
     ) -> ExternalAction | None:
         """Transition an external action to a new status.
 
@@ -259,9 +260,16 @@ class ExternalActionRepository(Repository):
         if recovery_attempts is not None:
             sets.append("recovery_attempts = %s")
             params.append(recovery_attempts)
+        # rc7: Support explicit reset of first_negative_observation_at to NULL.
+        # When reset_negative_observation=True, set the column to NULL even
+        # though first_negative_observation_at is None. This is needed because
+        # the negative-observation state must be reset when a positive remote
+        # document is later observed.
         if first_negative_observation_at is not None:
             sets.append("first_negative_observation_at = %s")
             params.append(first_negative_observation_at)
+        elif reset_negative_observation:
+            sets.append("first_negative_observation_at = NULL")
 
         clause, clause_params = self._tenant_clause(scope)
         params.extend(clause_params)

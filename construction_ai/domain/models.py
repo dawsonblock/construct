@@ -337,7 +337,15 @@ class InvoiceAllocation:
 
 @dataclass(frozen=True)
 class ProgressBillingResult:
-    """Per-SOV-item progress-billing evaluation (Phase 16)."""
+    """Per-SOV-item progress-billing evaluation (Phase 16).
+
+    rc7: The `status` field distinguishes three conditions:
+      - "PASS": verified completion exists and invoice is within the billable ceiling.
+      - "OVERBILLED": verified completion exists but invoice exceeds the ceiling.
+      - "UNAVAILABLE": no verified completion exists — cannot evaluate. This is
+        distinct from OVERBILLED: the invoice is held not because it exceeds a
+        known ceiling, but because the ceiling itself cannot be established.
+    """
     sov_item_id: str
     adjusted_contract_value: Any  # Decimal
     verified_percent_complete: Any  # Decimal 0..100
@@ -348,3 +356,4 @@ class ProgressBillingResult:
     invoice_amount: Any  # Decimal
     overbilled: bool
     currency: str = "CAD"
+    status: str = "PASS"  # rc7: "PASS", "OVERBILLED", or "UNAVAILABLE"

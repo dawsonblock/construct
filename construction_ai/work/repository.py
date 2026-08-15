@@ -74,7 +74,16 @@ class WorkConfirmationRepository:
 
         # rc6: If this confirmation supersedes an earlier one, transition the
         # earlier record to 'superseded' so active selection filters it out.
+        # rc7: Validate that the new confirmation and the superseded confirmation
+        # refer to the same financial/work subject (same project AND same
+        # SOV item / invoice scope). A confirmation for roofing SOV must not
+        # supersede a confirmation for electrical SOV.
         if supersedes_confirmation_id is not None:
+            self._validate_same_subject_before_supersede(
+                scope=scope,
+                new_confirmation=confirmation,
+                superseded_id=supersedes_confirmation_id,
+            )
             self._mark_superseded(scope=scope, confirmation_id=supersedes_confirmation_id)
         return confirmation
 
@@ -86,6 +95,65 @@ class WorkConfirmationRepository:
                    SET status = 'superseded', updated_at = now()
                    WHERE organization_id = %s AND confirmation_id = %s AND status = 'confirmed'""",
                 (scope.organization_id, confirmation_id),
+            )
+
+    def _validate_same_subject_before_supersede(
+        self, *, scope: Scope, new_confirmation: WorkConfirmation, superseded_id: UUID,
+    ) -> None:
+        """rc7: Validate that the new and superseded confirmations share the
+        same financial/work subject.
+
+        The invariant is:
+          new.project_id == old.project_id
+          AND new.sov_item_id == old.sov_item_id
+          AND new.invoice_id == old.invoice_id
+
+        A confirmation for roofing SOV must not supersede a confirmation for
+        electrical SOV, even if the ID is known. This prevents accidental
+        removal of valid evidence from another scope.
+        """
+        with self.db.scoped(scope) as cur:
+            cur.execute(
+                """SELECT project_id, scope_id, invoice_id, sov_item_id
+                   FROM work_confirmations
+                   WHERE organization_id = %s AND confirmation_id = %s""",
+                (scope.organization_id, superseded_id),
+            )
+            from construction_ai.persistence.db import row_to_dict
+            old = row_to_dict(cur)
+            if old is None:
+                raise ValueError(
+                    f"cannot supersede confirmation {superseded_id}: not found"
+                )
+
+        # Check project_id.
+        old_project = old.get("project_id")
+        new_project = new_confirmation.project_id
+        if old_project != new_project:
+            raise ValueError(
+                f"supersession subject mismatch: new confirmation project_id={new_project} "
+                f"does not match superseded confirmation project_id={old_project} — "
+                "rc7: supersession can only target the same financial/work subject"
+            )
+
+        # Check SOV item.
+        old_sov = old.get("sov_item_id")
+        new_sov = new_confirmation.sov_item_id
+        if old_sov != new_sov:
+            raise ValueError(
+                f"supersession subject mismatch: new confirmation sov_item_id={new_sov} "
+                f"does not match superseded confirmation sov_item_id={old_sov} — "
+                "rc7: supersession can only target the same financial/work subject"
+            )
+
+        # Check invoice_id.
+        old_invoice = old.get("invoice_id")
+        new_invoice = new_confirmation.invoice_id
+        if old_invoice != new_invoice:
+            raise ValueError(
+                f"supersession subject mismatch: new confirmation invoice_id={new_invoice} "
+                f"does not match superseded confirmation invoice_id={old_invoice} — "
+                "rc7: supersession can only target the same financial/work subject"
             )
 
     def for_project(self, *, scope: Scope, project_id: UUID) -> list[WorkConfirmation]:

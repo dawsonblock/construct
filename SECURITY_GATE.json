@@ -1,9 +1,10 @@
 {
   "exit_code": 0,
-  "git_commit": "63bff29b7df244afe3640861d085bcf11af0f37d",
-  "rls_tested": true,
-  "summary": "26 passed in 0.48s",
-  "tenant_isolation_tested": true,
-  "timestamp": "2026-08-15T01:50:52.051169+00:00",
-  "version": "0.5.0-rc5.dev0"
+  "generated_at": "2026-08-15T04:51:38.190081+00:00",
+  "git_branch": "v0.4-hardening",
+  "git_commit": "9aae468536e44e76e1814eccee182a212dd5e0cc",
+  "output": "=== v0.4.7 Security Gate ===\n\n  [PASS] app_role_not_superuser: app role is not a superuser\n  [PASS] app_role_no_bypassrls: app role does not have BYPASSRLS\n  [PASS] rls_enabled: RLS enabled and forced on 17 tenant tables\n  [PASS] audit_append_only: audit_events is append-only for app role\n  [PASS] external_actions_no_delete: external_actions denies DELETE for app role\n  [PASS] cross_tenant_isolation: no cross-tenant access without tenant GUC\n  [PASS] migration_checksums: 27 migration checksums verified\n\nAll 7 security checks passed.",
+  "passed": true,
+  "summary": "security gate passed",
+  "version": "0.5.0-rc7.dev0"
 }

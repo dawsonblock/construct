@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""v0.5.0-rc6 — full-stack clean-slate qualification runner (Phase 30).
+"""v0.5.0-rc7 — full-stack clean-slate qualification runner (Phase 30).
 
 Orchestrates a complete clean-slate qualification run against a fresh
 PostgreSQL, Redis, object storage, migration state, and ERPNext stub.
@@ -132,7 +132,7 @@ def _reset_database() -> bool:
 
 def main() -> int:
     print("=" * 70)
-    print("v0.5.0-rc6 Full-Stack Clean-Slate Qualification")
+    print("v0.5.0-rc7 Full-Stack Clean-Slate Qualification")
     print("=" * 70)
 
     # 1. Check stack.
@@ -175,23 +175,49 @@ def main() -> int:
         if not passed:
             all_passed = False
 
-    # 4. Generate manifest FIRST, then qualification report (rc6: report binds to manifest).
-    print("\n[4/5] Generating manifest and qualification report...")
+    # 4. Generate the acyclic attestation chain:
+    #    PayloadTree -> MANIFEST -> GateArtifacts -> QualificationReport -> RELEASE_ATTESTATION
+    print("\n[4/5] Generating release attestation chain...")
+    db_url = os.getenv("DATABASE_URL", "postgresql://construction:construction@localhost:5432/construction_ai")
+
+    # 4a. Payload manifest (hashes ONLY the payload tree, not qualification artifacts).
     manifest_code, manifest_output = _run(
         [sys.executable, "scripts/release_manifest.py",
          "--with-database", "--output", "MANIFEST.json"],
-        env={"DATABASE_URL": os.getenv("DATABASE_URL", "postgresql://construction:construction@localhost:5432/construction_ai")},
+        env={"DATABASE_URL": db_url},
     )
     if manifest_code != 0:
         print(f"  WARNING: manifest generation failed: {manifest_output}")
     else:
         print("  Manifest: MANIFEST.json")
 
+    # 4b. Gate artifacts (TEST_RESULTS, CRASH_MATRIX, SECURITY_GATE, MIGRATION_GATE).
+    gate_code, gate_output = _run(
+        [sys.executable, "scripts/generate_gate_artifacts.py"],
+        env={"DATABASE_URL": db_url, "REQUIRE_INTEGRATION": "1"},
+    )
+    if gate_code != 0:
+        print(f"  WARNING: gate artifact generation had failures: {gate_output}")
+    else:
+        print("  Gate artifacts: TEST_RESULTS, CRASH_MATRIX, SECURITY_GATE, MIGRATION_GATE")
+
+    # 4c. Qualification report (binds to manifest one-directionally).
     report_code, report_output = _run(
         [sys.executable, "scripts/qualification_report.py",
          "--output", "QUALIFICATION_REPORT.json"],
         env={"REQUIRE_INTEGRATION": "1"},
     )
+
+    # 4d. Release attestation (hashes manifest + all qualification artifacts).
+    attestation_code, attestation_output = _run(
+        [sys.executable, "scripts/release_attestation.py",
+         "--output", "RELEASE_ATTESTATION.json"],
+        env={},
+    )
+    if attestation_code != 0:
+        print(f"  WARNING: attestation generation failed: {attestation_output}")
+    else:
+        print("  Release attestation: RELEASE_ATTESTATION.json")
     if os.path.exists(ROOT / "QUALIFICATION_REPORT.json"):
         print("  Report: QUALIFICATION_REPORT.json")
     else:

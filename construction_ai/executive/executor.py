@@ -141,13 +141,34 @@ def check_approval_staleness(repos: Repositories, *, scope: Scope, approval) -> 
     # would make a decision made under a non-default policy appear stale
     # immediately. We deliberately do NOT pass a policy so the function uses
     # the stored snapshot.
+    #
+    # rc7: The fingerprint function now raises ApprovalPolicyMissing if the
+    # approval has no policy_snapshot (no DEFAULT_POLICY fallback for
+    # executable approvals) and ApprovalPolicyCorrupt if the snapshot hash
+    # does not match the stored policy_hash. Both are hard failures that
+    # require revalidation — they must NOT be caught and silently downgraded.
     from construction_ai.approvals.decision_fingerprint import (
+        ApprovalPolicyCorrupt,
+        ApprovalPolicyMissing,
         compute_decision_fingerprint_for_approval,
     )
 
-    current_decision_fp = compute_decision_fingerprint_for_approval(
-        repos, scope=scope, approval=approval,
-    )
+    try:
+        current_decision_fp = compute_decision_fingerprint_for_approval(
+            repos, scope=scope, approval=approval,
+        )
+    except ApprovalPolicyMissing:
+        raise ApprovalStale(
+            f"approval {approval.approval_id} has no policy_snapshot — "
+            "cannot verify decision fingerprint without the exact policy "
+            "in force at decision time. REVALIDATION_REQUIRED (rc7: no "
+            "DEFAULT_POLICY fallback for executable approvals)."
+        ) from None
+    except ApprovalPolicyCorrupt as e:
+        raise ApprovalStale(
+            f"approval {approval.approval_id} policy snapshot is corrupt: {e}. "
+            "REVALIDATION_REQUIRED."
+        ) from e
     if current_decision_fp != approval.decision_fingerprint:
         raise ApprovalStale(
             f"approval is stale: decision fingerprint changed from "

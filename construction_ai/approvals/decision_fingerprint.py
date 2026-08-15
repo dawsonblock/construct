@@ -129,14 +129,31 @@ def compute_decision_fingerprint(
     return hashlib.sha256(_canonical_json(payload).encode()).hexdigest()
 
 
-def _policy_from_snapshot(approval: Approval) -> ApprovalPolicy | None:
-    """rc6: Reconstruct an ApprovalPolicy from the snapshot stored on the approval.
+class ApprovalPolicyCorrupt(Exception):
+    """rc7: The stored policy snapshot does not match the stored policy hash.
 
-    Returns None if the approval has no persisted policy snapshot (legacy rows
-    made before rc6). The caller must fall back to DEFAULT_POLICY only when
-    this returns None AND the approval's policy_hash is also None — otherwise
-    a missing snapshot with a non-None hash is a data-integrity failure that
-    should fail closed.
+    This is a data-integrity failure that should fail closed — the approval
+    cannot be safely executed because the policy under which it was approved
+    cannot be verified.
+    """
+
+
+class ApprovalPolicyMissing(Exception):
+    """rc7: The approval has no persisted policy snapshot or hash.
+
+    rc6 allowed falling back to DEFAULT_POLICY for legacy approvals, but rc7
+    tightens the invariant: an executable approval MUST have its exact policy
+    snapshot. Without it, the decision fingerprint cannot be verified and the
+    approval requires revalidation.
+    """
+
+
+def _policy_from_snapshot(approval: Approval) -> ApprovalPolicy | None:
+    """rc6/rc7: Reconstruct an ApprovalPolicy from the snapshot stored on the approval.
+
+    Returns None if the approval has no persisted policy snapshot.
+    rc7: Also validates that Hash(reconstructed_policy) == stored policy_hash.
+    If the hash does not match, raises ApprovalPolicyCorrupt.
     """
     snapshot = getattr(approval, "policy_snapshot", None)
     if not snapshot:
@@ -144,13 +161,26 @@ def _policy_from_snapshot(approval: Approval) -> ApprovalPolicy | None:
     try:
         from decimal import Decimal as _Decimal
         threshold = snapshot.get("dual_approval_threshold")
-        return ApprovalPolicy(
+        policy = ApprovalPolicy(
             version=snapshot.get("version") or POLICY_VERSION,
             creator_cannot_approve=bool(snapshot.get("creator_cannot_approve", True)),
             dual_approval_threshold=_Decimal(str(threshold)) if threshold is not None else None,
             dual_approval_currency=snapshot.get("dual_approval_currency") or "CAD",
             required_authentication_strength=snapshot.get("required_authentication_strength") or "dev",
         )
+        # rc7: Explicitly validate that the reconstructed policy hash matches
+        # the stored policy_hash. If they differ, the snapshot is corrupt.
+        stored_hash = getattr(approval, "policy_hash", None)
+        if stored_hash is not None:
+            computed_hash = policy.policy_hash()
+            if computed_hash != stored_hash:
+                raise ApprovalPolicyCorrupt(
+                    f"policy snapshot hash mismatch: stored={stored_hash[:16]}... "
+                    f"computed={computed_hash[:16]}... — approval policy is corrupt"
+                )
+        return policy
+    except ApprovalPolicyCorrupt:
+        raise
     except Exception:
         return None
 
@@ -170,13 +200,31 @@ def compute_decision_fingerprint_for_approval(
     is stale.
 
     rc6: If `policy` is not supplied, the function reconstructs the policy from
-    the snapshot stored on the approval at decision time. This is critical —
-    a decision made under a non-default policy would otherwise appear stale
-    immediately because the executor used DEFAULT_POLICY for recomputation.
-    Legacy approvals without a snapshot fall back to DEFAULT_POLICY.
+    the snapshot stored on the approval at decision time.
+
+    rc7: For executable approvals, policy_snapshot and policy_hash MUST be
+    present. If they are missing, the function raises ApprovalPolicyMissing
+    rather than falling back to DEFAULT_POLICY. This removes the legacy
+    compatibility escape hatch from the authority path. Callers that want
+    legacy fallback (e.g. non-execution paths like diagnostics) can catch
+    the exception. The executor must NOT catch it — it must propagate as
+    REVALIDATION_REQUIRED.
+
+    rc7: If the reconstructed policy hash does not match the stored hash,
+    ApprovalPolicyCorrupt is raised. The executor must treat this as a
+    hard failure.
     """
     if policy is None:
-        policy = _policy_from_snapshot(approval) or DEFAULT_POLICY
+        reconstructed = _policy_from_snapshot(approval)
+        if reconstructed is None:
+            # rc7: No policy snapshot — the approval cannot be safely
+            # executed. This is a hard failure for the execution path.
+            raise ApprovalPolicyMissing(
+                f"approval {approval.approval_id} has no policy_snapshot — "
+                "cannot recompute decision fingerprint without the exact "
+                "policy in force at decision time (rc7: no DEFAULT_POLICY fallback)"
+            )
+        policy = reconstructed
 
     invoice = repos.invoices.get(scope=scope, invoice_id=UUID(approval.subject_id))
     if invoice is None:
