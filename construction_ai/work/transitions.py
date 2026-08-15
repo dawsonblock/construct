@@ -16,6 +16,22 @@ Illegal transitions (no dedicated correction flow exists):
     REVOKED   -> RETRACTED
     RETRACTED-> REVOKED
 
+Design decision: SUPERSEDED, REVOKED, and RETRACTED are terminal states.
+There is intentionally no RESTORED state or reverse transition. A
+confirmation that was wrongly revoked or retracted must be re-recorded
+as a new confirmation, not restored from a terminal state. This ensures:
+
+1. The audit trail is append-only — no mutation of historical state.
+2. The unique direct-successor constraint (migration 029) is never
+   violated by a restore-and-resupersede sequence.
+3. Financial effects tied to a revoked confirmation are not silently
+   reactivated.
+
+If operational recovery requires re-instating work evidence, the correct
+flow is: record a new confirmation (optionally supersedes_confirmation_id
+pointing to the revoked one's predecessor if that predecessor is still
+confirmed).
+
 This validator is used by the repository so that transition rules are
 encoded in one place, not scattered across callers.
 """

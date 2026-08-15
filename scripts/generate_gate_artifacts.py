@@ -68,7 +68,7 @@ def _version() -> str:
 
 
 def _lock_hash() -> str:
-    """rc8: Use the shared canonical dependency lock hash.
+    """rc9: Use the shared canonical dependency lock hash.
 
     Previously this hashed only requirements.lock.txt, while
     qualification_report.py hashed both lock files. This mismatch
@@ -105,7 +105,7 @@ def _qualification_run_id() -> str:
 
 
 def _schema_fingerprint() -> str:
-    """rc8: Schema fingerprint for identity consistency."""
+    """rc9: Schema fingerprint for identity consistency."""
     try:
         import psycopg
         import os

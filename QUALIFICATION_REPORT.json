@@ -2,12 +2,12 @@
   "adversarial": {
     "exit_code": 0,
     "passed": true,
-    "summary": "49 passed in 4.11s"
+    "summary": "49 passed in 1.72s"
   },
   "crash_recovery": {
     "exit_code": 0,
     "passed": true,
-    "summary": "62 passed in 11.03s"
+    "summary": "62 passed in 8.62s"
   },
   "critical_skipped_count": 0,
   "critical_skips_allowed": 0,
@@ -15,7 +15,7 @@
   "external_effect": {
     "exit_code": 0,
     "passed": true,
-    "summary": "100 passed in 5.96s"
+    "summary": "100 passed in 4.31s"
   },
   "gates": {
     "CRASH_RECOVERY_PASS": true,
@@ -25,30 +25,30 @@
     "SECURITY_PASS": true,
     "UNIT_PASS": true
   },
-  "generated_at": "2026-08-15T21:01:54.673797+00:00",
+  "generated_at": "2026-08-15T22:42:46.445584+00:00",
   "git_branch": "v0.4-hardening",
-  "git_commit": "b7b3a3c2dab15c3efb1de89c23c9d87904188a49",
+  "git_commit": "edff87138ab30b7805d3c6149890d4a7d136cf58",
   "identity_snapshot": {
     "dependency_lock_hash": "bcc8f6f02036e5e2447153bf0e4ce65f8dc123cd2fcf93eeabe6b1a224763b85",
-    "git_commit": "b7b3a3c2dab15c3efb1de89c23c9d87904188a49",
+    "git_commit": "edff87138ab30b7805d3c6149890d4a7d136cf58",
     "migration_fingerprint": "57c97591c127f8e0ee415096a7f95dea2e412f3e8449925feed4e2d7937a660c",
-    "payload_tree_hash": "c0904bf82f81ed0c9c5f0b7c2cd79873139041c26a424a08bc698b64331ff87b",
-    "qualification_run_id": "qual-20260815-b7b3a3c2dab1",
+    "payload_tree_hash": "08b8aced586eed818afb26289707323a0be938ce1c07a6796e4d1b25c160fbe3",
+    "qualification_run_id": "qual-20260815-edff87138ab3",
     "release_version": "0.5.0-rc9.dev0",
     "schema_fingerprint": "72b9ed42a190d59a39ff2a3a915312183877ad4cd5c66f47cc62d78a028b5b96"
   },
   "manifest_filename": "PAYLOAD_MANIFEST.json",
-  "manifest_sha": "d202a7888f72a56826beb122ead2608c51281d1089c5753b02b03eca7b36559d",
-  "manifest_tree_hash": "c0904bf82f81ed0c9c5f0b7c2cd79873139041c26a424a08bc698b64331ff87b",
+  "manifest_sha": "2fbc03273b1330303edefb3e68755371f1b0eb3f47d32b2b5f02706a014486c9",
+  "manifest_tree_hash": "08b8aced586eed818afb26289707323a0be938ce1c07a6796e4d1b25c160fbe3",
   "migration_fingerprint": "57c97591c127f8e0ee415096a7f95dea2e412f3e8449925feed4e2d7937a660c",
   "noncritical_skipped_count": 3,
-  "payload_tree_hash": "c0904bf82f81ed0c9c5f0b7c2cd79873139041c26a424a08bc698b64331ff87b",
-  "qualification_run_id": "qual-20260815-b7b3a3c2dab1",
+  "payload_tree_hash": "08b8aced586eed818afb26289707323a0be938ce1c07a6796e4d1b25c160fbe3",
+  "qualification_run_id": "qual-20260815-edff87138ab3",
   "qualified": true,
   "release_integrity": {
     "exit_code": 0,
     "passed": true,
-    "summary": "24 passed in 0.93s"
+    "summary": "24 passed in 0.83s"
   },
   "release_version": "0.5.0-rc9.dev0",
   "schema": {
@@ -60,7 +60,7 @@
   "security": {
     "exit_code": 0,
     "passed": true,
-    "summary": "26 passed in 0.76s"
+    "summary": "26 passed in 0.49s"
   },
   "skipped_tests": [
     {
@@ -89,16 +89,16 @@
     "error": 0,
     "exit_code": 0,
     "failed": 0,
-    "passed": 648,
+    "passed": 655,
     "run": true,
     "skipped": 3,
-    "summary": "648 passed, 3 skipped in 46.51s",
-    "total": 651
+    "summary": "655 passed, 3 skipped in 30.68s",
+    "total": 658
   },
   "unit_suite": {
     "exit_code": 0,
     "passed": true,
-    "summary": "82 passed in 8.13s"
+    "summary": "82 passed in 7.39s"
   },
   "version": "0.5.0-rc9.dev0"
 }

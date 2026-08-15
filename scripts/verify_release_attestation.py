@@ -64,6 +64,7 @@ def verify_attestation(extracted_dir: Path) -> bool:
     EVIDENCE_FILES = [
         "PAYLOAD_MANIFEST.json",
         "PAYLOAD_MANIFEST.sha256",
+        "QUALIFICATION_IDENTITY.json",
         "QUALIFICATION_REPORT.json",
         "TEST_RESULTS.json",
         "CRASH_MATRIX.json",

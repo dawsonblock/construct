@@ -89,7 +89,7 @@ def _version() -> str:
 
 
 def _lock_hash() -> str:
-    """rc8: Use the shared canonical dependency lock hash.
+    """rc9: Use the shared canonical dependency lock hash.
 
     Previously this hashed both lock files while generate_gate_artifacts.py
     hashed only requirements.lock.txt. Now both use the same shared helper

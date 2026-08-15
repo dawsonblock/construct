@@ -128,32 +128,36 @@ qualify-release: ## Full release qualification: 17-step pipeline (requires full 
 	@echo "    This target requires the full stack to be running (make up)."
 	@echo "    Any failure stops the release."
 	@echo ""
-	@echo "=== 01/17 payload-manifest ==="
+	@echo "=== 01/18 migration-status ==="
+	DATABASE_URL="postgresql://construction:construction@localhost:5432/construction_ai" python scripts/migrate.py --status
+	@echo ""
+	@echo "=== 02/18 payload-manifest ==="
 	rm -f PAYLOAD_MANIFEST.json PAYLOAD_MANIFEST.sha256
 	rm -rf dist
 	DATABASE_URL="postgresql://construction:construction@localhost:5432/construction_ai" python scripts/release_manifest.py --output PAYLOAD_MANIFEST.json
 	@echo ""
-	@echo "=== 02/17 payload-verify ==="
+	@echo "=== 03/18 payload-verify ==="
 	python scripts/verify_payload_manifest.py --manifest PAYLOAD_MANIFEST.json
 	@echo ""
-	@echo "=== 03/17 unit + 04/17 integration + 05/17 security + 06/17 adversarial + 07/17 crash-recovery + 08/17 external-effect + 09/17 migration ==="
+	@echo "=== 04/18 unit + 05/18 integration + 06/18 security + 07/18 adversarial + 08/18 crash-recovery + 09/18 external-effect + 10/18 migration ==="
 	rm -f TEST_RESULTS.json CRASH_MATRIX.json SECURITY_GATE.json MIGRATION_GATE.json QUALIFICATION_REPORT.json RELEASE_ATTESTATION.json RELEASE_ATTESTATION.json.sha256 QUALIFICATION_IDENTITY.json
 	DATABASE_URL="postgresql://construction:construction@localhost:5432/construction_ai" REQUIRE_INTEGRATION=1 ERP_STUB_URL=http://localhost:8100 python scripts/generate_gate_artifacts.py
 	@echo ""
-	@echo "=== 10/17 qualification-report ==="
+	@echo "=== 11/18 qualification-report ==="
 	DATABASE_URL="postgresql://construction:construction@localhost:5432/construction_ai" REQUIRE_INTEGRATION=1 ERP_STUB_URL=http://localhost:8100 python scripts/qualification_report.py --pytest --output QUALIFICATION_REPORT.json
 	@echo ""
-	@echo "=== 11/17 release-attestation + artifact-consistency ==="
+	@echo "=== 12/18 release-attestation + artifact-consistency ==="
 	python scripts/release_attestation.py --output RELEASE_ATTESTATION.json
 	python scripts/artifact_consistency_gate.py
 	@echo ""
-	@echo "=== 12/17 package ==="
+	@echo "=== 13/18 package ==="
 	python scripts/package_release.py --version $$(cat VERSION)
 	@echo ""
-	@echo "=== 13/17 packaged-payload-verify + 14/17 packaged-attestation-verify + 15/17 packaged-compile + 16/17 packaged-version-check ==="
+	@echo "=== 14/18 packaged-payload-verify + 15/18 packaged-attestation-verify + 16/18 packaged-compile + 17/18 packaged-version-check ==="
 	python scripts/verify_packaged_release.py --zip dist/construct-$$(cat VERSION).zip
 	@echo ""
-	@echo "=== 17/17 final-archive-hash + release-receipt ==="
+	@echo "=== 18/18 post-packaging smoke tests + final-archive-hash + release-receipt ==="
+	DATABASE_URL="postgresql://construction:construction@localhost:5432/construction_ai" REQUIRE_INTEGRATION=1 ERP_STUB_URL=http://localhost:8100 python -m pytest tests/test_rc9_packaged_smoke.py -v --tb=short
 	python scripts/generate_release_receipt.py
 	@echo ""
 	@echo "=== Qualification Result ==="

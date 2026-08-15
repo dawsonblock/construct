@@ -1,4 +1,4 @@
-"""rc8: Shared qualification identity helpers.
+"""rc9: Shared qualification identity helpers.
 
 Every gate artifact generator MUST use these helpers to compute identity
 fields. This prevents the rc7 defect where different scripts computed
@@ -24,7 +24,7 @@ ROOT = Path(__file__).parent.parent
 
 
 def compute_dependency_lock_hash() -> str:
-    """rc8: Canonical dependency lock hash.
+    """rc9: Canonical dependency lock hash.
 
     Hashes BOTH requirements.lock.txt and requirements-dev.lock.txt.
     This is the ONE function every gate must call. Do not independently
@@ -40,7 +40,7 @@ def compute_dependency_lock_hash() -> str:
 
 
 def compute_runtime_lock_hash() -> str:
-    """rc8: Hash of requirements.lock.txt only (runtime dependencies)."""
+    """rc9: Hash of requirements.lock.txt only (runtime dependencies)."""
     path = ROOT / "requirements.lock.txt"
     if path.exists():
         return hashlib.sha256(path.read_bytes()).hexdigest()
@@ -48,7 +48,7 @@ def compute_runtime_lock_hash() -> str:
 
 
 def compute_dev_lock_hash() -> str:
-    """rc8: Hash of requirements-dev.lock.txt only (dev dependencies)."""
+    """rc9: Hash of requirements-dev.lock.txt only (dev dependencies)."""
     path = ROOT / "requirements-dev.lock.txt"
     if path.exists():
         return hashlib.sha256(path.read_bytes()).hexdigest()
@@ -94,7 +94,7 @@ def generate_qualification_identity(
     schema_fingerprint: str | None = None,
     migration_fingerprint: str | None = None,
 ) -> dict[str, Any]:
-    """rc8: Generate the ONE immutable qualification identity object.
+    """rc9: Generate the ONE immutable qualification identity object.
 
     Every gate artifact must embed this exact object. Do not independently
     recompute identity fields in gate generators — read them from here.

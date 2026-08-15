@@ -35,9 +35,12 @@ ROOT = Path(__file__).parent.parent
 
 #: The canonical list of evidence files that the attestation hashes.
 #: These are the post-manifest artifacts that form the qualification bundle.
+#: rc9: QUALIFICATION_IDENTITY.json is now included as evidence so the
+#: attestation root hash binds the canonical identity file.
 EVIDENCE_FILES = [
     "PAYLOAD_MANIFEST.json",
     "PAYLOAD_MANIFEST.sha256",
+    "QUALIFICATION_IDENTITY.json",
     "QUALIFICATION_REPORT.json",
     "TEST_RESULTS.json",
     "CRASH_MATRIX.json",

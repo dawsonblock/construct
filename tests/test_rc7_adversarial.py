@@ -132,9 +132,10 @@ class TestSupersessionProperties:
     def test_supersession_implies_same_subject(self):
         """Supersedes(A,B) ⟹ Subject(A)=Subject(B): Supersession is only
         allowed for confirmations with the same project, SOV item, and invoice."""
-        # This is enforced by _validate_same_subject_before_supersede in
-        # work/repository.py. The test_supersession_rejects_different_sov_item
-        # test in test_rc7_hardening.py verifies this directly.
+        # This is enforced by the inline subject validation in the record()
+        # method of work/repository.py (rc9: with FOR UPDATE locking).
+        # The test_supersession_rejects_different_sov_item test in
+        # test_rc7_hardening.py verifies this directly.
         assert True  # Verified by test_supersession_rejects_different_sov_item.
 
     def test_superseded_is_not_active_evidence(self):

@@ -702,12 +702,14 @@ def test_packaged_release_verifies_end_to_end(tmp_path):
     version = (ROOT / "VERSION").read_text().strip()
     zip_name = f"construct-{version}.zip"
 
-    # rc9: Regenerate the payload manifest from the current source tree
-    # so it matches the exact files that will be packaged. Save the original
-    # manifest to restore it afterward so this test doesn't interfere with
+    # rc9: Regenerate the payload manifest AND release attestation from the
+    # current source tree so they match the exact files that will be packaged.
+    # Save originals to restore afterward so this test doesn't interfere with
     # other tests or gate artifacts.
     original_manifest = (ROOT / "PAYLOAD_MANIFEST.json").read_bytes() if (ROOT / "PAYLOAD_MANIFEST.json").exists() else None
     original_manifest_sha = (ROOT / "PAYLOAD_MANIFEST.sha256").read_bytes() if (ROOT / "PAYLOAD_MANIFEST.sha256").exists() else None
+    original_attestation = (ROOT / "RELEASE_ATTESTATION.json").read_bytes() if (ROOT / "RELEASE_ATTESTATION.json").exists() else None
+    original_attestation_sha = (ROOT / "RELEASE_ATTESTATION.json.sha256").read_bytes() if (ROOT / "RELEASE_ATTESTATION.json.sha256").exists() else None
 
     manifest_result = subprocess.run(
         [sys.executable, "scripts/release_manifest.py", "--output", "PAYLOAD_MANIFEST.json"],
@@ -723,6 +725,25 @@ def test_packaged_release_verifies_end_to_end(tmp_path):
     assert manifest_result.returncode == 0, (
         f"release_manifest.py failed: {manifest_result.stderr}"
     )
+
+    # rc9: Regenerate the release attestation so it binds the fresh manifest.
+    # This requires all evidence files to exist. If they don't (e.g. this test
+    # runs in isolation without a full qualification run), skip attestation
+    # regeneration and use the existing attestation if present.
+    evidence_files = [
+        "QUALIFICATION_REPORT.json", "TEST_RESULTS.json", "CRASH_MATRIX.json",
+        "SECURITY_GATE.json", "MIGRATION_GATE.json",
+    ]
+    all_evidence_present = all((ROOT / f).exists() for f in evidence_files)
+
+    if all_evidence_present:
+        attestation_result = subprocess.run(
+            [sys.executable, "scripts/release_attestation.py", "--output", "RELEASE_ATTESTATION.json"],
+            capture_output=True, text=True, cwd=str(ROOT), timeout=30,
+        )
+        assert attestation_result.returncode == 0, (
+            f"release_attestation.py failed: {attestation_result.stderr}"
+        )
 
     # Package the release.
     result = subprocess.run(
@@ -758,10 +779,11 @@ def test_packaged_release_verifies_end_to_end(tmp_path):
             f"{verify_result.stdout}\n{verify_result.stderr}"
         )
 
-        # 2. Verify release attestation evidence hashes (if attestation exists
-        #    and matches the current manifest). The attestation may be stale
-        #    from a previous qualification run — that's OK, the key test is
-        #    the payload manifest verification above.
+        # 2. rc9: STRICT release attestation verification.
+        #    If the attestation was regenerated above (all evidence present),
+        #    it must match the current manifest. If not, the attestation is
+        #    from a prior run and we only verify evidence hashes for files
+        #    that match the current build.
         attestation_path = extract_dir / "RELEASE_ATTESTATION.json"
         if attestation_path.exists():
             attestation = json.loads(attestation_path.read_text())
@@ -769,14 +791,51 @@ def test_packaged_release_verifies_end_to_end(tmp_path):
                 "PAYLOAD_MANIFEST.json", {}
             ).get("sha256")
             actual_manifest_sha = hashlib.sha256(extracted_manifest.read_bytes()).hexdigest()
-            if manifest_sha_in_attestation == actual_manifest_sha:
-                # Attestation matches current manifest — verify all evidence.
+
+            if all_evidence_present:
+                # Strict: attestation was regenerated, must match exactly.
+                assert manifest_sha_in_attestation == actual_manifest_sha, (
+                    f"attestation manifest hash mismatch: "
+                    f"attestation={manifest_sha_in_attestation} "
+                    f"actual={actual_manifest_sha}"
+                )
+                # Verify ALL evidence hashes strictly.
                 for name, entry in attestation.get("evidence", {}).items():
                     evidence_path = extract_dir / name
                     assert evidence_path.exists(), f"evidence file missing in ZIP: {name}"
                     if entry.get("sha256"):
                         actual = hashlib.sha256(evidence_path.read_bytes()).hexdigest()
-                        assert actual == entry["sha256"], f"evidence hash mismatch: {name}"
+                        assert actual == entry["sha256"], (
+                            f"evidence hash mismatch: {name}: "
+                            f"expected={entry['sha256'][:16]}... actual={actual[:16]}..."
+                        )
+            else:
+                # Attestation is from a prior run — only verify evidence
+                # hashes for files whose hash matches (i.e. unchanged files).
+                # The strict verification is done by verify_packaged_release.py
+                # in the full make qualify-release pipeline.
+                for name, entry in attestation.get("evidence", {}).items():
+                    evidence_path = extract_dir / name
+                    if not evidence_path.exists():
+                        continue
+                    if entry.get("sha256"):
+                        actual = hashlib.sha256(evidence_path.read_bytes()).hexdigest()
+                        # Only assert if the file hasn't changed.
+                        # Changed files (like PAYLOAD_MANIFEST.json) are expected
+                        # to mismatch when the attestation is stale.
+                        if actual == entry["sha256"]:
+                            pass  # Evidence hash matches — good.
+                        elif name in ("PAYLOAD_MANIFEST.json", "PAYLOAD_MANIFEST.sha256"):
+                            # Expected to mismatch when attestation is stale
+                            # because the manifest was regenerated.
+                            pass
+                        else:
+                            # Unexpected mismatch in a non-manifest evidence file.
+                            assert actual == entry["sha256"], (
+                                f"evidence hash mismatch: {name}: "
+                                f"expected={entry['sha256'][:16]}... "
+                                f"actual={actual[:16]}..."
+                            )
 
         # 3. Verify no generated artifacts in payload manifest.
         manifest = json.loads(extracted_manifest.read_text())
@@ -796,12 +855,16 @@ def test_packaged_release_verifies_end_to_end(tmp_path):
         hash_path = ROOT / "dist" / f"{zip_name}.sha256"
         if hash_path.exists():
             hash_path.unlink()
-        # Restore the original manifest so this test doesn't interfere
-        # with gate artifacts or other tests.
+        # Restore the original manifest and attestation so this test doesn't
+        # interfere with gate artifacts or other tests.
         if original_manifest is not None:
             (ROOT / "PAYLOAD_MANIFEST.json").write_bytes(original_manifest)
         if original_manifest_sha is not None:
             (ROOT / "PAYLOAD_MANIFEST.sha256").write_bytes(original_manifest_sha)
+        if original_attestation is not None:
+            (ROOT / "RELEASE_ATTESTATION.json").write_bytes(original_attestation)
+        if original_attestation_sha is not None:
+            (ROOT / "RELEASE_ATTESTATION.json.sha256").write_bytes(original_attestation_sha)
 
 
 # -- rc8: No generated artifacts in payload manifest tests -------------------

@@ -226,7 +226,7 @@ NEVER_PAYLOAD_PATTERNS = [
 
 
 def _is_never_payload(rel: str) -> bool:
-    """rc8: Check if a file path matches any NEVER_PAYLOAD_PATTERNS."""
+    """rc9: Check if a file path matches any NEVER_PAYLOAD_PATTERNS."""
     import fnmatch
     for pattern in NEVER_PAYLOAD_PATTERNS:
         if fnmatch.fnmatch(rel, pattern):
