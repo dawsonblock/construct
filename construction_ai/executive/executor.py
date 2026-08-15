@@ -376,9 +376,26 @@ def execute_approved_invoice(
     _check_crash("before_erp_create")
 
     # Heartbeat before each ERP call to keep the lease alive.
-    repos.external_actions.heartbeat(
+    hb = repos.external_actions.heartbeat(
         scope=org_scope, action_id=acquired.action_id, owner=worker_id,
     )
+    if hb is None:
+        # Lease was lost (reaped or expired). Try to transition cleanly.
+        # If the reaper already got it, transition returns None and we skip
+        # the audit to avoid a misleading audit entry.
+        transitioned = repos.external_actions.transition(
+            scope=org_scope, action_id=acquired.action_id,
+            from_status="executing", to_status="failed_retryable",
+            last_error="lease lost before ERP create",
+        )
+        if transitioned is not None:
+            _audit_transition(
+                repos, org_scope, acquired.action_id,
+                "executing", "failed_retryable", invoice_id,
+            )
+        raise ExecutionError(
+            f"lost lease for {acquired.action_id} before ERP create"
+        )
 
     try:
         draft_response = adapter.create_purchase_invoice_draft(payload)
@@ -424,9 +441,28 @@ def execute_approved_invoice(
     submit_request_hash = _hash_json(submit_request)
 
     # Heartbeat before submit to keep the lease alive.
-    repos.external_actions.heartbeat(
+    hb = repos.external_actions.heartbeat(
         scope=org_scope, action_id=acquired.action_id, owner=worker_id,
     )
+    if hb is None:
+        # Lease was lost. A draft exists in ERP — preserve remote_state.
+        # If the reaper already got it, transition returns None and we skip
+        # the audit to avoid a misleading audit entry.
+        transitioned = repos.external_actions.transition(
+            scope=org_scope, action_id=acquired.action_id,
+            from_status="executing", to_status="unknown",
+            remote_document_id=docname,
+            last_error="lease lost before ERP submit",
+            remote_state="remote_draft",
+        )
+        if transitioned is not None:
+            _audit_transition(
+                repos, org_scope, acquired.action_id,
+                "executing", "unknown", invoice_id,
+            )
+        raise ExecutionError(
+            f"lost lease for {acquired.action_id} before ERP submit"
+        )
 
     try:
         submit_response = adapter.submit_purchase_invoice(docname)
@@ -467,9 +503,28 @@ def execute_approved_invoice(
     _check_crash("before_readback")
 
     # Heartbeat before readback to keep the lease alive.
-    repos.external_actions.heartbeat(
+    hb = repos.external_actions.heartbeat(
         scope=org_scope, action_id=acquired.action_id, owner=worker_id,
     )
+    if hb is None:
+        # Lease was lost. A submitted invoice exists in ERP — preserve remote_state.
+        # If the reaper already got it, transition returns None and we skip
+        # the audit to avoid a misleading audit entry.
+        transitioned = repos.external_actions.transition(
+            scope=org_scope, action_id=acquired.action_id,
+            from_status="executing", to_status="unknown",
+            remote_document_id=docname,
+            last_error="lease lost before readback",
+            remote_state="remote_submitted",
+        )
+        if transitioned is not None:
+            _audit_transition(
+                repos, org_scope, acquired.action_id,
+                "executing", "unknown", invoice_id,
+            )
+        raise ExecutionError(
+            f"lost lease for {acquired.action_id} before readback"
+        )
 
     from urllib.parse import quote
 
