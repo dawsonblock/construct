@@ -75,9 +75,19 @@ def evaluate_progress_billing(
         base = _dec(sov_item.base_value) or Decimal("0")
         currency = sov_item.currency or (contract.currency if contract else "CAD")
 
-        # rc5 Phase 2: Explicit ChangeOrder allocations to SOV items.
-        # AdjustedContractValue = base + approved change orders allocated to this specific SOV item.
-        # Proportional spreading across unrelated SOV items is strictly disallowed.
+        # rc5 Phase 2 / rc6: Explicit ChangeOrder allocations to SOV items.
+        # AdjustedContractValue = base + approved change orders allocated to
+        # this specific SOV item. Proportional spreading across unrelated SOV
+        # items is strictly disallowed.
+        #
+        # rc6: The previous single-SOV fallback (auto-applying all approved
+        # contract COs when the contract has exactly one SOV item) is removed.
+        # For a financial-control system, implied allocation hides the
+        # allocation decision inside arithmetic. Change orders must be
+        # allocated explicitly via change_order_allocations; unallocated COs
+        # do NOT adjust the SOV item's value, even for single-item contracts.
+        # If a caller wants the single-SOV convenience, they must materialize
+        # it as an explicit rule-generated allocation record.
         adjusted = base
         if contract is not None:
             allocated_co = repos.change_orders.approved_allocated_amount_for_sov_item(
@@ -85,14 +95,6 @@ def evaluate_progress_billing(
             )
             if allocated_co > 0:
                 adjusted = base + allocated_co
-            else:
-                all_items = repos.sov_items.for_contract(scope=scope, contract_id=UUID(contract.contract_id))
-                if len(all_items) == 1:
-                    change_orders = repos.change_orders.approved_for_contract(
-                        scope=scope, contract_id=UUID(contract.contract_id)
-                    )
-                    co_total = sum((_dec(co.amount) or Decimal("0") for co in change_orders), Decimal("0"))
-                    adjusted = base + co_total
 
         # VerifiedPercentComplete — UNAVAILABLE (None) when no confirmation exists.
         pct = work_service.verified_percent_complete(scope=scope, sov_item_id=sov_item_id)

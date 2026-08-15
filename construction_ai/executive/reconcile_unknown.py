@@ -34,6 +34,7 @@ PROVEN_ABSENT.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from typing import Any
 from urllib.parse import quote
 from uuid import UUID
@@ -72,12 +73,22 @@ def reconcile_external_action(
     erp_idempotency_key: str | None = None,
     expected_payload: dict[str, Any] | None = None,
     negative_confirmation_threshold: int = 1,
+    negative_confirmation_window_seconds: int = 30,
+    first_negative_observation_at: datetime | None = None,
 ) -> ReconciliationOutcome:
     """Reconcile an UNKNOWN external action by searching ERP.
 
     Uses bounded reconciliation: tries each identifier in priority order, then
-    classifies the result. Only PROVEN_ABSENT after meeting the negative confirmation
-    observation threshold may become safely retryable.
+    classifies the result. Only PROVEN_ABSENT after meeting BOTH the negative
+    confirmation observation threshold AND the minimum elapsed time window
+    may become safely retryable.
+
+    rc6: Negative confirmation is now both attempt-bounded AND time-bounded.
+    Two queries microseconds apart must not declare PROVEN_ABSENT when ERP
+    read-after-write visibility lags by seconds. The window starts at the
+    first empty sweep (`first_negative_observation_at`) and only after
+    `attempts >= threshold` AND `elapsed >= window` does the action become
+    FAILED_RETRYABLE / PROVEN_ABSENT.
 
     Args:
         repos: Repository bundle.
@@ -91,6 +102,10 @@ def reconcile_external_action(
             to verify field match on reconciliation (rc4 Phase 8 / rc5 Phase 1).
         negative_confirmation_threshold: Number of search observation rounds required
             before declaring PROVEN_ABSENT.
+        negative_confirmation_window_seconds: Minimum elapsed wall-clock time
+            between the first empty sweep and PROVEN_ABSENT.
+        first_negative_observation_at: The timestamp of the first empty sweep
+            (loaded from the external action row).
 
     Returns:
         ReconciliationOutcome with classification and new status.
@@ -106,10 +121,32 @@ def reconcile_external_action(
             "reconciliation is only for UNKNOWN actions"
         )
 
-    # rc5 Phase 1: Reconstruct expected payload if not supplied.
+    # rc5 Phase 1 / rc6: Reconstruct expected payload if not supplied.
+    # rc6: Reconstruction now raises PayloadReconstructionError on failure
+    # rather than returning None. The recovery path must fail closed when
+    # the approved intent cannot be reconstructed.
     if expected_payload is None:
-        from construction_ai.executive.executor import reconstruct_expected_erp_payload
-        expected_payload = reconstruct_expected_erp_payload(repos, scope=org_scope, action=action)
+        from construction_ai.executive.executor import (
+            reconstruct_expected_erp_payload,
+            PayloadReconstructionError,
+        )
+        try:
+            expected_payload = reconstruct_expected_erp_payload(repos, scope=org_scope, action=action)
+        except PayloadReconstructionError as e:
+            # Fail closed — manual reconciliation required.
+            _transition_to(repos, org_scope, action_id, "failed_terminal",
+                            last_error=f"reconciliation: {e}",
+                            remote_state="remote_unknown")
+            _audit_reconciliation(repos, org_scope, action_id, "unknown", "failed_terminal",
+                                  "expected_payload_unavailable", [], None)
+            return ReconciliationOutcome(
+                action_id=action_id,
+                classification="expected_payload_unavailable",
+                new_status="failed_terminal",
+                remote_document_id=None,
+                reason=f"expected payload reconstruction failed: {e}",
+                searched_by=[],
+            )
 
     if expected_payload:
         erp_idempotency_key = erp_idempotency_key or expected_payload.get("construct_idempotency_key") or action.erp_idempotency_key
@@ -155,13 +192,36 @@ def reconcile_external_action(
 
     # 4. Classify the result.
     if len(all_matches) == 0:
-        # rc5 Phase 2: Bounded negative confirmation.
+        # rc5 Phase 2 / rc6: Bounded negative confirmation is now BOTH
+        # attempt-bounded AND time-bounded. Two queries microseconds apart
+        # must not declare PROVEN_ABSENT when ERP read-after-write visibility
+        # lags by seconds.
         current_attempts = (getattr(action, "recovery_attempts", 0) or 0) + 1
-        if current_attempts < negative_confirmation_threshold:
+        now_utc = datetime.now(timezone.utc)
+
+        # rc6: Track the first empty sweep timestamp. If this is the first
+        # observation, stamp it. Otherwise reuse the persisted value.
+        first_obs = first_negative_observation_at or getattr(action, "first_negative_observation_at", None)
+        if first_obs is None:
+            first_obs = now_utc
+
+        # Compute elapsed time since the first empty sweep.
+        elapsed_seconds = (now_utc - first_obs).total_seconds() if first_obs else 0.0
+
+        attempts_met = current_attempts >= negative_confirmation_threshold
+        window_met = elapsed_seconds >= negative_confirmation_window_seconds
+
+        if not (attempts_met and window_met):
             _transition_to(repos, org_scope, action_id, "unknown",
-                           last_error=f"reconciliation: no matching ERP document found (observation {current_attempts}/{negative_confirmation_threshold})",
+                           last_error=(
+                               f"reconciliation: no matching ERP document found "
+                               f"(observation {current_attempts}/{negative_confirmation_threshold}, "
+                               f"elapsed {elapsed_seconds:.1f}s/{negative_confirmation_window_seconds}s) — "
+                               f"awaiting negative confirmation"
+                           ),
                            remote_state="remote_unknown",
-                           recovery_attempts=current_attempts)
+                           recovery_attempts=current_attempts,
+                           first_negative_observation_at=first_obs)
             _audit_reconciliation(repos, org_scope, action_id, "unknown", "unknown",
                                   OBSERVATION_IN_PROGRESS, searched_by, None)
             return ReconciliationOutcome(
@@ -169,7 +229,10 @@ def reconcile_external_action(
                 classification=OBSERVATION_IN_PROGRESS,
                 new_status="unknown",
                 remote_document_id=None,
-                reason=f"no matching ERP document found (observation {current_attempts}/{negative_confirmation_threshold}) — awaiting negative confirmation",
+                reason=(
+                    f"no matching ERP document found (observation {current_attempts}/{negative_confirmation_threshold}, "
+                    f"elapsed {elapsed_seconds:.1f}s/{negative_confirmation_window_seconds}s) — awaiting negative confirmation"
+                ),
                 searched_by=searched_by,
             )
 
@@ -228,30 +291,49 @@ def reconcile_external_action(
         )
 
     if docstatus == 1:
-        # REMOTE_SUBMITTED — verify fields match if we have the expected payload.
-        if expected_payload is not None:
-            from construction_ai.executive.executor import (
-                _canonical_erp_invoice, _compare_canonical,
+        # REMOTE_SUBMITTED — verify fields match.
+        # rc6: Fail closed when expected_payload is unavailable. A submitted
+        # ERP document must NOT be confirmed without canonical comparison
+        # against the approved intent. Missing expected intent ⇒ manual
+        # reconciliation, never silent confirmation.
+        if expected_payload is None:
+            _transition_to(repos, org_scope, action_id, "failed_terminal",
+                            remote_document_id=docname,
+                            last_error="reconciliation: expected payload unavailable — cannot verify submitted document against approved intent (fail closed)",
+                            remote_state="remote_unknown")
+            _audit_reconciliation(repos, org_scope, action_id, "unknown",
+                                  "failed_terminal",
+                                  "expected_payload_unavailable", searched_by, docname)
+            return ReconciliationOutcome(
+                action_id=action_id,
+                classification="expected_payload_unavailable",
+                new_status="failed_terminal",
+                remote_document_id=docname,
+                reason="expected payload unavailable — cannot verify submitted document against approved intent (manual reconciliation required)",
+                searched_by=searched_by,
             )
-            canonical_expected = _canonical_erp_invoice(expected_payload)
-            canonical_actual = _canonical_erp_invoice(doc)
-            mismatches = _compare_canonical(canonical_expected, canonical_actual)
-            if mismatches:
-                _transition_to(repos, org_scope, action_id, "failed_terminal",
-                                remote_document_id=docname,
-                                last_error=f"reconciliation: field mismatch: {mismatches}",
-                                remote_state="remote_mismatch")
-                _audit_reconciliation(repos, org_scope, action_id, "unknown",
-                                      "failed_terminal",
-                                      REMOTE_MISMATCH, searched_by, docname)
-                return ReconciliationOutcome(
-                    action_id=action_id,
-                    classification=REMOTE_MISMATCH,
-                    new_status="failed_terminal",
-                    remote_document_id=docname,
-                    reason=f"field mismatch: {mismatches}",
-                    searched_by=searched_by,
-                )
+        from construction_ai.executive.executor import (
+            _canonical_erp_invoice, _compare_canonical,
+        )
+        canonical_expected = _canonical_erp_invoice(expected_payload)
+        canonical_actual = _canonical_erp_invoice(doc)
+        mismatches = _compare_canonical(canonical_expected, canonical_actual)
+        if mismatches:
+            _transition_to(repos, org_scope, action_id, "failed_terminal",
+                            remote_document_id=docname,
+                            last_error=f"reconciliation: field mismatch: {mismatches}",
+                            remote_state="remote_mismatch")
+            _audit_reconciliation(repos, org_scope, action_id, "unknown",
+                                  "failed_terminal",
+                                  REMOTE_MISMATCH, searched_by, docname)
+            return ReconciliationOutcome(
+                action_id=action_id,
+                classification=REMOTE_MISMATCH,
+                new_status="failed_terminal",
+                remote_document_id=docname,
+                reason=f"field mismatch: {mismatches}",
+                searched_by=searched_by,
+            )
 
         result = {"docname": docname, "docstatus": docstatus}
         repos.external_actions.transition(
@@ -295,12 +377,14 @@ def _transition_to(
     repos: Repositories, scope: Scope, action_id: UUID, to_status: str,
     *, remote_document_id: str | None = None, last_error: str | None = None,
     remote_state: str | None = None, recovery_attempts: int | None = None,
+    first_negative_observation_at: datetime | None = None,
 ) -> None:
     """Transition an UNKNOWN action to a new status."""
     repos.external_actions.transition(
         scope=scope, action_id=action_id, from_status="unknown", to_status=to_status,
         remote_document_id=remote_document_id, last_error=last_error,
         remote_state=remote_state, recovery_attempts=recovery_attempts,
+        first_negative_observation_at=first_negative_observation_at,
     )
 
 

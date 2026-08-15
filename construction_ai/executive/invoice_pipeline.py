@@ -240,11 +240,17 @@ class InvoicePipeline:
             invoice.project_id = str(project_id) if project_id else None
             invoice.vendor_company_id = str(vendor_company_id) if vendor_company_id else None
             # Item 12: work completion is derived from records, not a request field.
+            # rc6: The production payable pipeline MUST NOT fall back to generic
+            # project-wide work confirmation. An invoice with scoped SOV
+            # allocations requires invoice/SOV-specific confirmation; a
+            # scope-free project confirmation cannot silently satisfy payable
+            # work checks. allow_project_fallback=False enforces this.
             if work_confirmed is None:
                 from construction_ai.work.confirmation import WorkConfirmationService
 
                 work_confirmed = WorkConfirmationService(self.repos.work_confirmations).is_work_confirmed(
-                    scope=working, project_id=project_id, invoice_id=invoice_id
+                    scope=working, project_id=project_id, invoice_id=invoice_id,
+                    allow_project_fallback=False,
                 )
             # Phase 15/16: scope-specific work confirmation + quantitative progress
             # billing, derived from persisted SOV allocations. Both are None

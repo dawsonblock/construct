@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""v0.5.0-rc4 — release manifest with offline degradation.
+"""v0.5.0-rc6 — release manifest with offline degradation and self-consistent tree hash.
 
 Generates a release manifest that captures the exact state of the system:
 - Version
@@ -9,16 +9,23 @@ Generates a release manifest that captures the exact state of the system:
 - Code fingerprint (Python files)
 - Dependency versions
 - Test count
+- Per-file SHA-256/size map (rc5)
+- tree_hash: deterministic root hash over the per-file map (rc6)
+- post_manifest_artifacts: hashes of artifacts generated AFTER the manifest
+  (qualification report, crash matrix, security gate, etc.) — these cannot
+  be in `files` because they did not exist at manifest-generation time, but
+  they ARE part of the shipped archive and must be verified separately.
+- MANIFEST.<name>.sha256 companion: detached hash of the FINAL manifest
+  bytes, written alongside the manifest. This is the canonical way to bind
+  the manifest to the archive without a self-referential paradox.
 
-This manifest is the qualification artifact: a release is qualified only if
-the manifest matches what was tested. The manifest is deterministic — same
-code + same migrations = same manifest.
-
-rc4 Phase 19: The manifest now supports two modes:
-- --artifact-only: Static artifact fingerprinting without psycopg or a live
-  database. Works offline. The schema_fingerprint will be "offline".
-- --with-database: Full manifest including live schema verification. Requires
-  psycopg and a running PostgreSQL. This is the mode used for qualification.
+rc6 self-consistency fix: the manifest no longer includes itself or the
+post-manifest qualification artifacts in `files`. The previous behavior
+embedded a stale hash of MANIFEST.json inside MANIFEST.json, which never
+matched the actual file. Verification now uses:
+  1. tree_hash over `files` (deterministic, excludes self/post-artifacts)
+  2. post_manifest_artifacts map (covers post-generation artifacts)
+  3. MANIFEST.<name>.sha256 companion (covers the manifest itself)
 
 Usage:
     python scripts/release_manifest.py --artifact-only [--output manifest.json]
@@ -118,8 +125,37 @@ def _dependency_versions() -> dict[str, str]:
     return versions
 
 
-def _file_manifest() -> dict[str, dict[str, Any]]:
-    """Complete per-file manifest over all shipped files."""
+#: Files that are generated *after* the manifest and therefore cannot be
+#: included in their own per-file hash without a self-referential paradox.
+#: The manifest deliberately excludes these from `files` and instead records
+#: their hashes in a separate `post_manifest_artifacts` section that is NOT
+#: covered by `tree_hash`. Verification tooling must check both sections
+#: against the extracted archive.
+SELF_EXCLUDED_ARTIFACTS = {
+    "MANIFEST.json",
+    "MANIFEST.sha256",
+    "MANIFEST.sig",
+    "QUALIFICATION_REPORT.json",
+    "TEST_RESULTS.json",
+    "CRASH_MATRIX.json",
+    "SECURITY_GATE.json",
+    "MIGRATION_GATE.json",
+}
+
+
+def _file_manifest() -> tuple[dict[str, dict[str, Any]], str]:
+    """Complete per-file manifest over all shipped files.
+
+    Returns (files, tree_hash):
+      - files: {relative_path: {size, sha256}} for every tracked file EXCEPT
+        the manifest itself and post-manifest qualification artifacts. The
+        manifest cannot contain its own final hash (self-reference), and
+        post-manifest artifacts are bound by `tree_hash` + a separate
+        post_manifest_artifacts section, not by inclusion in `files`.
+      - tree_hash: SHA-256 over the canonical JSON of the `files` map. This
+        is the deterministic root hash of the release tree and is stable
+        across regenerations as long as the underlying files are unchanged.
+    """
     root = Path(__file__).parent.parent
     files: dict[str, dict[str, Any]] = {}
     tracked_paths: list[Path] = []
@@ -155,12 +191,43 @@ def _file_manifest() -> dict[str, dict[str, Any]]:
         rel = str(p.relative_to(root))
         if rel.startswith((".git", "__pycache__", ".pytest_cache", ".ruff_cache")):
             continue
+        if rel in SELF_EXCLUDED_ARTIFACTS:
+            # The manifest deliberately does not hash itself or the
+            # post-manifest qualification artifacts. They are bound via
+            # tree_hash + post_manifest_artifacts instead.
+            continue
         data = p.read_bytes()
         files[rel] = {
             "size": len(data),
             "sha256": hashlib.sha256(data).hexdigest(),
         }
-    return files
+
+    tree_hash = hashlib.sha256(
+        json.dumps(files, sort_keys=True, default=str, separators=(",", ":")).encode()
+    ).hexdigest()
+    return files, tree_hash
+
+
+def _post_manifest_artifacts() -> dict[str, dict[str, Any]]:
+    """Hashes of artifacts generated after the manifest.
+
+    These cannot be in `files` (the manifest cannot hash itself), but they
+    ARE part of the shipped archive. Verification tooling must check both
+    `files` and `post_manifest_artifacts` against the extracted archive.
+    The manifest's own entry here is computed against the FINAL written file
+    by an external `MANIFEST.sha256` companion, not embedded in the JSON.
+    """
+    root = Path(__file__).parent.parent
+    artifacts: dict[str, dict[str, Any]] = {}
+    for name in SELF_EXCLUDED_ARTIFACTS:
+        path = root / name
+        if path.is_file() and name != "MANIFEST.json":
+            data = path.read_bytes()
+            artifacts[name] = {
+                "size": len(data),
+                "sha256": hashlib.sha256(data).hexdigest(),
+            }
+    return artifacts
 
 
 def _schema_fingerprint() -> str:
@@ -204,6 +271,7 @@ def generate_manifest(*, artifact_only: bool = False) -> dict:
         artifact_only: If True, skip database access (schema_fingerprint will
             be "offline"). If False, attempt live schema verification.
     """
+    files, tree_hash = _file_manifest()
     return {
         "version": _version(),
         "git_commit": _git_commit(),
@@ -217,7 +285,10 @@ def generate_manifest(*, artifact_only: bool = False) -> dict:
         "schema_fingerprint": _schema_fingerprint_artifact_only() if artifact_only else _schema_fingerprint(),
         "dependencies": _dependency_versions(),
         "migrations": _migration_checksums(),
-        "files": _file_manifest(),
+        "files": files,
+        "tree_hash": tree_hash,
+        "post_manifest_artifacts": _post_manifest_artifacts(),
+        "self_excluded_artifacts": sorted(SELF_EXCLUDED_ARTIFACTS),
     }
 
 
@@ -236,7 +307,16 @@ def main() -> int:
     manifest_json = json.dumps(manifest, indent=2, sort_keys=True, default=str)
     if output:
         Path(output).write_text(manifest_json)
+        # rc6: write a detached companion hash of the FINAL manifest bytes.
+        # This is the canonical way to bind the manifest to the archive
+        # without a self-referential paradox: the manifest does not contain
+        # its own hash, but the companion file does.
+        companion = Path(output + ".sha256")
+        final_bytes = Path(output).read_bytes()
+        companion_hash = hashlib.sha256(final_bytes).hexdigest()
+        companion.write_text(f"{companion_hash}  {Path(output).name}\n")
         print(f"manifest written to {output} (mode: {manifest['mode']})")
+        print(f"manifest sha256 companion written to {companion}: {companion_hash}")
     else:
         print(manifest_json)
     return 0

@@ -71,12 +71,17 @@ class TestReconcileUnknown:
         """UNKNOWN with one matching ERP document → CONFIRMED."""
         scope, action_id = setup_unknown_action
         transport = FakeERPTransport(
-            search_results=[{"name": "PINV-0001", "supplier": "Vendor", "bill_no": "INV-001", "docstatus": 1}],
+            search_results=[{"name": "PINV-0001", "supplier": "Vendor", "bill_no": "INV-001",
+                             "docstatus": 1, "grand_total": "5000.00", "net_total": "4500.00",
+                             "total_taxes": "500.00", "currency": "CAD"}],
         )
         outcome = reconcile_external_action(
             repos, scope=scope, action_id=action_id,
             erp_read_transport=transport,
             invoice_number="INV-001", supplier="Vendor",
+            expected_payload={"supplier": "Vendor", "bill_no": "INV-001",
+                              "grand_total": "5000.00", "net_total": "4500.00",
+                              "total_taxes": "500.00", "currency": "CAD"},
         )
         assert outcome.new_status == "confirmed"
         assert outcome.remote_document_id == "PINV-0001"
@@ -91,6 +96,11 @@ class TestReconcileUnknown:
             repos, scope=scope, action_id=action_id,
             erp_read_transport=transport,
             invoice_number="INV-001", supplier="Vendor",
+            expected_payload={"supplier": "Vendor", "bill_no": "INV-001",
+                              "grand_total": "5000.00", "net_total": "4500.00",
+                              "total_taxes": "500.00", "currency": "CAD"},
+            negative_confirmation_threshold=1,
+            negative_confirmation_window_seconds=0,
         )
         assert outcome.new_status == "failed_retryable"
         action = repos.external_actions.get(scope=scope, action_id=action_id)
@@ -109,6 +119,9 @@ class TestReconcileUnknown:
             repos, scope=scope, action_id=action_id,
             erp_read_transport=transport,
             invoice_number="INV-001", supplier="Vendor",
+            expected_payload={"supplier": "Vendor", "bill_no": "INV-001",
+                              "grand_total": "5000.00", "net_total": "4500.00",
+                              "total_taxes": "500.00", "currency": "CAD"},
         )
         assert outcome.new_status == "failed_terminal"
         action = repos.external_actions.get(scope=scope, action_id=action_id)
@@ -127,11 +140,16 @@ class TestReconcileUnknown:
             remote_document_id="PINV-0099", last_error="ambiguous",
         )
         transport = FakeERPTransport(
-            docs={"Purchase Invoice": [{"name": "PINV-0099", "docstatus": 1, "supplier": "V", "bill_no": "I"}]},
+            docs={"Purchase Invoice": [{"name": "PINV-0099", "docstatus": 1, "supplier": "V", "bill_no": "I",
+                                        "grand_total": "5000.00", "net_total": "4500.00",
+                                        "total_taxes": "500.00", "currency": "CAD"}]},
         )
         outcome = reconcile_external_action(
             repos, scope=scope, action_id=action.action_id,
             erp_read_transport=transport,
+            expected_payload={"supplier": "V", "bill_no": "I",
+                              "grand_total": "5000.00", "net_total": "4500.00",
+                              "total_taxes": "500.00", "currency": "CAD"},
         )
         assert outcome.new_status == "confirmed"
         assert outcome.remote_document_id == "PINV-0099"
@@ -154,12 +172,17 @@ class TestReconcileUnknown:
         """Every reconciliation produces an audit event."""
         scope, action_id = setup_unknown_action
         transport = FakeERPTransport(
-            search_results=[{"name": "PINV-0001", "supplier": "V", "bill_no": "I", "docstatus": 1}],
+            search_results=[{"name": "PINV-0001", "supplier": "V", "bill_no": "I",
+                             "docstatus": 1, "grand_total": "5000.00", "net_total": "4500.00",
+                             "total_taxes": "500.00", "currency": "CAD"}],
         )
         reconcile_external_action(
             repos, scope=scope, action_id=action_id,
             erp_read_transport=transport,
             invoice_number="INV-001", supplier="Vendor",
+            expected_payload={"supplier": "V", "bill_no": "I",
+                              "grand_total": "5000.00", "net_total": "4500.00",
+                              "total_taxes": "500.00", "currency": "CAD"},
         )
         with repos.db.scoped(scope) as cur:
             cur.execute(

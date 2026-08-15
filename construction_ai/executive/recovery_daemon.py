@@ -40,6 +40,7 @@ def run_recovery_cycle(
     erp_write_transport=None,
     lease_duration_seconds: int = 120,
     negative_confirmation_threshold: int = 2,
+    negative_confirmation_window_seconds: int = 30,
     worker_id: str = "recovery_daemon",
 ) -> RecoveryResult:
     """Run one complete recovery cycle.
@@ -53,6 +54,10 @@ def run_recovery_cycle(
         erp_write_transport: Optional write transport for resuming draft submissions.
         lease_duration_seconds: Lease duration for new acquisitions.
         negative_confirmation_threshold: Observation cycles required before PROVEN_ABSENT.
+        negative_confirmation_window_seconds: rc6 — minimum elapsed wall-clock
+            time between the first empty sweep and PROVEN_ABSENT. Two queries
+            microseconds apart must not declare absence when ERP read-after-
+            write visibility lags by seconds.
         worker_id: Identifier of the recovery worker.
 
     Returns:
@@ -93,9 +98,11 @@ def run_recovery_cycle(
                     outcome, expected_payload = _reconcile_one(
                         repos, org_scope, action, erp_read_transport,
                         negative_confirmation_threshold=negative_confirmation_threshold,
+                        negative_confirmation_window_seconds=negative_confirmation_window_seconds,
                     )
                     result.reconciled_unknowns.append(str(action["action_id"]))
-                    if outcome.classification in ("remote_mismatch", "ambiguous"):
+                    if outcome.classification in ("remote_mismatch", "ambiguous",
+                                                   "expected_payload_unavailable"):
                         result.flagged_ambiguous.append(str(action["action_id"]))
                     elif outcome.classification == "remote_draft" and erp_write_transport is not None:
                         # rc5 Phase 3: Resume submission of verified matching draft.
@@ -132,7 +139,8 @@ def _find_unknown_actions(repos: Repositories, scope: Scope) -> list:
     with repos.db.scoped(scope) as cur:
         cur.execute(
             """SELECT action_id, organization_id, remote_document_id, erp_idempotency_key,
-                      subject_id, subject_type, request_payload, remote_state, recovery_attempts
+                      subject_id, subject_type, request_payload, remote_state, recovery_attempts,
+                      first_negative_observation_at
                FROM external_actions
                WHERE organization_id = %s AND status = 'unknown'
                ORDER BY created_at
@@ -151,6 +159,7 @@ def _reconcile_one(
     erp_read_transport,
     *,
     negative_confirmation_threshold: int = 2,
+    negative_confirmation_window_seconds: int = 30,
 ):
     """Reconcile a single UNKNOWN action with authoritative payload and supplier resolution."""
     from construction_ai.executive.executor import reconstruct_expected_erp_payload
@@ -160,10 +169,27 @@ def _reconcile_one(
     if isinstance(action_id, str):
         action_id = UUID(action_id)
 
-    # rc5 Phase 1: Reconstruct authoritative expected payload.
+    # rc5 Phase 1 / rc6: Reconstruct authoritative expected payload.
+    # rc6: Reconstruction now raises PayloadReconstructionError on failure.
+    # The recovery daemon catches it and lets reconciliation fail closed
+    # (the reconcile_external_action function will see expected_payload=None
+    # and route to manual reconciliation).
     expected_payload = action_row.get("request_payload")
     if expected_payload is None:
-        expected_payload = reconstruct_expected_erp_payload(repos, scope=scope, action=action_row)
+        try:
+            expected_payload = reconstruct_expected_erp_payload(repos, scope=scope, action=action_row)
+        except Exception as e:
+            # Log the error and leave expected_payload as None —
+            # reconcile_external_action will fail closed.
+            repos.audit.append(
+                scope=scope,
+                event_type="EXTERNAL_ACTION_PAYLOAD_RECONSTRUCTION_FAILED",
+                actor="recovery_daemon",
+                object_type="external_action",
+                object_id=action_id,
+                payload={"action_id": str(action_id), "error": str(e)},
+            )
+            expected_payload = None
 
     # rc5 Phase 4/8: Use authoritative supplier and invoice number from expected payload.
     invoice_number = None
@@ -194,6 +220,8 @@ def _reconcile_one(
         erp_idempotency_key=action_row.get("erp_idempotency_key"),
         expected_payload=expected_payload,
         negative_confirmation_threshold=negative_confirmation_threshold,
+        negative_confirmation_window_seconds=negative_confirmation_window_seconds,
+        first_negative_observation_at=action_row.get("first_negative_observation_at"),
     )
     return outcome, expected_payload
 
@@ -233,29 +261,51 @@ def _resolve_remote_draft(
         return False
 
     # 2. Canonical compare draft fields against approved expected payload.
-    if expected_payload:
-        canonical_expected = _canonical_erp_invoice(expected_payload)
-        canonical_actual = _canonical_erp_invoice(draft_data)
-        mismatches = _compare_canonical(canonical_expected, canonical_actual)
-        if mismatches:
-            repos.external_actions.transition(
-                scope=scope,
-                action_id=action_id,
-                from_status="unknown",
-                to_status="failed_terminal",
-                remote_document_id=docname,
-                remote_state="remote_mismatch",
-                last_error=f"recovery: draft mismatch with approved intent: {mismatches}",
-            )
-            repos.audit.append(
-                scope=scope,
-                event_type="EXTERNAL_ACTION_DRAFT_MISMATCH",
-                actor="recovery_daemon",
-                object_type="external_action",
-                object_id=action_id,
-                payload={"action_id": str(action_id), "docname": docname, "mismatches": mismatches},
-            )
-            return False
+    # rc6: Fail closed when expected_payload is unavailable. A remote draft
+    # must NOT be submitted without first proving its contents match the
+    # approved intent. Missing expected intent ⇒ manual reconciliation.
+    if expected_payload is None:
+        repos.external_actions.transition(
+            scope=scope,
+            action_id=action_id,
+            from_status="unknown",
+            to_status="failed_terminal",
+            remote_document_id=docname,
+            remote_state="remote_unknown",
+            last_error="recovery: expected payload unavailable — cannot verify draft against approved intent (fail closed)",
+        )
+        repos.audit.append(
+            scope=scope,
+            event_type="EXTERNAL_ACTION_EXPECTED_PAYLOAD_UNAVAILABLE",
+            actor="recovery_daemon",
+            object_type="external_action",
+            object_id=action_id,
+            payload={"action_id": str(action_id), "docname": docname,
+                     "reason": "expected payload unavailable — manual reconciliation required"},
+        )
+        return False
+    canonical_expected = _canonical_erp_invoice(expected_payload)
+    canonical_actual = _canonical_erp_invoice(draft_data)
+    mismatches = _compare_canonical(canonical_expected, canonical_actual)
+    if mismatches:
+        repos.external_actions.transition(
+            scope=scope,
+            action_id=action_id,
+            from_status="unknown",
+            to_status="failed_terminal",
+            remote_document_id=docname,
+            remote_state="remote_mismatch",
+            last_error=f"recovery: draft mismatch with approved intent: {mismatches}",
+        )
+        repos.audit.append(
+            scope=scope,
+            event_type="EXTERNAL_ACTION_DRAFT_MISMATCH",
+            actor="recovery_daemon",
+            object_type="external_action",
+            object_id=action_id,
+            payload={"action_id": str(action_id), "docname": docname, "mismatches": mismatches},
+        )
+        return False
 
     # 3. Submit the existing draft.
     try:
@@ -297,21 +347,22 @@ def _resolve_remote_draft(
         return False
 
     # 5. Canonical comparison on submitted readback.
-    if expected_payload:
-        canonical_expected = _canonical_erp_invoice(expected_payload)
-        canonical_actual = _canonical_erp_invoice(readback_data)
-        mismatches = _compare_canonical(canonical_expected, canonical_actual)
-        if mismatches:
-            repos.external_actions.transition(
-                scope=scope,
-                action_id=action_id,
-                from_status="unknown",
-                to_status="failed_terminal",
-                remote_document_id=docname,
-                remote_state="remote_mismatch",
-                last_error=f"recovery: post-submit readback mismatch: {mismatches}",
-            )
-            return False
+    # rc6: expected_payload is guaranteed non-None here (step 2 fails closed
+    # otherwise), so the comparison is mandatory, not conditional.
+    canonical_expected = _canonical_erp_invoice(expected_payload)
+    canonical_actual = _canonical_erp_invoice(readback_data)
+    mismatches = _compare_canonical(canonical_expected, canonical_actual)
+    if mismatches:
+        repos.external_actions.transition(
+            scope=scope,
+            action_id=action_id,
+            from_status="unknown",
+            to_status="failed_terminal",
+            remote_document_id=docname,
+            remote_state="remote_mismatch",
+            last_error=f"recovery: post-submit readback mismatch: {mismatches}",
+        )
+        return False
 
     readback_hash = _hash_json(_canonical_erp_invoice(readback_data))
     result_payload = {"docname": docname, "docstatus": docstatus}

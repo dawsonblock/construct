@@ -78,8 +78,17 @@ class WorkConfirmationService:
 
         rc5 Phase 4: Uses authoritative supersession rather than max().
         Confirmations are ranked by authority level, then effective/occurred_at timestamp.
+
+        rc6: Explicit supersession semantics. The repository query already
+        filters to status='confirmed', so records marked 'superseded',
+        'retracted', or 'revoked' are excluded. A higher-authority
+        certification that explicitly supersedes an earlier one transitions
+        the earlier record to 'superseded' at record time, so it cannot
+        dominate the active set even if its authority tier is higher.
         """
         confirmations = self.repository.for_sov_item(scope=scope, sov_item_id=sov_item_id)
+        # rc6: defensive double-filter — only 'confirmed' records are active.
+        # 'superseded', 'retracted', and 'revoked' are excluded.
         active = [c for c in confirmations if c.status == "confirmed" and c.percent_complete is not None]
         if not active:
             return None

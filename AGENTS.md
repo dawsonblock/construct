@@ -50,7 +50,7 @@ All version surfaces must agree (enforced by test_repository_integrity.py):
 
 ## Migrations
 Migrations are transactional and forward-only. Never edit an applied migration.
-Current count: 23 (through 023_decision_fingerprint.sql).
+Current count: 27 (through 027_rc6_approval_decisions_append_only.sql).
 
 ## Test categories
 - Unit tests (pure functions, no DB)

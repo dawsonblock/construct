@@ -183,13 +183,16 @@ def test_bounded_negative_confirmation_requires_observation_cycles(repos, org_a)
     )
 
     # Round 1: recovery daemon uses threshold=2 by default -> remains unknown / observation in progress
-    run_recovery_cycle(repos, scope=scope, erp_read_transport=transport, negative_confirmation_threshold=2)
+    # rc6: window=0 so the time bound does not block the attempt-bound test.
+    run_recovery_cycle(repos, scope=scope, erp_read_transport=transport,
+                       negative_confirmation_threshold=2, negative_confirmation_window_seconds=0)
     reloaded1 = repos.external_actions.get(scope=scope, action_id=action.action_id)
     assert reloaded1.status == "unknown"
     assert reloaded1.recovery_attempts == 1
 
     # Round 2: second cycle meets observation threshold -> transitions to failed_retryable / PROVEN_ABSENT
-    run_recovery_cycle(repos, scope=scope, erp_read_transport=transport, negative_confirmation_threshold=2)
+    run_recovery_cycle(repos, scope=scope, erp_read_transport=transport,
+                       negative_confirmation_threshold=2, negative_confirmation_window_seconds=0)
     reloaded2 = repos.external_actions.get(scope=scope, action_id=action.action_id)
     assert reloaded2.status == "failed_retryable"
     assert reloaded2.remote_state == "no_remote_effect"

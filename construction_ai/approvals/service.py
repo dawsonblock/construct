@@ -177,9 +177,20 @@ def decide_approval(
             )
         else:
             # Quorum met — transition to approved.
+            # rc6: persist the exact policy hash + snapshot so the executor can
+            # recompute the decision fingerprint under the SAME policy later.
+            policy_hash = policy.policy_hash()
+            policy_snapshot = {
+                "version": policy.version,
+                "creator_cannot_approve": policy.creator_cannot_approve,
+                "dual_approval_threshold": str(policy.dual_approval_threshold) if policy.dual_approval_threshold is not None else None,
+                "dual_approval_currency": policy.dual_approval_currency,
+                "required_authentication_strength": policy.required_authentication_strength,
+            }
             decided = repos.approvals.decide(
                 scope=scope, approval_id=approval_id, status="approved",
                 decided_by=actor.display_name, state_fingerprint=None,
+                policy_hash=policy_hash, policy_snapshot=policy_snapshot,
             )
             if decided is None:
                 raise ApprovalAlreadyDecided("pending")
@@ -223,6 +234,7 @@ def decide_approval(
                 actor=str(actor.user_id), object_type="approval", object_id=approval_id,
                 payload={"decision": "approved", "actor": actor.display_name,
                          "subject_id": decided.subject_id, "policy_version": policy.version,
+                         "policy_hash": policy_hash,
                          "reason": reason, "decision_id": str(decision_id),
                          "vote_id": str(vote_id), "state_fingerprint": state_fingerprint,
                          "decision_fingerprint": decision_fingerprint,

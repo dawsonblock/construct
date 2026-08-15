@@ -97,17 +97,38 @@ def _make_unknown_action(repos, scope, *, remote_document_id=None, erp_idempoten
     return action
 
 
+def _expected_payload(supplier="V1", bill_no="INV-1", grand_total="5000.00",
+                      net_total="4500.00", total_taxes="500.00", currency="CAD"):
+    """rc6: Minimal expected payload for reconciliation tests.
+
+    The rc6 fail-closed behavior requires expected_payload to be available
+    for canonical comparison. Tests that use random subject_id values cannot
+    reconstruct from the DB, so we pass an explicit payload.
+    """
+    return {
+        "supplier": supplier,
+        "bill_no": bill_no,
+        "grand_total": grand_total,
+        "net_total": net_total,
+        "total_taxes": total_taxes,
+        "currency": currency,
+    }
+
+
 # -- Direct remote document lookup ------------------------------------------
 
 def test_direct_remote_document_lookup_submitted(repos, org_a):
     """Reconciliation finds a submitted document by remote_document_id."""
     scope = org_a["scope"]
     transport = FakeERPTransport()
-    transport.add_doc("PINV-FOUND", docstatus=1, supplier="V1", bill_no="INV-1")
+    transport.add_doc("PINV-FOUND", docstatus=1, supplier="V1", bill_no="INV-1",
+                      grand_total="5000.00", net_total="4500.00", total_taxes="500.00",
+                      currency="CAD")
 
     action = _make_unknown_action(repos, scope, remote_document_id="PINV-FOUND")
     outcome = reconcile_external_action(
         repos, scope=scope, action_id=action.action_id, erp_read_transport=transport,
+        expected_payload=_expected_payload(),
     )
     assert outcome.classification == REMOTE_SUBMITTED
     assert outcome.new_status == "confirmed"
@@ -118,11 +139,14 @@ def test_direct_remote_document_lookup_draft(repos, org_a):
     """Reconciliation finds a draft document (docstatus=0) → REMOTE_DRAFT."""
     scope = org_a["scope"]
     transport = FakeERPTransport()
-    transport.add_doc("PINV-DRAFT", docstatus=0, supplier="V1", bill_no="INV-1")
+    transport.add_doc("PINV-DRAFT", docstatus=0, supplier="V1", bill_no="INV-1",
+                      grand_total="5000.00", net_total="4500.00", total_taxes="500.00",
+                      currency="CAD")
 
     action = _make_unknown_action(repos, scope, remote_document_id="PINV-DRAFT")
     outcome = reconcile_external_action(
         repos, scope=scope, action_id=action.action_id, erp_read_transport=transport,
+        expected_payload=_expected_payload(),
     )
     assert outcome.classification == REMOTE_DRAFT
     assert outcome.new_status == "unknown"  # Stays unknown — not confirmed
@@ -136,6 +160,9 @@ def test_direct_remote_document_not_found_proven_absent(repos, org_a):
     action = _make_unknown_action(repos, scope)
     outcome = reconcile_external_action(
         repos, scope=scope, action_id=action.action_id, erp_read_transport=transport,
+        expected_payload=_expected_payload(),
+        negative_confirmation_threshold=1,
+        negative_confirmation_window_seconds=0,
     )
     assert outcome.classification == PROVEN_ABSENT
     assert outcome.new_status == "failed_retryable"
@@ -148,13 +175,16 @@ def test_idempotency_key_lookup_finds_submitted(repos, org_a):
     scope = org_a["scope"]
     transport = FakeERPTransport()
     transport.add_search_result("idek:construct-test-key", [
-        {"name": "PINV-IDEK", "docstatus": 1, "supplier": "V1", "bill_no": "INV-1"}
+        {"name": "PINV-IDEK", "docstatus": 1, "supplier": "V1", "bill_no": "INV-1",
+         "grand_total": "5000.00", "net_total": "4500.00", "total_taxes": "500.00",
+         "currency": "CAD"}
     ])
 
     action = _make_unknown_action(repos, scope, erp_idempotency_key="construct-test-key")
     outcome = reconcile_external_action(
         repos, scope=scope, action_id=action.action_id,
         erp_read_transport=transport, erp_idempotency_key="construct-test-key",
+        expected_payload=_expected_payload(),
     )
     assert outcome.classification == REMOTE_SUBMITTED
     assert outcome.remote_document_id == "PINV-IDEK"
@@ -167,13 +197,16 @@ def test_invoice_number_supplier_lookup_finds_submitted(repos, org_a):
     scope = org_a["scope"]
     transport = FakeERPTransport()
     transport.add_search_result("inv:INV-123/Vendor A", [
-        {"name": "PINV-INV", "docstatus": 1, "supplier": "Vendor A", "bill_no": "INV-123"}
+        {"name": "PINV-INV", "docstatus": 1, "supplier": "Vendor A", "bill_no": "INV-123",
+         "grand_total": "5000.00", "net_total": "4500.00", "total_taxes": "500.00",
+         "currency": "CAD"}
     ])
 
     action = _make_unknown_action(repos, scope)
     outcome = reconcile_external_action(
         repos, scope=scope, action_id=action.action_id,
         erp_read_transport=transport, invoice_number="INV-123", supplier="Vendor A",
+        expected_payload=_expected_payload(supplier="Vendor A", bill_no="INV-123"),
     )
     assert outcome.classification == REMOTE_SUBMITTED
     assert outcome.remote_document_id == "PINV-INV"
@@ -194,6 +227,7 @@ def test_ambiguous_multiple_matches_fails_terminal(repos, org_a):
     outcome = reconcile_external_action(
         repos, scope=scope, action_id=action.action_id,
         erp_read_transport=transport, invoice_number="INV-123", supplier="Vendor A",
+        expected_payload=_expected_payload(supplier="Vendor A", bill_no="INV-123"),
     )
     assert outcome.classification == AMBIGUOUS
     assert outcome.new_status == "failed_terminal"
@@ -210,6 +244,7 @@ def test_mismatch_docstatus_fails_terminal(repos, org_a):
     action = _make_unknown_action(repos, scope, remote_document_id="PINV-CANCELLED")
     outcome = reconcile_external_action(
         repos, scope=scope, action_id=action.action_id, erp_read_transport=transport,
+        expected_payload=_expected_payload(),
     )
     assert outcome.classification == REMOTE_MISMATCH
     assert outcome.new_status == "failed_terminal"
@@ -228,6 +263,7 @@ def test_transient_lookup_failure_raises(repos, org_a):
     with pytest.raises(ConnectionError):
         reconcile_external_action(
             repos, scope=scope, action_id=action.action_id, erp_read_transport=transport,
+            expected_payload=_expected_payload(),
         )
 
 
@@ -268,6 +304,9 @@ def test_zero_search_results_is_proven_absent(repos, org_a):
         erp_read_transport=transport,
         invoice_number="INV-123", supplier="Vendor A",
         erp_idempotency_key="construct-key",
+        expected_payload=_expected_payload(supplier="Vendor A", bill_no="INV-123"),
+        negative_confirmation_threshold=1,
+        negative_confirmation_window_seconds=0,
     )
     assert outcome.classification == PROVEN_ABSENT
     assert outcome.new_status == "failed_retryable"

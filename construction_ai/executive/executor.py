@@ -136,12 +136,17 @@ def check_approval_staleness(repos: Repositories, *, scope: Scope, approval) -> 
         )
 
     # Phase 6: decision fingerprint — the precise, decision-specific check.
+    # rc6: The fingerprint function reconstructs the policy from the snapshot
+    # stored on the approval at decision time. Passing DEFAULT_POLICY here
+    # would make a decision made under a non-default policy appear stale
+    # immediately. We deliberately do NOT pass a policy so the function uses
+    # the stored snapshot.
     from construction_ai.approvals.decision_fingerprint import (
         compute_decision_fingerprint_for_approval,
     )
 
     current_decision_fp = compute_decision_fingerprint_for_approval(
-        repos, scope=scope, approval=approval
+        repos, scope=scope, approval=approval,
     )
     if current_decision_fp != approval.decision_fingerprint:
         raise ApprovalStale(
@@ -739,7 +744,16 @@ def reconstruct_expected_erp_payload(
     scope: Scope,
     action: Any,
 ) -> dict[str, Any] | None:
-    """Reconstruct or retrieve the canonical expected ERP payload for an external action."""
+    """Reconstruct or retrieve the canonical expected ERP payload for an external action.
+
+    rc6: Differentiates failure modes instead of bare `except Exception`.
+    The recovery path must not silently convert data-integrity failures,
+    missing subjects, or programming errors into "no payload" — that would
+    hide the cause of reconstruction failure and allow fail-open recovery.
+    Each failure mode is logged and re-raised as a typed
+    PayloadReconstructionError so the caller (recovery daemon) can audit it
+    and route to manual reconciliation rather than silently proceeding.
+    """
     # 1. If the action row has persisted request_payload, use it.
     if isinstance(action, dict):
         if action.get("request_payload"):
@@ -753,7 +767,11 @@ def reconstruct_expected_erp_payload(
         operation = getattr(action, "operation", "erp_invoice_submit")
 
     if not subject_id:
-        return None
+        # Subject missing — the action row is malformed. This is a data-
+        # integrity failure, not a normal "no payload" state.
+        raise PayloadReconstructionError(
+            "subject_id missing from external action — cannot reconstruct expected payload"
+        )
 
     if isinstance(subject_id, str):
         subject_id = UUID(subject_id)
@@ -766,8 +784,26 @@ def reconstruct_expected_erp_payload(
             repos, scope=org_scope, invoice_id=subject_id, approval_id=approval_id,
             operation=operation, approval=approval,
         )
-    except Exception:
-        return None
+    except PayloadReconstructionError:
+        raise
+    except (KeyError, ValueError, TypeError) as e:
+        # Data-integrity or programming error — must not be silently swallowed.
+        raise PayloadReconstructionError(
+            f"reconstruction failed (data error): {type(e).__name__}: {e}"
+        ) from e
+    except Exception as e:
+        # Database error or unexpected failure — surface it, do not hide it.
+        raise PayloadReconstructionError(
+            f"reconstruction failed (unexpected): {type(e).__name__}: {e}"
+        ) from e
+
+
+class PayloadReconstructionError(ExecutionError):
+    """rc6: Typed exception for expected-payload reconstruction failures.
+
+    Recovery code must treat this as a fail-closed condition: missing expected
+    intent ⇒ manual reconciliation, never silent confirmation or submission.
+    """
 
 
 def _canonical_erp_invoice(data: dict[str, Any]) -> dict[str, Any]:

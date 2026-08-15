@@ -63,18 +63,40 @@ def test_a_caller_supplied_work_confirmed_is_not_the_api_path(repos, org_a):
 
 
 def test_a_work_confirmation_record_lets_the_invoice_proceed(repos, org_a):
-    """With a work_confirmations record for the project, the verifier reads work
-    as confirmed even though the job submitted no work_confirmed field."""
+    """With an invoice-scoped work_confirmations record, the verifier reads work
+    as confirmed even though the job submitted no work_confirmed field.
+
+    rc6: The production invoice pipeline disables generic project-wide work
+    fallback (allow_project_fallback=False). A project-wide confirmation
+    no longer satisfies the check — the confirmation must be scoped to the
+    invoice (or a SOV item allocated to it).
+
+    This test runs the pipeline once to create the invoice, then adds an
+    invoice-scoped work confirmation, then re-processes to verify the
+    confirmation is picked up.
+    """
     project_id = UUID(org_a["project"].project_id)
-    repos.work_confirmations.record(
-        scope=org_a["scope"], project_id=project_id, confirmation_type="superintendent", percent_complete=100.0
-    )
     extracted, evidence = _extract()
-    result = InvoicePipeline(repositories=repos, erp_resolver=_ERP()).process(
+    # First pass: creates the invoice (no work confirmation yet → HOLD).
+    result1 = InvoicePipeline(repositories=repos, erp_resolver=_ERP()).process(
         scope=org_a["scope"], extracted=extracted, signals=_signals(org_a["project"]), evidence=evidence, work_confirmed=None
     )
-    assert "WORK_NOT_CONFIRMED" not in result["exceptions"]
-    assert result["recommended_action"] == "APPROVE"
+    assert "WORK_NOT_CONFIRMED" in result1["exceptions"]
+    invoice_id = UUID(result1["invoice_id"])
+
+    # Add an invoice-scoped work confirmation.
+    repos.work_confirmations.record(
+        scope=org_a["scope"], project_id=project_id,
+        invoice_id=invoice_id,
+        confirmation_type="superintendent", percent_complete=100.0
+    )
+
+    # Second pass: the pipeline finds the duplicate invoice and re-verifies.
+    # With the invoice-scoped confirmation, WORK_NOT_CONFIRMED should be absent.
+    result2 = InvoicePipeline(repositories=repos, erp_resolver=_ERP()).process(
+        scope=org_a["scope"], extracted=extracted, signals=_signals(org_a["project"]), evidence=evidence, work_confirmed=None
+    )
+    assert "WORK_NOT_CONFIRMED" not in result2["exceptions"]
 
 
 def test_a_retracted_confirmation_does_not_count(repos, org_a):

@@ -2,12 +2,12 @@
   "adversarial": {
     "exit_code": 0,
     "passed": true,
-    "summary": "49 passed in 1.89s"
+    "summary": "49 passed in 1.90s"
   },
   "crash_recovery": {
     "exit_code": 0,
     "passed": true,
-    "summary": "50 passed in 8.08s"
+    "summary": "50 passed in 8.62s"
   },
   "critical_skipped_count": 0,
   "critical_skips_allowed": 0,
@@ -15,7 +15,7 @@
   "external_effect": {
     "exit_code": 0,
     "passed": true,
-    "summary": "88 passed in 3.82s"
+    "summary": "88 passed in 3.72s"
   },
   "gates": {
     "CRASH_RECOVERY_PASS": true,
@@ -25,27 +25,52 @@
     "SECURITY_PASS": true,
     "UNIT_PASS": true
   },
-  "generated_at": "2026-08-15T01:50:52.097784+00:00",
+  "generated_at": "2026-08-15T02:52:59.413960+00:00",
   "git_branch": "v0.4-hardening",
-  "git_commit": "63bff29b7df244afe3640861d085bcf11af0f37d",
-  "manifest_sha": "581baecff1a48024a944577f1fa920b499c78d0ae4a5034684df5d5a50a0acc2",
-  "noncritical_skipped_count": 1,
+  "git_commit": "4172c59ec789a014345b09a6e0c17676aa7aa946",
+  "manifest_sha": "7e62ce0df07f81c463c36f055c953eedf50ba9b51feb40debe6a2d822444758b",
+  "manifest_tree_hash": "a3e1964489e371cd7954705fdff55c7d3ecc1cbde126641995b262ee6899d7a4",
+  "noncritical_skipped_count": 5,
   "qualified": true,
   "release_integrity": {
     "exit_code": 0,
     "passed": true,
-    "summary": "20 passed in 0.56s"
+    "summary": "20 passed in 0.62s"
   },
   "schema": {
-    "migration_count": 25,
-    "migration_fingerprint": "476ca1ec413855f644f98d0aae24cf6040730419e3e16a52937dfd1cdf8a7de1"
+    "migration_count": 27,
+    "migration_fingerprint": "bf473ceada93adc703f4d28bdaf4bbff40dc2cebb568d1d8380bcecef2712033"
   },
   "security": {
     "exit_code": 0,
     "passed": true,
-    "summary": "26 passed in 0.44s"
+    "summary": "26 passed in 0.49s"
   },
   "skipped_tests": [
+    {
+      "classification": "NONCRITICAL_ALLOWED",
+      "line": "53",
+      "reason": "no PostgreSQL reachable \u2014 start the stack with `make up`",
+      "test_file": "tests/test_ui_security.py"
+    },
+    {
+      "classification": "NONCRITICAL_ALLOWED",
+      "line": "53",
+      "reason": "no PostgreSQL reachable \u2014 start the stack with `make up`",
+      "test_file": "tests/test_ui_security.py"
+    },
+    {
+      "classification": "NONCRITICAL_ALLOWED",
+      "line": "53",
+      "reason": "no PostgreSQL reachable \u2014 start the stack with `make up`",
+      "test_file": "tests/test_ui_security.py"
+    },
+    {
+      "classification": "NONCRITICAL_ALLOWED",
+      "line": "53",
+      "reason": "no PostgreSQL reachable \u2014 start the stack with `make up`",
+      "test_file": "tests/test_ui_security.py"
+    },
     {
       "classification": "NONCRITICAL_ALLOWED",
       "line": "53",
@@ -57,16 +82,16 @@
     "error": 0,
     "exit_code": 0,
     "failed": 0,
-    "passed": 530,
+    "passed": 542,
     "run": true,
     "skipped": 5,
-    "summary": "530 passed, 5 skipped in 26.44s",
-    "total": 535
+    "summary": "542 passed, 5 skipped in 27.22s",
+    "total": 547
   },
   "unit_suite": {
     "exit_code": 0,
     "passed": true,
-    "summary": "82 passed in 6.87s"
+    "summary": "82 passed in 7.03s"
   },
-  "version": "0.5.0-rc5.dev0"
+  "version": "0.5.0-rc6.dev0"
 }

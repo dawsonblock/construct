@@ -76,6 +76,10 @@ class ExternalAction:
     finalized_at: datetime | None = None
     # rc5 Phase 1: Request payload for unified recovery readback.
     request_payload: dict[str, Any] | None = None
+    # rc6: Time-bounded negative confirmation — the timestamp of the first
+    # empty ERP search sweep. PROVEN_ABSENT now requires both
+    # attempts >= threshold AND elapsed >= window since this timestamp.
+    first_negative_observation_at: datetime | None = None
 
 
 def hash_request(payload: dict[str, Any]) -> str:
@@ -202,6 +206,7 @@ class ExternalActionRepository(Repository):
         readback_hash: str | None = None,
         final_audit_event_id: UUID | None = None,
         recovery_attempts: int | None = None,
+        first_negative_observation_at: datetime | None = None,
     ) -> ExternalAction | None:
         """Transition an external action to a new status.
 
@@ -254,6 +259,9 @@ class ExternalActionRepository(Repository):
         if recovery_attempts is not None:
             sets.append("recovery_attempts = %s")
             params.append(recovery_attempts)
+        if first_negative_observation_at is not None:
+            sets.append("first_negative_observation_at = %s")
+            params.append(first_negative_observation_at)
 
         clause, clause_params = self._tenant_clause(scope)
         params.extend(clause_params)
@@ -548,7 +556,8 @@ class ExternalActionRepository(Repository):
             "attempt_count, reserved_at, last_attempt_at, confirmed_at, last_error, "
             "execution_owner, lease_acquired_at, lease_expires_at, heartbeat_at, "
             "recovery_attempts, remote_state, erp_idempotency_key, readback_hash, "
-            "final_audit_event_id, finalized_at, request_payload"
+            "final_audit_event_id, finalized_at, request_payload, "
+            "first_negative_observation_at"
         )
 
     def _select_sql(self) -> str:
@@ -588,4 +597,5 @@ def _to_action(row: dict[str, Any]) -> ExternalAction:
         final_audit_event_id=row["final_audit_event_id"] if isinstance(row.get("final_audit_event_id"), UUID) else (UUID(str(row["final_audit_event_id"])) if row.get("final_audit_event_id") else None),
         finalized_at=row.get("finalized_at"),
         request_payload=row.get("request_payload"),
+        first_negative_observation_at=row.get("first_negative_observation_at"),
     )

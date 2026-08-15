@@ -11,7 +11,7 @@ from construction_ai.persistence.repositories.base import Repository
 APPROVAL_COLUMNS = (
     "organization_id, approval_id, project_id, reference, approval_type, subject_type, subject_id, "
     "recommended_action, amount, currency, status, exceptions, evidence_ids, requested_by, decided_by, decided_at, "
-    "state_fingerprint, quorum_threshold, decision_fingerprint"
+    "state_fingerprint, quorum_threshold, decision_fingerprint, policy_hash, policy_snapshot"
 )
 
 
@@ -35,6 +35,8 @@ def _to_approval(row: dict[str, Any]) -> Approval:
         state_fingerprint=row.get("state_fingerprint"),
         quorum_threshold=row.get("quorum_threshold") or 1,
         decision_fingerprint=row.get("decision_fingerprint"),
+        policy_hash=row.get("policy_hash"),
+        policy_snapshot=row.get("policy_snapshot"),
     )
 
 
@@ -115,7 +117,9 @@ class ApprovalRepository(Repository):
         )
         return _to_approval(row) if row else None
 
-    def decide(self, *, scope: Scope, approval_id: UUID, status: str, decided_by: str, state_fingerprint: str | None = None, decision_fingerprint: str | None = None) -> Approval | None:
+    def decide(self, *, scope: Scope, approval_id: UUID, status: str, decided_by: str,
+               state_fingerprint: str | None = None, decision_fingerprint: str | None = None,
+               policy_hash: str | None = None, policy_snapshot: dict[str, Any] | None = None) -> Approval | None:
         """Only a pending approval can be decided, and never by 'ai'.
 
         The transition is a single conditional UPDATE so two concurrent approvers
@@ -128,19 +132,30 @@ class ApprovalRepository(Repository):
         InvoiceSnapshot||VerificationPacket||EvidenceSet||PolicyVersion||
         ApprovalRequirements hash, so unrelated project changes do not produce
         false stale positives.
+        v0.5.0-rc6: policy_hash and policy_snapshot persist the exact policy
+        configuration under which the decision was made, so the executor can
+        recompute the decision fingerprint under the SAME policy rather than
+        today's DEFAULT_POLICY.
         """
         if status not in {"approved", "held", "rejected"}:
             raise ValueError(f"unsupported approval status: {status!r}")
         if not decided_by or decided_by == "ai":
             raise PermissionError("an approval decision requires a human actor")
+        from psycopg.types.json import Jsonb
+        from construction_ai.persistence.serialization import dumps
+
         clause, params = self._tenant_clause(scope)
         with self.db.scoped(scope) as cur:
             cur.execute(
                 f"""UPDATE approvals SET status = %s, decided_by = %s, decided_at = now(),
-                        state_fingerprint = %s, decision_fingerprint = %s
+                        state_fingerprint = %s, decision_fingerprint = %s,
+                        policy_hash = %s, policy_snapshot = %s
                     WHERE {clause} AND approval_id = %s AND status = 'pending'
                     RETURNING {APPROVAL_COLUMNS}""",  # noqa: S608
-                [status, decided_by, state_fingerprint, decision_fingerprint, *params, approval_id],
+                [status, decided_by, state_fingerprint, decision_fingerprint,
+                 policy_hash,
+                 Jsonb(policy_snapshot, dumps=dumps) if policy_snapshot is not None else None,
+                 *params, approval_id],
             )
             row = cur.fetchone()
             if row is None:

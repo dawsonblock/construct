@@ -1,4 +1,4 @@
-# Pinned versions — v0.5.0-rc5.dev0 baseline
+# Pinned versions — v0.5.0-rc6.dev0 baseline
 
 Everything the running system depends on is pinned here. Nothing in the stack
 resolves a floating tag at build or run time.

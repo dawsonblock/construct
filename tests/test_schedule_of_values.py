@@ -269,16 +269,27 @@ def test_progress_billing_subtracts_previously_approved_billing(repos, org_a):
 
 
 def test_progress_billing_change_order_increases_adjusted_contract_value(repos, org_a):
-    """AdjustedContractValue = BaseContract + ApprovedChangeOrders."""
+    """AdjustedContractValue = BaseContract + ApprovedChangeOrders (explicitly allocated).
+
+    rc6: The implicit single-SOV fallback is removed. Change orders must be
+    explicitly allocated to a SOV item via change_order_allocations for them
+    to affect the adjusted contract value. This test now creates an explicit
+    allocation.
+    """
     scope = org_a["scope"]
     project_id = UUID(org_a["project"].project_id)
     company_id = UUID(org_a["company"].company_id)
     contract = _make_contract(repos, scope, project_id, company_id, base=Decimal("10000"))
     sov = _make_sov_item(repos, scope, contract, base=Decimal("10000"))
-    # +2000 approved change order on the contract.
-    repos.change_orders.create(
+    # +2000 approved change order on the contract, explicitly allocated to the SOV item.
+    co = repos.change_orders.create(
         scope=scope, contract_id=UUID(contract.contract_id), reference="CO-1",
         amount=Decimal("2000"), currency="CAD", status="approved",
+    )
+    # rc6: explicit allocation to the SOV item.
+    repos.change_orders.allocate(
+        scope=scope, change_order_id=UUID(co.change_order_id),
+        sov_item_id=UUID(sov.sov_item_id), amount=Decimal("2000"), currency="CAD",
     )
     invoice = _make_invoice(repos, scope, total=Decimal("5400"))
     repos.invoice_allocations.create(

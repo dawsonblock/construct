@@ -129,12 +129,38 @@ def compute_decision_fingerprint(
     return hashlib.sha256(_canonical_json(payload).encode()).hexdigest()
 
 
+def _policy_from_snapshot(approval: Approval) -> ApprovalPolicy | None:
+    """rc6: Reconstruct an ApprovalPolicy from the snapshot stored on the approval.
+
+    Returns None if the approval has no persisted policy snapshot (legacy rows
+    made before rc6). The caller must fall back to DEFAULT_POLICY only when
+    this returns None AND the approval's policy_hash is also None — otherwise
+    a missing snapshot with a non-None hash is a data-integrity failure that
+    should fail closed.
+    """
+    snapshot = getattr(approval, "policy_snapshot", None)
+    if not snapshot:
+        return None
+    try:
+        from decimal import Decimal as _Decimal
+        threshold = snapshot.get("dual_approval_threshold")
+        return ApprovalPolicy(
+            version=snapshot.get("version") or POLICY_VERSION,
+            creator_cannot_approve=bool(snapshot.get("creator_cannot_approve", True)),
+            dual_approval_threshold=_Decimal(str(threshold)) if threshold is not None else None,
+            dual_approval_currency=snapshot.get("dual_approval_currency") or "CAD",
+            required_authentication_strength=snapshot.get("required_authentication_strength") or "dev",
+        )
+    except Exception:
+        return None
+
+
 def compute_decision_fingerprint_for_approval(
     repos: Repositories,
     *,
     scope: Scope,
     approval: Approval,
-    policy: ApprovalPolicy = DEFAULT_POLICY,
+    policy: ApprovalPolicy | None = None,
 ) -> str:
     """Recompute the decision fingerprint from current authoritative rows.
 
@@ -142,7 +168,16 @@ def compute_decision_fingerprint_for_approval(
     latest verification packet hash from persisted state and recompute. If the
     result differs from the approval's stored decision_fingerprint, the approval
     is stale.
+
+    rc6: If `policy` is not supplied, the function reconstructs the policy from
+    the snapshot stored on the approval at decision time. This is critical —
+    a decision made under a non-default policy would otherwise appear stale
+    immediately because the executor used DEFAULT_POLICY for recomputation.
+    Legacy approvals without a snapshot fall back to DEFAULT_POLICY.
     """
+    if policy is None:
+        policy = _policy_from_snapshot(approval) or DEFAULT_POLICY
+
     invoice = repos.invoices.get(scope=scope, invoice_id=UUID(approval.subject_id))
     if invoice is None:
         # The invoice the approval was for no longer exists — definitely stale.

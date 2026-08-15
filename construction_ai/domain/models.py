@@ -230,6 +230,12 @@ class Approval:
     state_fingerprint: Optional[str] = None  # v0.5.0-rc1 (item 48)
     quorum_threshold: int = 1  # v0.5.0-rc3 (Phase 7)
     decision_fingerprint: Optional[str] = None  # v0.5.0-rc3 (Phase 6)
+    # rc6: the exact policy hash + snapshot under which the decision was made.
+    # The executor recomputes the decision fingerprint using THIS policy, not
+    # today's DEFAULT_POLICY, so a decision made under a non-default policy
+    # does not appear stale immediately.
+    policy_hash: Optional[str] = None
+    policy_snapshot: Optional[dict[str, Any]] = None
 
 
 @dataclass

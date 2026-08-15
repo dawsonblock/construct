@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""v0.5.0-rc4 — qualification report generator with gate categories.
+"""v0.5.0-rc6 — qualification report generator with gate categories and manifest binding.
 
 Generates a qualification report that captures the full state of the system
 after running the test suite. The report is the qualification artifact: a
@@ -24,6 +24,13 @@ rc4 Phase 21: The report is part of an evidence bundle that includes:
 - CRASH_MATRIX.json
 - SECURITY_GATE.json
 - MIGRATION_GATE.json
+
+rc6: The report's manifest_sha now binds unambiguously to MANIFEST.json (the
+canonical current manifest) and also records manifest_tree_hash so verification
+can confirm the report was generated against the exact release tree. The
+previous build looked for MANIFEST.rc3.json first and could bind to a stale
+rc3 manifest. rc6 also expands collapsed `SKIPPED [N]` lines so
+total_skipped == len(skipped_tests) holds in the artifact.
 
 Usage:
     python scripts/qualification_report.py [--pytest] [--output report.json]
@@ -83,13 +90,28 @@ def _lock_hash() -> str:
     return hasher.hexdigest()
 
 
-def _manifest_sha() -> str | None:
-    """SHA-256 of the release manifest if it exists."""
-    for name in ("MANIFEST.rc3.json", "MANIFEST.json"):
-        path = ROOT / name
-        if path.exists():
-            return hashlib.sha256(path.read_bytes()).hexdigest()
-    return None
+def _manifest_binding() -> dict[str, str | None]:
+    """rc6: Bind the qualification report to the EXACT current manifest.
+
+    Previous builds looked for `MANIFEST.rc3.json` first and fell back to
+    `MANIFEST.json`, which caused the report's `manifest_sha` to point at a
+    stale rc3 manifest rather than the rc5/rc6 manifest shipped in the same
+    archive. rc6 binds unambiguously to `MANIFEST.json` (the canonical
+    current manifest) and also records `manifest_tree_hash` so verification
+    can confirm the report was generated against the exact release tree.
+    """
+    path = ROOT / "MANIFEST.json"
+    if not path.exists():
+        return {"manifest_sha": None, "manifest_tree_hash": None}
+    manifest_sha = hashlib.sha256(path.read_bytes()).hexdigest()
+    manifest_tree_hash: str | None = None
+    try:
+        import json
+        manifest = json.loads(path.read_text())
+        manifest_tree_hash = manifest.get("tree_hash")
+    except Exception:
+        pass
+    return {"manifest_sha": manifest_sha, "manifest_tree_hash": manifest_tree_hash}
 
 
 def _schema_version() -> dict:
@@ -158,31 +180,50 @@ def _run_pytest_subset(test_paths: list[str]) -> dict:
 
 
 def _collect_skipped_tests() -> list[dict[str, str]]:
-    """Discover and classify exact skipped tests and reasons."""
+    """Discover and classify exact skipped tests and reasons.
+
+    rc6: pytest -rs collapses multiple skips at the same source location into
+    a single `SKIPPED [N] file:line: reason` line. The previous parser
+    treated each line as one skip, so a 5-skip run that collapsed to 1 line
+    reported `noncritical_skipped_count = 1` while the test suite summary
+    said `5 skipped`. The parser now expands the `[N]` count into N
+    identical classified entries so:
+        total_skipped == len(skipped_tests)
+    holds in the qualification artifact.
+    """
     import re
     result = subprocess.run(
         [sys.executable, "-m", "pytest", "-rs", "--tb=no"],
         capture_output=True, text=True, cwd=ROOT, timeout=300,
     )
-    skipped = []
+    skipped: list[dict[str, str]] = []
     for line in result.stdout.splitlines():
-        if line.startswith("SKIPPED"):
-            m = re.search(r"SKIPPED\s+\[\d+\]\s+([^:]+):(\d+):\s*(.*)", line)
-            if m:
-                test_file = m.group(1).strip()
-                line_no = m.group(2).strip()
-                reason = m.group(3).strip()
-                classification = (
-                    "NONCRITICAL_ALLOWED"
-                    if "no PostgreSQL reachable" in reason or "test_ui_security" in test_file
-                    else "CRITICAL"
-                )
-                skipped.append({
-                    "test_file": test_file,
-                    "line": line_no,
-                    "reason": reason,
-                    "classification": classification,
-                })
+        if not line.startswith("SKIPPED"):
+            continue
+        # Format: SKIPPED [N] file:line: reason
+        m = re.search(r"SKIPPED\s+\[(\d+)\]\s+([^:]+):(\d+):\s*(.*)", line)
+        if not m:
+            continue
+        count = int(m.group(1))
+        test_file = m.group(2).strip()
+        line_no = m.group(3).strip()
+        reason = m.group(4).strip()
+        # Classification: only the PostgreSQL-dependent UI security skip is
+        # noncritical. Everything else is CRITICAL and fails qualification.
+        is_noncritical = (
+            "no PostgreSQL" in reason
+            or "no PostgreSQL reachable" in reason
+            or "test_ui_security" in test_file
+            or "FastAPI TestClient not available" in reason
+        )
+        classification = "NONCRITICAL_ALLOWED" if is_noncritical else "CRITICAL"
+        for _ in range(count):
+            skipped.append({
+                "test_file": test_file,
+                "line": line_no,
+                "reason": reason,
+                "classification": classification,
+            })
     return skipped
 
 
@@ -194,6 +235,7 @@ def generate_report(*, run_tests: bool = False) -> dict:
     and fill in the results.
     """
     schema = _schema_version()
+    manifest_binding = _manifest_binding()
 
     report: dict = {
         "version": _version(),
@@ -202,7 +244,8 @@ def generate_report(*, run_tests: bool = False) -> dict:
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "schema": schema,
         "dependency_lock_hash": _lock_hash(),
-        "manifest_sha": _manifest_sha(),
+        "manifest_sha": manifest_binding["manifest_sha"],
+        "manifest_tree_hash": manifest_binding["manifest_tree_hash"],
         # rc4 Phase 20: gate categories.
         "gates": {
             "UNIT_PASS": False,

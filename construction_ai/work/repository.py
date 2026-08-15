@@ -21,6 +21,7 @@ def _to_confirmation(row: dict[str, Any]) -> WorkConfirmation:
         percent_complete=float(row["percent_complete"]) if row.get("percent_complete") is not None else None,
         occurred_at=row["occurred_at"],
         sov_item_id=row.get("sov_item_id"),
+        supersedes_confirmation_id=row.get("supersedes_confirmation_id"),
     )
 
 
@@ -43,6 +44,7 @@ class WorkConfirmationRepository:
         evidence_ids: list[UUID] | None = None,
         sov_item_id: UUID | None = None,
         created_by: str = "system",
+        supersedes_confirmation_id: UUID | None = None,
     ) -> WorkConfirmation:
         from decimal import Decimal
 
@@ -50,10 +52,12 @@ class WorkConfirmationRepository:
             cur.execute(
                 """INSERT INTO work_confirmations(
                        organization_id, project_id, scope_id, invoice_id, confirmed_by_user_id,
-                       confirmation_type, percent_complete, quantity, occurred_at, evidence_ids, sov_item_id, created_by)
-                   VALUES(%s,%s,%s,%s,%s,%s,%s,%s,COALESCE(%s, now()),%s,%s,%s)
+                       confirmation_type, percent_complete, quantity, occurred_at, evidence_ids, sov_item_id, created_by,
+                       supersedes_confirmation_id)
+                   VALUES(%s,%s,%s,%s,%s,%s,%s,%s,COALESCE(%s, now()),%s,%s,%s,%s)
                    RETURNING confirmation_id, organization_id, project_id, scope_id, invoice_id,
-                             confirmed_by_user_id, confirmation_type, status, percent_complete, occurred_at, sov_item_id""",
+                             confirmed_by_user_id, confirmation_type, status, percent_complete, occurred_at, sov_item_id,
+                             supersedes_confirmation_id""",
                 (
                     scope.organization_id, project_id, scope_id, invoice_id, confirmed_by_user_id,
                     confirmation_type,
@@ -63,15 +67,33 @@ class WorkConfirmationRepository:
                     list(evidence_ids or []),
                     sov_item_id,
                     created_by,
+                    supersedes_confirmation_id,
                 ),
             )
-            return _to_confirmation(row_to_dict(cur))
+            confirmation = _to_confirmation(row_to_dict(cur))
+
+        # rc6: If this confirmation supersedes an earlier one, transition the
+        # earlier record to 'superseded' so active selection filters it out.
+        if supersedes_confirmation_id is not None:
+            self._mark_superseded(scope=scope, confirmation_id=supersedes_confirmation_id)
+        return confirmation
+
+    def _mark_superseded(self, *, scope: Scope, confirmation_id: UUID) -> None:
+        """rc6: Transition an earlier confirmation to 'superseded'."""
+        with self.db.scoped(scope) as cur:
+            cur.execute(
+                """UPDATE work_confirmations
+                   SET status = 'superseded', updated_at = now()
+                   WHERE organization_id = %s AND confirmation_id = %s AND status = 'confirmed'""",
+                (scope.organization_id, confirmation_id),
+            )
 
     def for_project(self, *, scope: Scope, project_id: UUID) -> list[WorkConfirmation]:
         with self.db.scoped(scope) as cur:
             cur.execute(
                 """SELECT confirmation_id, organization_id, project_id, scope_id, invoice_id,
-                          confirmed_by_user_id, confirmation_type, status, percent_complete, occurred_at, sov_item_id
+                          confirmed_by_user_id, confirmation_type, status, percent_complete, occurred_at, sov_item_id,
+                          supersedes_confirmation_id
                    FROM work_confirmations
                    WHERE organization_id = %s AND project_id = %s AND status = 'confirmed'
                    ORDER BY occurred_at DESC""",
@@ -85,7 +107,8 @@ class WorkConfirmationRepository:
         with self.db.scoped(scope) as cur:
             cur.execute(
                 """SELECT confirmation_id, organization_id, project_id, scope_id, invoice_id,
-                          confirmed_by_user_id, confirmation_type, status, percent_complete, occurred_at, sov_item_id
+                          confirmed_by_user_id, confirmation_type, status, percent_complete, occurred_at, sov_item_id,
+                          supersedes_confirmation_id
                    FROM work_confirmations
                    WHERE organization_id = %s AND invoice_id = %s AND status = 'confirmed'
                    ORDER BY occurred_at DESC""",
@@ -100,7 +123,8 @@ class WorkConfirmationRepository:
         with self.db.scoped(scope) as cur:
             cur.execute(
                 """SELECT confirmation_id, organization_id, project_id, scope_id, invoice_id,
-                          confirmed_by_user_id, confirmation_type, status, percent_complete, occurred_at, sov_item_id
+                          confirmed_by_user_id, confirmation_type, status, percent_complete, occurred_at, sov_item_id,
+                          supersedes_confirmation_id
                    FROM work_confirmations
                    WHERE organization_id = %s AND sov_item_id = %s AND status = 'confirmed'
                    ORDER BY occurred_at DESC""",
