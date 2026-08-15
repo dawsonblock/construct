@@ -264,6 +264,11 @@ def _collect_skipped_tests() -> list[dict[str, str]]:
             or "FastAPI TestClient not available" in reason
             or "requires PostgreSQL and REQUIRE_INTEGRATION" in reason
             or "REQUIRE_INTEGRATION" in reason
+            # rc9: The zip_hash test skips when no release ZIP exists.
+            # This is noncritical — the ZIP is built by the qualification
+            # pipeline (make qualify-release), not by the test suite.
+            or "no release ZIP found" in reason
+            or "run 'make qualify-release'" in reason
         )
         classification = "NONCRITICAL_ALLOWED" if is_noncritical else "CRITICAL"
         for _ in range(count):

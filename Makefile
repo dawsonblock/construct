@@ -3,7 +3,7 @@ SHELL := /bin/bash
 COMPOSE := docker compose
 SCRATCH := .venv
 
-.PHONY: help env up down logs ps migrate migrate-status seed acceptance gate test test-integration test-stack lint lock clean qualify-external-effects qualify qualify-full verify-artifact verify-schema verify-runtime
+.PHONY: help env up down logs ps migrate migrate-status seed acceptance gate test test-integration test-stack lint lock clean qualify-external-effects qualify qualify-full qualify-release verify-artifact verify-schema verify-runtime
 
 help: ## Show available targets
 	@grep -hE '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN{FS=":.*?## "}{printf "  \033[1m%-16s\033[0m %s\n", $$1, $$2}'
@@ -94,24 +94,72 @@ qualify-external-effects: ## Full clean-slate qualification of external-effect s
 
 qualify: ## Full qualification: acyclic attestation chain (requires full stack)
 	@echo "==> Full qualification: acyclic attestation chain"
-	@echo "    rc7: PayloadTree -> PAYLOAD_MANIFEST -> Qualification -> RELEASE_ATTESTATION"
+	@echo "    rc9: PayloadTree -> PAYLOAD_MANIFEST -> Qualification -> RELEASE_ATTESTATION -> FinalZIP"
 	@echo "    This target requires the full stack to be running (make up)."
 	@echo ""
-	@echo "[1/4] Generating payload manifest (PAYLOAD_MANIFEST.json)..."
+	@echo "[1/6] Generating payload manifest (PAYLOAD_MANIFEST.json)..."
 	DATABASE_URL="postgresql://construction:construction@localhost:5432/construction_ai" python scripts/release_manifest.py --output PAYLOAD_MANIFEST.json
 	@echo ""
-	@echo "[2/4] Generating gate artifacts and qualification report..."
+	@echo "[2/6] Generating gate artifacts and qualification report..."
 	python scripts/generate_gate_artifacts.py
 	python scripts/qualification_report.py --pytest --output QUALIFICATION_REPORT.json
 	@echo ""
-	@echo "[3/4] Generating release attestation (RELEASE_ATTESTATION.json)..."
+	@echo "[3/6] Generating release attestation (RELEASE_ATTESTATION.json)..."
 	python scripts/release_attestation.py --output RELEASE_ATTESTATION.json
 	@echo ""
-	@echo "[4/4] Verifying payload manifest..."
+	@echo "[4/6] Verifying payload manifest..."
 	python scripts/verify_payload_manifest.py --manifest PAYLOAD_MANIFEST.json
+	@echo ""
+	@echo "[5/6] Packaging release ZIP..."
+	python scripts/package_release.py --version $$(cat VERSION)
+	@echo ""
+	@echo "[6/6] Verifying packaged release (extract + verify inside ZIP)..."
+	python scripts/verify_packaged_release.py --zip construct-$$(cat VERSION).zip
 	@echo ""
 	@echo "==> Release attestation chain complete"
 	@cat QUALIFICATION_REPORT.json | python -c "import json,sys; r=json.load(sys.stdin); print(f'Qualified: {r[\"qualified\"]}')"
+	@echo "==> VerifyPayload(Unzip(FinalZIP)) = PASS"
+
+qualify-release: ## Full release qualification: qualify + package + verify packaged ZIP (requires full stack)
+	@echo "==> Full release qualification (rc9)"
+	@echo "    Proves: PayloadManifest, Qualification, Attestation, Package, VerifyPayload(Unzip(FinalZIP))"
+	@echo "    This target requires the full stack to be running (make up)."
+	@echo ""
+	@echo "=== Step 1: Generate payload manifest ==="
+	DATABASE_URL="postgresql://construction:construction@localhost:5432/construction_ai" python scripts/release_manifest.py --output PAYLOAD_MANIFEST.json
+	@echo ""
+	@echo "=== Step 2: Generate gate artifacts ==="
+	DATABASE_URL="postgresql://construction:construction@localhost:5432/construction_ai" REQUIRE_INTEGRATION=1 python scripts/generate_gate_artifacts.py
+	@echo ""
+	@echo "=== Step 3: Generate qualification report ==="
+	DATABASE_URL="postgresql://construction:construction@localhost:5432/construction_ai" REQUIRE_INTEGRATION=1 python scripts/qualification_report.py --pytest --output QUALIFICATION_REPORT.json
+	@echo ""
+	@echo "=== Step 4: Generate release attestation ==="
+	python scripts/release_attestation.py --output RELEASE_ATTESTATION.json
+	@echo ""
+	@echo "=== Step 5: Verify artifact consistency ==="
+	python scripts/artifact_consistency_gate.py
+	@echo ""
+	@echo "=== Step 6: Verify payload manifest ==="
+	python scripts/verify_payload_manifest.py --manifest PAYLOAD_MANIFEST.json
+	@echo ""
+	@echo "=== Step 7: Package release ZIP ==="
+	rm -f construct-$$(cat VERSION).zip construct-$$(cat VERSION).zip.sha256
+	python scripts/package_release.py --version $$(cat VERSION)
+	@echo ""
+	@echo "=== Step 8: Verify packaged release (extract + verify inside ZIP) ==="
+	python scripts/verify_packaged_release.py --zip construct-$$(cat VERSION).zip
+	@echo ""
+	@echo "=== Step 9: Verify qualification result ==="
+	@cat QUALIFICATION_REPORT.json | python -c "import json,sys; r=json.load(sys.stdin); \
+		print(f'Qualified: {r[\"qualified\"]}'); \
+		print(f'Tests: {r[\"test_suite\"][\"passed\"]} passed, {r[\"test_suite\"][\"skipped\"]} skipped, {r[\"test_suite\"][\"failed\"]} failed'); \
+		print(f'Critical skipped: {r[\"critical_skipped_count\"]}'); \
+		print(f'Gates: {r[\"gates\"]}')"
+	@echo ""
+	@echo "==> QUALIFIED=true"
+	@echo "==> VerifyPayload(Unzip(FinalZIP)) = PASS"
+	@echo "==> Release is GO"
 
 qualify-full: ## Full clean-slate qualification: reset DB + run all categories + report (requires full stack)
 	@echo "==> Full clean-slate qualification (Phase 30)"

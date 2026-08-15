@@ -2,12 +2,12 @@
   "adversarial": {
     "exit_code": 0,
     "passed": true,
-    "summary": "49 passed in 1.98s"
+    "summary": "49 passed in 3.12s"
   },
   "crash_recovery": {
     "exit_code": 0,
     "passed": true,
-    "summary": "62 passed in 9.55s"
+    "summary": "62 passed in 14.13s"
   },
   "critical_skipped_count": 0,
   "critical_skips_allowed": 0,
@@ -15,7 +15,7 @@
   "external_effect": {
     "exit_code": 0,
     "passed": true,
-    "summary": "100 passed in 4.91s"
+    "summary": "100 passed in 11.66s"
   },
   "gates": {
     "CRASH_RECOVERY_PASS": true,
@@ -25,32 +25,32 @@
     "SECURITY_PASS": true,
     "UNIT_PASS": true
   },
-  "generated_at": "2026-08-15T19:06:38.900433+00:00",
+  "generated_at": "2026-08-15T20:05:16.602107+00:00",
   "git_branch": "v0.4-hardening",
-  "git_commit": "1c79c73655d549391784c244b8c98a347cd19829",
+  "git_commit": "4167a210d1a2984dca0a1af56975204a2481324d",
   "identity_snapshot": {
     "dependency_lock_hash": "bcc8f6f02036e5e2447153bf0e4ce65f8dc123cd2fcf93eeabe6b1a224763b85",
-    "git_commit": "1c79c73655d549391784c244b8c98a347cd19829",
+    "git_commit": "4167a210d1a2984dca0a1af56975204a2481324d",
     "migration_fingerprint": "57c97591c127f8e0ee415096a7f95dea2e412f3e8449925feed4e2d7937a660c",
-    "payload_tree_hash": "095ffb502780409800e55fe4282f1881289e58d81689107cacb87f84a36652b8",
-    "qualification_run_id": "qual-20260815-1c79c73655d5",
-    "release_version": "0.5.0-rc7.dev0",
+    "payload_tree_hash": "ea33c0a89ffc16df72cf0ea4fe28e72337e80391d4fb9ad92cda04fee979459d",
+    "qualification_run_id": "qual-20260815-4167a210d1a2",
+    "release_version": "0.5.0-rc8.dev0",
     "schema_fingerprint": "72b9ed42a190d59a39ff2a3a915312183877ad4cd5c66f47cc62d78a028b5b96"
   },
   "manifest_filename": "PAYLOAD_MANIFEST.json",
-  "manifest_sha": "fa539492208d66e194c5a2f2898e9b1fc09a846b3110917fea5a4c03739f3953",
-  "manifest_tree_hash": "095ffb502780409800e55fe4282f1881289e58d81689107cacb87f84a36652b8",
+  "manifest_sha": "bb65dc97e78e34ca89b3c276e9aae7df8ee955e5ed343b05d363782b6cff5545",
+  "manifest_tree_hash": "ea33c0a89ffc16df72cf0ea4fe28e72337e80391d4fb9ad92cda04fee979459d",
   "migration_fingerprint": "57c97591c127f8e0ee415096a7f95dea2e412f3e8449925feed4e2d7937a660c",
-  "noncritical_skipped_count": 0,
-  "payload_tree_hash": "095ffb502780409800e55fe4282f1881289e58d81689107cacb87f84a36652b8",
-  "qualification_run_id": "qual-20260815-1c79c73655d5",
+  "noncritical_skipped_count": 1,
+  "payload_tree_hash": "ea33c0a89ffc16df72cf0ea4fe28e72337e80391d4fb9ad92cda04fee979459d",
+  "qualification_run_id": "qual-20260815-4167a210d1a2",
   "qualified": true,
   "release_integrity": {
     "exit_code": 0,
     "passed": true,
-    "summary": "20 passed in 0.76s"
+    "summary": "20 passed in 1.27s"
   },
-  "release_version": "0.5.0-rc7.dev0",
+  "release_version": "0.5.0-rc8.dev0",
   "schema": {
     "fingerprint": "72b9ed42a190d59a39ff2a3a915312183877ad4cd5c66f47cc62d78a028b5b96",
     "migration_count": 29,
@@ -60,23 +60,31 @@
   "security": {
     "exit_code": 0,
     "passed": true,
-    "summary": "26 passed in 0.56s"
+    "summary": "26 passed in 1.89s"
   },
-  "skipped_tests": [],
+  "skipped_tests": [
+    {
+      "classification": "NONCRITICAL_ALLOWED",
+      "line": "660",
+      "node_id": "tests/test_rc7_hardening.py::test_manifest_companion_filename_matches_exclusion",
+      "reason": "no release ZIP found \u2014 run 'make qualify-release' to build one. The existence requirement is enforced by the qualification pipeline.",
+      "test_file": "tests/test_rc7_hardening.py"
+    }
+  ],
   "test_suite": {
     "error": 0,
     "exit_code": 0,
     "failed": 0,
-    "passed": 631,
+    "passed": 632,
     "run": true,
-    "skipped": 0,
-    "summary": "631 passed in 30.53s",
-    "total": 631
+    "skipped": 1,
+    "summary": "632 passed, 1 skipped in 65.82s (0:01:05)",
+    "total": 633
   },
   "unit_suite": {
     "exit_code": 0,
     "passed": true,
-    "summary": "82 passed in 7.44s"
+    "summary": "82 passed in 9.47s"
   },
-  "version": "0.5.0-rc7.dev0"
+  "version": "0.5.0-rc8.dev0"
 }

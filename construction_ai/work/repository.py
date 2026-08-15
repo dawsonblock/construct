@@ -48,26 +48,63 @@ class WorkConfirmationRepository:
     ) -> WorkConfirmation:
         from decimal import Decimal
 
-        # rc8: Validate supersession BEFORE inserting the new confirmation.
-        # The rc7 code inserted first, then validated after the db.scoped()
-        # context exited (which commits). If validation failed, the invalid
-        # confirmation was already persisted — a partial-write bug.
-        # The correct invariant is:
-        #   SupersessionRequest = Atomic(ValidateSubject, InsertNew, SupersedeOld)
-        # If validation fails: NoNewConfirmationPersisted.
-        if supersedes_confirmation_id is not None:
-            self._validate_same_subject_before_supersede_raw(
-                scope=scope,
-                project_id=project_id,
-                sov_item_id=sov_item_id,
-                invoice_id=invoice_id,
-                superseded_id=supersedes_confirmation_id,
-            )
-
-        # rc8: Insert AND mark old as superseded in the SAME scoped() context
-        # so they are in the same transaction. If mark_superseded fails, the
-        # insert rolls back too. No partial writes.
+        # rc9: The entire supersession operation (validate + insert + mark old)
+        # now runs in ONE transaction with FOR UPDATE row locking on the
+        # superseded record. This eliminates the race where another process
+        # could revoke/retract the target between validation and mutation.
+        #
+        # The invariant is:
+        #   SupersessionRequest = Atomic(
+        #     LockOld(FOR UPDATE),
+        #     ValidateSubject,
+        #     ValidateOldStillConfirmed,
+        #     InsertNew,
+        #     SupersedeOld,
+        #   )
+        # If any step fails: NoNewConfirmationPersisted.
         with self.db.scoped(scope) as cur:
+            # rc9: Lock and validate the superseded record in the same transaction.
+            old_record = None
+            if supersedes_confirmation_id is not None:
+                cur.execute(
+                    """SELECT project_id, scope_id, invoice_id, sov_item_id, status
+                       FROM work_confirmations
+                       WHERE organization_id = %s AND confirmation_id = %s
+                       FOR UPDATE""",
+                    (scope.organization_id, supersedes_confirmation_id),
+                )
+                old_record = row_to_dict(cur)
+                if old_record is None:
+                    raise ValueError(
+                        f"cannot supersede confirmation {supersedes_confirmation_id}: not found"
+                    )
+                # Validate old is still confirmed (under lock).
+                if old_record.get("status") != "confirmed":
+                    raise ValueError(
+                        f"cannot supersede confirmation {supersedes_confirmation_id}: "
+                        f"status is '{old_record.get('status')}', not 'confirmed'"
+                    )
+                # Validate same subject.
+                if old_record.get("project_id") != project_id:
+                    raise ValueError(
+                        f"supersession subject mismatch: new confirmation project_id={project_id} "
+                        f"does not match superseded confirmation project_id={old_record.get('project_id')} — "
+                        "rc9: supersession can only target the same financial/work subject"
+                    )
+                if old_record.get("sov_item_id") != sov_item_id:
+                    raise ValueError(
+                        f"supersession subject mismatch: new confirmation sov_item_id={sov_item_id} "
+                        f"does not match superseded confirmation sov_item_id={old_record.get('sov_item_id')} — "
+                        "rc9: supersession can only target the same financial/work subject"
+                    )
+                if old_record.get("invoice_id") != invoice_id:
+                    raise ValueError(
+                        f"supersession subject mismatch: new confirmation invoice_id={invoice_id} "
+                        f"does not match superseded confirmation invoice_id={old_record.get('invoice_id')} — "
+                        "rc9: supersession can only target the same financial/work subject"
+                    )
+
+            # Insert the new confirmation.
             cur.execute(
                 """INSERT INTO work_confirmations(
                        organization_id, project_id, scope_id, invoice_id, confirmed_by_user_id,
@@ -91,8 +128,10 @@ class WorkConfirmationRepository:
             )
             confirmation = _to_confirmation(row_to_dict(cur))
 
-            # rc8: Mark old as superseded in the SAME transaction.
-            # If this fails, the insert rolls back too — no partial write.
+            # Mark old as superseded in the SAME transaction.
+            # rc9: Check rowcount — if 0 rows affected, the target was modified
+            # between our lock and this update (shouldn't happen with FOR UPDATE,
+            # but be defensive). Raise so the insert rolls back.
             if supersedes_confirmation_id is not None:
                 cur.execute(
                     """UPDATE work_confirmations
@@ -100,6 +139,12 @@ class WorkConfirmationRepository:
                        WHERE organization_id = %s AND confirmation_id = %s AND status = 'confirmed'""",
                     (scope.organization_id, supersedes_confirmation_id),
                 )
+                if cur.rowcount != 1:
+                    raise ValueError(
+                        f"supersession conflict: confirmation {supersedes_confirmation_id} "
+                        "was no longer 'confirmed' when marking it superseded — "
+                        "the successor insert will be rolled back"
+                    )
         return confirmation
 
     def _mark_superseded(self, *, scope: Scope, confirmation_id: UUID) -> None:

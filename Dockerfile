@@ -9,7 +9,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 WORKDIR /app
 
 # Release label. Kept in sync with VERSION / pyproject.toml / __version__.
-ARG APP_VERSION=0.5.0-rc7.dev0
+ARG APP_VERSION=0.5.0-rc8.dev0
 LABEL org.opencontainers.image.title="construction-ai-ops" \
       org.opencontainers.image.version="${APP_VERSION}" \
       org.opencontainers.image.description="Evidence-first construction operations AI control plane"

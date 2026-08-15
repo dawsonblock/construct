@@ -1,6 +1,6 @@
 {
   "attestation_chain": "PayloadTree -> PAYLOAD_MANIFEST.json -> Qualification -> RELEASE_ATTESTATION.json",
-  "code_fingerprint": "93002f933f030bdd14e07288c713bcab5b442f23156ae63bce587ffd223cd8ff",
+  "code_fingerprint": "2ee13d24942eed7ae5e6c165183c45f2004f5be5ce7f4aaa519f7d835ae5b512",
   "dependencies": {
     "hypothesis": "6.151.4",
     "psycopg": "3.3.4",
@@ -19,19 +19,19 @@
       "size": 2814
     },
     "Dockerfile": {
-      "sha256": "84a5d0e9866d8460504463678ba5d772a0a5147f93703a8bfb776f036eaee5d3",
+      "sha256": "2f808367b188b700fafb9459022f14e80584c40eb2f3c885afeb2becd40fc37e",
       "size": 1518
     },
     "Makefile": {
-      "sha256": "f5b3e19bf5f5c85994f1ac1c6e00ae0bdb2dbee32f0eb9cf1aa270b419789cfb",
-      "size": 6993
+      "sha256": "3fb779e178ecfc0fb269aa85b28cdfbe37c2d475c9213efe271d419e99e0a6f3",
+      "size": 9655
     },
     "README.md": {
       "sha256": "da2217ad0e6a0a8068427bc4fffe3d261b5eee26be389f0c05c8aa2726b3038d",
       "size": 13792
     },
     "VERSION": {
-      "sha256": "b3f810c7fea42429381af85f053793dbbdf2ecd0bac346b6ed1b547d4e81c099",
+      "sha256": "364f2f232f46cb0f9127f023b5b795eeb3a1c2120b6eda1b2919e96398809fea",
       "size": 15
     },
     "apps/api/main.py": {
@@ -47,7 +47,7 @@
       "size": 789
     },
     "apps/erpnext_stub/main.py": {
-      "sha256": "a7999d37eb9e2005cb522431e1146908c0452dc56b2717dd52b442ddaccf356e",
+      "sha256": "bb7669ebb2e555d342849e1cedcf3d1b990ee218b5572e51860753237f674ca0",
       "size": 5145
     },
     "apps/web/approval.css": {
@@ -71,7 +71,7 @@
       "size": 2842
     },
     "construction_ai/__init__.py": {
-      "sha256": "2170baf1f4dfd55ccfa6b13638e7a4da928b2a92ec6fb77c3898607358203a24",
+      "sha256": "2ffe715fedab6849a2553ec1ca9b22010c2c23bc5f8e5f9086117be487920135",
       "size": 31
     },
     "construction_ai/approvals/__init__.py": {
@@ -431,8 +431,8 @@
       "size": 883
     },
     "construction_ai/work/repository.py": {
-      "sha256": "b9fd5d002163df076e8ff2ed055fe3f043e4e347488ab83530b3d8b75d9d3ee4",
-      "size": 14502
+      "sha256": "1504b8a0381acf50892381cdaf1b1712c2b9461b6361ef011867fc840307dbe8",
+      "size": 17094
     },
     "docker-compose.yml": {
       "sha256": "76bf34105f27b4d642089347bad01f474823b0e775dac64512012631287542aa",
@@ -627,7 +627,7 @@
       "size": 793
     },
     "pyproject.toml": {
-      "sha256": "a61ae99e5379397cbcb55399318529d8cc7bd593a0f8449841975a666e15e62d",
+      "sha256": "34c66831594fc86319bb6c96c40635a95229f9e97bab4a8d8f90ccc5f7720eea",
       "size": 1609
     },
     "requirements-dev.lock.txt": {
@@ -687,8 +687,8 @@
       "size": 4302
     },
     "scripts/qualification_report.py": {
-      "sha256": "64d9efd69a6949759c4269ba604bc7a00c1a765fa1a359a19c338c0cd1fa3e66",
-      "size": 20538
+      "sha256": "07612859c0bd67cf8b55ec37d40014e44a1eb34968936e441fd1a7542c2a8cf9",
+      "size": 20857
     },
     "scripts/release_attestation.py": {
       "sha256": "07f3d9265cdf107c816566ea744d853bfc992d637b3f41dcb6454fffd602fd78",
@@ -863,8 +863,8 @@
       "size": 7421
     },
     "tests/test_rc7_hardening.py": {
-      "sha256": "8811d80def796caeb42317f766939a38b35f90f9ec119cf37ac6261d9ae91554",
-      "size": 37751
+      "sha256": "a08be7745a9448d276656258aa5c448047c1686840ff63065f2db909e3bae614",
+      "size": 50753
     },
     "tests/test_rc7_upgrade_qualification.py": {
       "sha256": "2a8ba63f95a1a4e2fd2181235d8ea8e91e33b43c6c56d96aba9cf8f68b7c6a25",
@@ -947,9 +947,9 @@
       "size": 10323
     }
   },
-  "generated_at": "2026-08-15T19:05:17.294848+00:00",
+  "generated_at": "2026-08-15T20:03:54.105042+00:00",
   "git_branch": "v0.4-hardening",
-  "git_commit": "1c79c73655d549391784c244b8c98a347cd19829",
+  "git_commit": "4167a210d1a2984dca0a1af56975204a2481324d",
   "migration_count": 29,
   "migration_fingerprint": "57c97591c127f8e0ee415096a7f95dea2e412f3e8449925feed4e2d7937a660c",
   "migrations": [
@@ -1091,7 +1091,7 @@
     "SECURITY_GATE.json",
     "TEST_RESULTS.json"
   ],
-  "test_fingerprint": "59454301de7305cc3498f5bb61cff44bb5d15fce0a414ee29acdcf14c6600023",
-  "tree_hash": "095ffb502780409800e55fe4282f1881289e58d81689107cacb87f84a36652b8",
-  "version": "0.5.0-rc7.dev0"
+  "test_fingerprint": "4de5feda75a2a82944e664427ec7b4489adf54edf722fa2a133e369aa18fd015",
+  "tree_hash": "ea33c0a89ffc16df72cf0ea4fe28e72337e80391d4fb9ad92cda04fee979459d",
+  "version": "0.5.0-rc8.dev0"
 }
