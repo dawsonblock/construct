@@ -2,12 +2,12 @@
   "adversarial": {
     "exit_code": 0,
     "passed": true,
-    "summary": "49 passed in 1.90s"
+    "summary": "49 passed in 2.43s"
   },
   "crash_recovery": {
     "exit_code": 0,
     "passed": true,
-    "summary": "50 passed in 8.62s"
+    "summary": "50 passed in 10.07s"
   },
   "critical_skipped_count": 0,
   "critical_skips_allowed": 0,
@@ -15,7 +15,7 @@
   "external_effect": {
     "exit_code": 0,
     "passed": true,
-    "summary": "88 passed in 3.72s"
+    "summary": "88 passed in 6.63s"
   },
   "gates": {
     "CRASH_RECOVERY_PASS": true,
@@ -25,17 +25,17 @@
     "SECURITY_PASS": true,
     "UNIT_PASS": true
   },
-  "generated_at": "2026-08-15T02:52:59.413960+00:00",
+  "generated_at": "2026-08-15T03:15:03.021718+00:00",
   "git_branch": "v0.4-hardening",
-  "git_commit": "4172c59ec789a014345b09a6e0c17676aa7aa946",
-  "manifest_sha": "7e62ce0df07f81c463c36f055c953eedf50ba9b51feb40debe6a2d822444758b",
-  "manifest_tree_hash": "a3e1964489e371cd7954705fdff55c7d3ecc1cbde126641995b262ee6899d7a4",
+  "git_commit": "a5671f63e9b15a62bcf6a88825bba2467eb37aa6",
+  "manifest_sha": "cf2de6b6e428f97ace8ed75e80a41a42a7c82fc7e594632faa1a59f2c4189d2b",
+  "manifest_tree_hash": "fd599162653f0aff85a47fc7b9c60361040093fc8e0c075da12ee92db1a13818",
   "noncritical_skipped_count": 5,
   "qualified": true,
   "release_integrity": {
     "exit_code": 0,
     "passed": true,
-    "summary": "20 passed in 0.62s"
+    "summary": "20 passed in 0.96s"
   },
   "schema": {
     "migration_count": 27,
@@ -44,7 +44,7 @@
   "security": {
     "exit_code": 0,
     "passed": true,
-    "summary": "26 passed in 0.49s"
+    "summary": "26 passed in 1.88s"
   },
   "skipped_tests": [
     {
@@ -85,13 +85,13 @@
     "passed": 542,
     "run": true,
     "skipped": 5,
-    "summary": "542 passed, 5 skipped in 27.22s",
+    "summary": "542 passed, 5 skipped in 39.45s",
     "total": 547
   },
   "unit_suite": {
     "exit_code": 0,
     "passed": true,
-    "summary": "82 passed in 7.03s"
+    "summary": "82 passed in 9.26s"
   },
   "version": "0.5.0-rc6.dev0"
 }

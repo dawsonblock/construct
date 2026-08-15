@@ -92,11 +92,13 @@ qualify-external-effects: ## Full clean-slate qualification of external-effect s
 		tests/test_replay_fingerprints.py
 	@echo "==> External-effect qualification passed."
 
-qualify: ## Full qualification: run all tests + generate qualification report (requires full stack)
-	@echo "==> Full qualification: running all tests and generating report"
+qualify: ## Full qualification: generate manifest + run all tests + generate qualification report (requires full stack)
+	@echo "==> Full qualification: generating manifest, running all tests, and generating report"
 	@echo "    This target requires the full stack to be running (make up)."
+	@echo "    rc6: manifest is generated FIRST so the qualification report binds to it."
+	DATABASE_URL="postgresql://construction:construction@localhost:5432/construction_ai" python scripts/release_manifest.py --output MANIFEST.json
 	python scripts/qualification_report.py --pytest --output QUALIFICATION_REPORT.json
-	@echo "==> Qualification report written to QUALIFICATION_REPORT.json"
+	@echo "==> Manifest and qualification report written"
 	@cat QUALIFICATION_REPORT.json | python -c "import json,sys; r=json.load(sys.stdin); print(f'Qualified: {r[\"qualified\"]}')"
 
 qualify-full: ## Full clean-slate qualification: reset DB + run all categories + report (requires full stack)

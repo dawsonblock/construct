@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""v0.5.0-rc3 — full-stack clean-slate qualification runner (Phase 30).
+"""v0.5.0-rc6 — full-stack clean-slate qualification runner (Phase 30).
 
 Orchestrates a complete clean-slate qualification run against a fresh
 PostgreSQL, Redis, object storage, migration state, and ERPNext stub.
@@ -58,6 +58,7 @@ TEST_CATEGORIES = {
         "tests/test_rc4_leases_and_recovery.py",
         "tests/test_rc4_reconciliation.py",
         "tests/test_rc5_hardening.py",
+        "tests/test_rc6_hardening.py",
     ],
     "release_integrity": [
         "tests/test_repository_integrity.py",
@@ -131,7 +132,7 @@ def _reset_database() -> bool:
 
 def main() -> int:
     print("=" * 70)
-    print("v0.5.0-rc3 Full-Stack Clean-Slate Qualification")
+    print("v0.5.0-rc6 Full-Stack Clean-Slate Qualification")
     print("=" * 70)
 
     # 1. Check stack.
@@ -174,8 +175,18 @@ def main() -> int:
         if not passed:
             all_passed = False
 
-    # 4. Generate qualification report.
-    print("\n[4/5] Generating qualification report...")
+    # 4. Generate manifest FIRST, then qualification report (rc6: report binds to manifest).
+    print("\n[4/5] Generating manifest and qualification report...")
+    manifest_code, manifest_output = _run(
+        [sys.executable, "scripts/release_manifest.py",
+         "--with-database", "--output", "MANIFEST.json"],
+        env={"DATABASE_URL": os.getenv("DATABASE_URL", "postgresql://construction:construction@localhost:5432/construction_ai")},
+    )
+    if manifest_code != 0:
+        print(f"  WARNING: manifest generation failed: {manifest_output}")
+    else:
+        print("  Manifest: MANIFEST.json")
+
     report_code, report_output = _run(
         [sys.executable, "scripts/qualification_report.py",
          "--output", "QUALIFICATION_REPORT.json"],
