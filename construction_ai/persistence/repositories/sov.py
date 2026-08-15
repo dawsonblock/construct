@@ -225,6 +225,58 @@ class ChangeOrderRepository:
             )
             return [_to_change_order(r) for r in rows_to_dicts(cur)]
 
+    def allocation_consistency(self, *, scope: Scope, change_order_id: UUID) -> dict[str, Any]:
+        """rc7 Phase 19: Check allocation consistency for a change order.
+
+        Returns a dict with:
+          - approved_amount: the approved CO amount
+          - allocated_amount: sum of allocations to SOV items
+          - unallocated_amount: approved_amount - allocated_amount
+          - fully_allocated: True if allocated_amount == approved_amount
+          - currency: the CO currency
+
+        For payment authorization, unallocated approved CO amount should
+        NOT increase billable SOV value. Only explicitly allocated amounts
+        affect the adjusted contract value.
+        """
+        with self.db.scoped(scope) as cur:
+            cur.execute(
+                """SELECT amount, currency FROM change_orders
+                   WHERE organization_id = %s AND change_order_id = %s AND status = 'approved'""",
+                (scope.organization_id, change_order_id),
+            )
+            co_row = row_to_dict(cur)
+            if not co_row:
+                return {
+                    "approved_amount": Decimal("0"),
+                    "allocated_amount": Decimal("0"),
+                    "unallocated_amount": Decimal("0"),
+                    "fully_allocated": True,
+                    "currency": "CAD",
+                    "error": "change order not found or not approved",
+                }
+
+            approved = Decimal(str(co_row["amount"]))
+            currency = co_row.get("currency", "CAD")
+
+            cur.execute(
+                """SELECT COALESCE(SUM(amount), 0) AS total
+                   FROM change_order_allocations
+                   WHERE organization_id = %s AND change_order_id = %s""",
+                (scope.organization_id, change_order_id),
+            )
+            alloc_row = row_to_dict(cur)
+            allocated = Decimal(str(alloc_row["total"])) if alloc_row else Decimal("0")
+
+            unallocated = approved - allocated
+            return {
+                "approved_amount": approved,
+                "allocated_amount": allocated,
+                "unallocated_amount": unallocated,
+                "fully_allocated": allocated == approved,
+                "currency": currency,
+            }
+
 
 class InvoiceAllocationRepository:
     def __init__(self, db: Database):

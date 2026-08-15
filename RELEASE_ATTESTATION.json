@@ -1,43 +1,43 @@
 {
   "attestation_chain": "PayloadTree -> PAYLOAD_MANIFEST.json -> Qualification -> RELEASE_ATTESTATION.json",
-  "attestation_root_hash": "559c79d57ed48a557cd8728502fdc1cfc8d555792802b94d26e6f2288d3b06cc",
+  "attestation_root_hash": "ad1f827f027ead5f983e013c30237414724bfd35b287d5fbaf80980bd6686ebd",
   "evidence": {
     "CRASH_MATRIX.json": {
-      "sha256": "62f4ae16176b7274f3005e2f52b51624093fce523f7cb828ddf1ff511602ae28",
+      "sha256": "ccd702d535c53d6e3dcde53c61afb04b9575b45dbc8eee641815e89fde1715cf",
       "size": 615
     },
     "MIGRATION_GATE.json": {
-      "sha256": "267806dc7621894928421d9f1d98f56f0ea3a1d8d594a9997b85c2b23a3727f7",
+      "sha256": "3bf5dcbc290122f98f4f81e9b935832cd1c9b08610fd38fa044e17767138a2ee",
       "size": 5732
     },
     "PAYLOAD_MANIFEST.json": {
-      "sha256": "0ab4333cdf8f9e58e9a753b784851bbab4ddda62355f6f238d19afd4b337f2b3",
-      "size": 41887
+      "sha256": "693dae3d79eb40ac5c87ab51d95e7f8d530824ae80d8484334d932599eaadae2",
+      "size": 42191
     },
     "PAYLOAD_MANIFEST.sha256": {
-      "sha256": "16489bed4d69e7d5e0edfafeafd4877413bdc5e0f0eba39c0b8b65d202e8c957",
+      "sha256": "388663989d38b23a7d9754aa80a1b29f666f654272a60de62e3596545f9acd6e",
       "size": 88
     },
     "QUALIFICATION_REPORT.json": {
-      "sha256": "ff2334aaed317d8b9df5e37d413bbe9dcb3401a9b56ffb32c9cd4b7fd234644e",
-      "size": 3758
+      "sha256": "9f22fc854110b03c1ff764c95675a3161ca1f30002f5bd565224406f087f33bd",
+      "size": 9575
     },
     "SECURITY_GATE.json": {
-      "sha256": "87e6c292900cf09fe2f24b97039b32f37bacada0fcde586c965f32e8bf85039c",
+      "sha256": "b37ad31cae3c5d0ca8c1918ce2e26e6cc2c5842002ba9f2e32921d7434fc27ca",
       "size": 1098
     },
     "TEST_RESULTS.json": {
-      "sha256": "bbfb591f2178dc56572ff7566edc863acec6c0ad14e3bd1cc8d794ff4179975e",
-      "size": 594
+      "sha256": "d6162ca5123ee373b17771e06cf391e17d08652aa195f05c18b6ef167b9a9c21",
+      "size": 605
     }
   },
-  "generated_at": "2026-08-15T06:32:03.964815+00:00",
+  "generated_at": "2026-08-15T07:03:33.553850+00:00",
   "git_branch": "v0.4-hardening",
-  "git_commit": "26f8135d38e15537a892ca70782c632bcbdc3cac",
-  "manifest_tree_hash": "44ce0a3c8dca1676585b4119384803d8588461a73ecd69465a94cc61c7d58893",
-  "payload_tree_hash": "44ce0a3c8dca1676585b4119384803d8588461a73ecd69465a94cc61c7d58893",
-  "qualification_manifest_sha": "0ab4333cdf8f9e58e9a753b784851bbab4ddda62355f6f238d19afd4b337f2b3",
-  "qualification_run_id": "qual-20260815-26f8135d38e1",
+  "git_commit": "64d1f77f520d062b6cb4185055a3bdff875e17dc",
+  "manifest_tree_hash": "d8ed4cefc60fd928aac43d4052be1a7e4493d23bf6bb2be82bbee460e83e7b6f",
+  "payload_tree_hash": "d8ed4cefc60fd928aac43d4052be1a7e4493d23bf6bb2be82bbee460e83e7b6f",
+  "qualification_manifest_sha": "693dae3d79eb40ac5c87ab51d95e7f8d530824ae80d8484334d932599eaadae2",
+  "qualification_run_id": "qual-20260815-64d1f77f520d",
   "release_version": "0.5.0-rc7.dev0",
   "version": "0.5.0-rc7.dev0"
 }

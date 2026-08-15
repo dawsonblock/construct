@@ -130,27 +130,100 @@ def _reset_database() -> bool:
         return False
 
 
+def _freeze_payload() -> dict | None:
+    """rc7 Phase 28: Freeze the payload before qualification.
+
+    Captures the git commit, version, and payload tree hash BEFORE tests run.
+    After qualification, these values can be re-checked to detect if the
+    working tree mutated during qualification. If it did, the qualification
+    is INVALID and must rerun.
+    """
+
+    # Capture git commit.
+    try:
+        result = subprocess.run(
+            ["git", "rev-parse", "HEAD"], capture_output=True, text=True, check=True, cwd=ROOT,
+        )
+        git_commit = result.stdout.strip()
+    except Exception:
+        git_commit = "unknown"
+
+    # Capture version.
+    version_file = ROOT / "VERSION"
+    version = version_file.read_text().strip() if version_file.exists() else "unknown"
+
+    # Capture git dirty state.
+    try:
+        result = subprocess.run(
+            ["git", "status", "--porcelain"], capture_output=True, text=True, cwd=ROOT,
+        )
+        dirty = bool(result.stdout.strip())
+    except Exception:
+        dirty = False
+
+    freeze = {
+        "git_commit": git_commit,
+        "version": version,
+        "dirty": dirty,
+        "frozen_at": subprocess.run(
+            ["date", "-u", "+%Y-%m-%dT%H:%M:%SZ"], capture_output=True, text=True,
+        ).stdout.strip(),
+    }
+    print(f"  Payload frozen: commit={git_commit[:12]}... version={version} dirty={dirty}")
+    return freeze
+
+
+def _verify_payload_frozen(freeze: dict) -> bool:
+    """rc7 Phase 28: Verify the payload has not changed since freeze."""
+    try:
+        result = subprocess.run(
+            ["git", "rev-parse", "HEAD"], capture_output=True, text=True, check=True, cwd=ROOT,
+        )
+        current_commit = result.stdout.strip()
+    except Exception:
+        current_commit = "unknown"
+
+    if current_commit != freeze.get("git_commit"):
+        print(f"  FAIL: git commit changed during qualification: {freeze.get('git_commit', '?')[:12]}... -> {current_commit[:12]}...")
+        return False
+
+    version_file = ROOT / "VERSION"
+    current_version = version_file.read_text().strip() if version_file.exists() else "unknown"
+    if current_version != freeze.get("version"):
+        print(f"  FAIL: version changed during qualification: {freeze.get('version')} -> {current_version}")
+        return False
+
+    print(f"  Payload verified: commit={current_commit[:12]}... version={current_version}")
+    return True
+
+
 def main() -> int:
     print("=" * 70)
     print("v0.5.0-rc7 Full-Stack Clean-Slate Qualification")
     print("=" * 70)
 
     # 1. Check stack.
-    print("\n[1/5] Checking stack...")
+    print("\n[1/6] Checking stack...")
     if not _check_stack():
         print("FAIL: PostgreSQL is not reachable. Run 'make up' first.")
         return 1
     print("  PostgreSQL: OK")
 
-    # 2. Reset database.
-    print("\n[2/5] Resetting database (clean slate)...")
+    # 2. Freeze payload (rc7 Phase 28).
+    print("\n[2/6] Freezing payload before qualification...")
+    freeze = _freeze_payload()
+    if freeze and freeze.get("dirty"):
+        print("  WARNING: working tree is dirty — qualification may not be reproducible")
+
+    # 3. Reset database.
+    print("\n[3/6] Resetting database (clean slate)...")
     if not _reset_database():
         print("FAIL: database reset failed")
         return 1
     print("  Database reset: OK")
 
-    # 3. Run every test category with REQUIRE_INTEGRATION=1.
-    print("\n[3/5] Running test categories (REQUIRE_INTEGRATION=1)...")
+    # 4. Run every test category with REQUIRE_INTEGRATION=1.
+    print("\n[4/6] Running test categories (REQUIRE_INTEGRATION=1)...")
     all_passed = True
     category_results: dict[str, dict] = {}
 
@@ -177,7 +250,7 @@ def main() -> int:
 
     # 4. Generate the acyclic attestation chain:
     #    PayloadTree -> MANIFEST -> GateArtifacts -> QualificationReport -> RELEASE_ATTESTATION
-    print("\n[4/5] Generating release attestation chain...")
+    print("\n[5/6] Generating release attestation chain...")
     db_url = os.getenv("DATABASE_URL", "postgresql://construction:construction@localhost:5432/construction_ai")
 
     # 4a. Payload manifest (hashes ONLY the payload tree, not qualification artifacts).
@@ -224,7 +297,13 @@ def main() -> int:
         print("  WARNING: report was not generated")
 
     # 5. Summary.
-    print("\n[5/5] Summary")
+    print("\n[6/6] Summary")
+
+    # rc7 Phase 28: Verify payload has not changed during qualification.
+    print("\n  Verifying payload freeze...")
+    if freeze and not _verify_payload_frozen(freeze):
+        print("  FAIL: payload changed during qualification — INVALID")
+        all_passed = False
     print("-" * 40)
     for category, result in category_results.items():
         status = "PASS" if result["passed"] else "FAIL"

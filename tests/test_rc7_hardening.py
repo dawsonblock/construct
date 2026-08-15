@@ -525,6 +525,111 @@ def test_co_allocation_currency_mismatch_rejected(repos, org_a):
         )
 
 
+# -- Phase 19: CO allocation sum consistency tests ----------------------------
+
+
+def test_co_allocation_consistency_fully_allocated(repos, org_a):
+    """rc7 Phase 19: A fully-allocated CO reports fully_allocated=True."""
+    from uuid import UUID
+    from decimal import Decimal
+    project_id = UUID(str(org_a["project"].project_id))
+    company_id = UUID(str(org_a["company"].company_id))
+
+    contract = repos.contracts.create(
+        scope=org_a["scope"], project_id=project_id, company_id=company_id,
+        reference="CON-RC7-ALLOC", name="RC7 Alloc Contract",
+        base_contract_value=10000, currency="CAD",
+    )
+    sov_item = repos.sov_items.create(
+        scope=org_a["scope"], contract_id=UUID(contract.contract_id),
+        reference="SOV-ALLOC", name="Item Alloc", base_value=10000, currency="CAD", sort_order=1,
+    )
+    co = repos.change_orders.create(
+        scope=org_a["scope"], contract_id=UUID(contract.contract_id),
+        reference="CO-ALLOC-1", name="Alloc Change Order",
+        amount=Decimal("5000"), currency="CAD", status="approved",
+    )
+    repos.change_orders.allocate(
+        scope=org_a["scope"],
+        change_order_id=UUID(co.change_order_id),
+        sov_item_id=UUID(sov_item.sov_item_id),
+        amount=Decimal("5000"), currency="CAD",
+    )
+
+    consistency = repos.change_orders.allocation_consistency(
+        scope=org_a["scope"], change_order_id=UUID(co.change_order_id),
+    )
+    assert consistency["fully_allocated"] is True
+    assert consistency["approved_amount"] == Decimal("5000")
+    assert consistency["allocated_amount"] == Decimal("5000")
+    assert consistency["unallocated_amount"] == Decimal("0")
+
+
+def test_co_allocation_consistency_partially_allocated(repos, org_a):
+    """rc7 Phase 19: A partially-allocated CO reports unallocated amount."""
+    from uuid import UUID
+    from decimal import Decimal
+    project_id = UUID(str(org_a["project"].project_id))
+    company_id = UUID(str(org_a["company"].company_id))
+
+    contract = repos.contracts.create(
+        scope=org_a["scope"], project_id=project_id, company_id=company_id,
+        reference="CON-RC7-PART", name="RC7 Partial Contract",
+        base_contract_value=10000, currency="CAD",
+    )
+    sov_item = repos.sov_items.create(
+        scope=org_a["scope"], contract_id=UUID(contract.contract_id),
+        reference="SOV-PART", name="Item Partial", base_value=10000, currency="CAD", sort_order=1,
+    )
+    co = repos.change_orders.create(
+        scope=org_a["scope"], contract_id=UUID(contract.contract_id),
+        reference="CO-PART-1", name="Partial Change Order",
+        amount=Decimal("5000"), currency="CAD", status="approved",
+    )
+    # Only allocate 3000 of 5000.
+    repos.change_orders.allocate(
+        scope=org_a["scope"],
+        change_order_id=UUID(co.change_order_id),
+        sov_item_id=UUID(sov_item.sov_item_id),
+        amount=Decimal("3000"), currency="CAD",
+    )
+
+    consistency = repos.change_orders.allocation_consistency(
+        scope=org_a["scope"], change_order_id=UUID(co.change_order_id),
+    )
+    assert consistency["fully_allocated"] is False
+    assert consistency["approved_amount"] == Decimal("5000")
+    assert consistency["allocated_amount"] == Decimal("3000")
+    assert consistency["unallocated_amount"] == Decimal("2000")
+
+
+def test_co_allocation_consistency_no_allocations(repos, org_a):
+    """rc7 Phase 19: A CO with no allocations reports fully_allocated=False."""
+    from uuid import UUID
+    from decimal import Decimal
+    project_id = UUID(str(org_a["project"].project_id))
+    company_id = UUID(str(org_a["company"].company_id))
+
+    contract = repos.contracts.create(
+        scope=org_a["scope"], project_id=project_id, company_id=company_id,
+        reference="CON-RC7-NONE", name="RC7 No Alloc Contract",
+        base_contract_value=10000, currency="CAD",
+    )
+    co = repos.change_orders.create(
+        scope=org_a["scope"], contract_id=UUID(contract.contract_id),
+        reference="CO-NONE-1", name="No Alloc Change Order",
+        amount=Decimal("5000"), currency="CAD", status="approved",
+    )
+
+    consistency = repos.change_orders.allocation_consistency(
+        scope=org_a["scope"], change_order_id=UUID(co.change_order_id),
+    )
+    assert consistency["fully_allocated"] is False
+    assert consistency["approved_amount"] == Decimal("5000")
+    assert consistency["allocated_amount"] == Decimal("0")
+    assert consistency["unallocated_amount"] == Decimal("5000")
+
+
 # -- Phase 29/30: ZIP testing + packaged payload verification -----------------
 
 

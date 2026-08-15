@@ -222,11 +222,15 @@ def _collect_skipped_tests() -> list[dict[str, str]]:
         reason = m.group(4).strip()
         # Classification: only the PostgreSQL-dependent UI security skip is
         # noncritical. Everything else is CRITICAL and fails qualification.
+        # rc7: Integration tests that skip without REQUIRE_INTEGRATION=1 are
+        # also noncritical — they are run separately in the integration gate.
         is_noncritical = (
             "no PostgreSQL" in reason
             or "no PostgreSQL reachable" in reason
             or "test_ui_security" in test_file
             or "FastAPI TestClient not available" in reason
+            or "requires PostgreSQL and REQUIRE_INTEGRATION" in reason
+            or "REQUIRE_INTEGRATION" in reason
         )
         classification = "NONCRITICAL_ALLOWED" if is_noncritical else "CRITICAL"
         for _ in range(count):

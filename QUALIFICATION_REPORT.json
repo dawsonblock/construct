@@ -2,12 +2,12 @@
   "adversarial": {
     "exit_code": 0,
     "passed": true,
-    "summary": "49 passed in 2.02s"
+    "summary": "49 passed in 2.63s"
   },
   "crash_recovery": {
     "exit_code": 0,
     "passed": true,
-    "summary": "62 passed in 9.32s"
+    "summary": "62 passed in 10.33s"
   },
   "critical_skipped_count": 0,
   "critical_skips_allowed": 0,
@@ -15,7 +15,7 @@
   "external_effect": {
     "exit_code": 0,
     "passed": true,
-    "summary": "100 passed in 5.70s"
+    "summary": "100 passed in 5.08s"
   },
   "gates": {
     "CRASH_RECOVERY_PASS": true,
@@ -25,28 +25,28 @@
     "SECURITY_PASS": true,
     "UNIT_PASS": true
   },
-  "generated_at": "2026-08-15T06:30:23.676429+00:00",
+  "generated_at": "2026-08-15T07:01:52.858226+00:00",
   "git_branch": "v0.4-hardening",
-  "git_commit": "26f8135d38e15537a892ca70782c632bcbdc3cac",
+  "git_commit": "64d1f77f520d062b6cb4185055a3bdff875e17dc",
   "identity_snapshot": {
     "dependency_lock_hash": "655f8e2135e560a60defc0264a9a88c8b7ceda3585142e733f087e89149e8ea0",
-    "git_commit": "26f8135d38e15537a892ca70782c632bcbdc3cac",
-    "payload_tree_hash": "44ce0a3c8dca1676585b4119384803d8588461a73ecd69465a94cc61c7d58893",
-    "qualification_run_id": "qual-20260815-26f8135d38e1",
+    "git_commit": "64d1f77f520d062b6cb4185055a3bdff875e17dc",
+    "payload_tree_hash": "d8ed4cefc60fd928aac43d4052be1a7e4493d23bf6bb2be82bbee460e83e7b6f",
+    "qualification_run_id": "qual-20260815-64d1f77f520d",
     "release_version": "0.5.0-rc7.dev0",
     "schema_fingerprint": null
   },
   "manifest_filename": "PAYLOAD_MANIFEST.json",
-  "manifest_sha": "0ab4333cdf8f9e58e9a753b784851bbab4ddda62355f6f238d19afd4b337f2b3",
-  "manifest_tree_hash": "44ce0a3c8dca1676585b4119384803d8588461a73ecd69465a94cc61c7d58893",
-  "noncritical_skipped_count": 5,
-  "payload_tree_hash": "44ce0a3c8dca1676585b4119384803d8588461a73ecd69465a94cc61c7d58893",
-  "qualification_run_id": "qual-20260815-26f8135d38e1",
+  "manifest_sha": "693dae3d79eb40ac5c87ab51d95e7f8d530824ae80d8484334d932599eaadae2",
+  "manifest_tree_hash": "d8ed4cefc60fd928aac43d4052be1a7e4493d23bf6bb2be82bbee460e83e7b6f",
+  "noncritical_skipped_count": 26,
+  "payload_tree_hash": "d8ed4cefc60fd928aac43d4052be1a7e4493d23bf6bb2be82bbee460e83e7b6f",
+  "qualification_run_id": "qual-20260815-64d1f77f520d",
   "qualified": true,
   "release_integrity": {
     "exit_code": 0,
     "passed": true,
-    "summary": "20 passed in 0.73s"
+    "summary": "20 passed in 0.77s"
   },
   "release_version": "0.5.0-rc7.dev0",
   "schema": {
@@ -56,9 +56,156 @@
   "security": {
     "exit_code": 0,
     "passed": true,
-    "summary": "26 passed in 0.81s"
+    "summary": "26 passed in 0.55s"
   },
   "skipped_tests": [
+    {
+      "classification": "NONCRITICAL_ALLOWED",
+      "line": "55",
+      "node_id": "tests/test_rc7_clean_slate.py::TestCleanSlateInfrastructure::test_postgresql_reachable",
+      "reason": "requires PostgreSQL and REQUIRE_INTEGRATION=1",
+      "test_file": "tests/test_rc7_clean_slate.py"
+    },
+    {
+      "classification": "NONCRITICAL_ALLOWED",
+      "line": "62",
+      "node_id": "tests/test_rc7_clean_slate.py::<unresolved-1>",
+      "reason": "requires PostgreSQL and REQUIRE_INTEGRATION=1",
+      "test_file": "tests/test_rc7_clean_slate.py"
+    },
+    {
+      "classification": "NONCRITICAL_ALLOWED",
+      "line": "71",
+      "node_id": "tests/test_rc7_clean_slate.py::<unresolved-2>",
+      "reason": "requires PostgreSQL and REQUIRE_INTEGRATION=1",
+      "test_file": "tests/test_rc7_clean_slate.py"
+    },
+    {
+      "classification": "NONCRITICAL_ALLOWED",
+      "line": "79",
+      "node_id": "tests/test_rc7_clean_slate.py::<unresolved-3>",
+      "reason": "requires PostgreSQL and REQUIRE_INTEGRATION=1",
+      "test_file": "tests/test_rc7_clean_slate.py"
+    },
+    {
+      "classification": "NONCRITICAL_ALLOWED",
+      "line": "92",
+      "node_id": "tests/test_rc7_clean_slate.py::<unresolved-4>",
+      "reason": "requires PostgreSQL and REQUIRE_INTEGRATION=1",
+      "test_file": "tests/test_rc7_clean_slate.py"
+    },
+    {
+      "classification": "NONCRITICAL_ALLOWED",
+      "line": "106",
+      "node_id": "tests/test_rc7_clean_slate.py::<unresolved-5>",
+      "reason": "requires PostgreSQL and REQUIRE_INTEGRATION=1",
+      "test_file": "tests/test_rc7_clean_slate.py"
+    },
+    {
+      "classification": "NONCRITICAL_ALLOWED",
+      "line": "136",
+      "node_id": "tests/test_rc7_clean_slate.py::<unresolved-6>",
+      "reason": "requires PostgreSQL and REQUIRE_INTEGRATION=1",
+      "test_file": "tests/test_rc7_clean_slate.py"
+    },
+    {
+      "classification": "NONCRITICAL_ALLOWED",
+      "line": "149",
+      "node_id": "tests/test_rc7_clean_slate.py::<unresolved-7>",
+      "reason": "requires PostgreSQL and REQUIRE_INTEGRATION=1",
+      "test_file": "tests/test_rc7_clean_slate.py"
+    },
+    {
+      "classification": "NONCRITICAL_ALLOWED",
+      "line": "161",
+      "node_id": "tests/test_rc7_clean_slate.py::<unresolved-8>",
+      "reason": "requires PostgreSQL and REQUIRE_INTEGRATION=1",
+      "test_file": "tests/test_rc7_clean_slate.py"
+    },
+    {
+      "classification": "NONCRITICAL_ALLOWED",
+      "line": "177",
+      "node_id": "tests/test_rc7_clean_slate.py::<unresolved-9>",
+      "reason": "requires PostgreSQL and REQUIRE_INTEGRATION=1",
+      "test_file": "tests/test_rc7_clean_slate.py"
+    },
+    {
+      "classification": "NONCRITICAL_ALLOWED",
+      "line": "50",
+      "node_id": "tests/test_rc7_upgrade_qualification.py::TestUpgradeQualification::test_migration_028_applied",
+      "reason": "requires PostgreSQL and REQUIRE_INTEGRATION=1",
+      "test_file": "tests/test_rc7_upgrade_qualification.py"
+    },
+    {
+      "classification": "NONCRITICAL_ALLOWED",
+      "line": "60",
+      "node_id": "tests/test_rc7_upgrade_qualification.py::<unresolved-1>",
+      "reason": "requires PostgreSQL and REQUIRE_INTEGRATION=1",
+      "test_file": "tests/test_rc7_upgrade_qualification.py"
+    },
+    {
+      "classification": "NONCRITICAL_ALLOWED",
+      "line": "67",
+      "node_id": "tests/test_rc7_upgrade_qualification.py::<unresolved-2>",
+      "reason": "requires PostgreSQL and REQUIRE_INTEGRATION=1",
+      "test_file": "tests/test_rc7_upgrade_qualification.py"
+    },
+    {
+      "classification": "NONCRITICAL_ALLOWED",
+      "line": "78",
+      "node_id": "tests/test_rc7_upgrade_qualification.py::<unresolved-3>",
+      "reason": "requires PostgreSQL and REQUIRE_INTEGRATION=1",
+      "test_file": "tests/test_rc7_upgrade_qualification.py"
+    },
+    {
+      "classification": "NONCRITICAL_ALLOWED",
+      "line": "91",
+      "node_id": "tests/test_rc7_upgrade_qualification.py::<unresolved-4>",
+      "reason": "requires PostgreSQL and REQUIRE_INTEGRATION=1",
+      "test_file": "tests/test_rc7_upgrade_qualification.py"
+    },
+    {
+      "classification": "NONCRITICAL_ALLOWED",
+      "line": "103",
+      "node_id": "tests/test_rc7_upgrade_qualification.py::<unresolved-5>",
+      "reason": "requires PostgreSQL and REQUIRE_INTEGRATION=1",
+      "test_file": "tests/test_rc7_upgrade_qualification.py"
+    },
+    {
+      "classification": "NONCRITICAL_ALLOWED",
+      "line": "124",
+      "node_id": "tests/test_rc7_upgrade_qualification.py::<unresolved-6>",
+      "reason": "requires PostgreSQL and REQUIRE_INTEGRATION=1",
+      "test_file": "tests/test_rc7_upgrade_qualification.py"
+    },
+    {
+      "classification": "NONCRITICAL_ALLOWED",
+      "line": "132",
+      "node_id": "tests/test_rc7_upgrade_qualification.py::<unresolved-7>",
+      "reason": "requires PostgreSQL and REQUIRE_INTEGRATION=1",
+      "test_file": "tests/test_rc7_upgrade_qualification.py"
+    },
+    {
+      "classification": "NONCRITICAL_ALLOWED",
+      "line": "145",
+      "node_id": "tests/test_rc7_upgrade_qualification.py::<unresolved-8>",
+      "reason": "requires PostgreSQL and REQUIRE_INTEGRATION=1",
+      "test_file": "tests/test_rc7_upgrade_qualification.py"
+    },
+    {
+      "classification": "NONCRITICAL_ALLOWED",
+      "line": "159",
+      "node_id": "tests/test_rc7_upgrade_qualification.py::<unresolved-9>",
+      "reason": "requires PostgreSQL and REQUIRE_INTEGRATION=1",
+      "test_file": "tests/test_rc7_upgrade_qualification.py"
+    },
+    {
+      "classification": "NONCRITICAL_ALLOWED",
+      "line": "167",
+      "node_id": "tests/test_rc7_upgrade_qualification.py::<unresolved-10>",
+      "reason": "requires PostgreSQL and REQUIRE_INTEGRATION=1",
+      "test_file": "tests/test_rc7_upgrade_qualification.py"
+    },
     {
       "classification": "NONCRITICAL_ALLOWED",
       "line": "53",
@@ -99,16 +246,16 @@
     "error": 0,
     "exit_code": 0,
     "failed": 0,
-    "passed": 595,
+    "passed": 598,
     "run": true,
-    "skipped": 5,
-    "summary": "595 passed, 5 skipped in 30.93s",
-    "total": 600
+    "skipped": 26,
+    "summary": "598 passed, 26 skipped in 27.50s",
+    "total": 624
   },
   "unit_suite": {
     "exit_code": 0,
     "passed": true,
-    "summary": "82 passed in 7.80s"
+    "summary": "82 passed in 6.96s"
   },
   "version": "0.5.0-rc7.dev0"
 }
