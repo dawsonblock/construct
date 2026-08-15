@@ -2,12 +2,12 @@
   "adversarial": {
     "exit_code": 0,
     "passed": true,
-    "summary": "49 passed in 3.00s"
+    "summary": "49 passed in 1.98s"
   },
   "crash_recovery": {
     "exit_code": 0,
     "passed": true,
-    "summary": "62 passed in 12.55s"
+    "summary": "62 passed in 9.64s"
   },
   "critical_skipped_count": 0,
   "critical_skips_allowed": 0,
@@ -15,7 +15,7 @@
   "external_effect": {
     "exit_code": 0,
     "passed": true,
-    "summary": "100 passed in 5.26s"
+    "summary": "100 passed in 5.61s"
   },
   "gates": {
     "CRASH_RECOVERY_PASS": true,
@@ -25,30 +25,30 @@
     "SECURITY_PASS": true,
     "UNIT_PASS": true
   },
-  "generated_at": "2026-08-15T20:48:38.728991+00:00",
+  "generated_at": "2026-08-15T20:54:52.536964+00:00",
   "git_branch": "v0.4-hardening",
-  "git_commit": "475403b473e83f779ab8b3fef1184932eb0e631f",
+  "git_commit": "ba2536bd048a7e00337b6f3d753fa6bd5475ad8f",
   "identity_snapshot": {
     "dependency_lock_hash": "bcc8f6f02036e5e2447153bf0e4ce65f8dc123cd2fcf93eeabe6b1a224763b85",
-    "git_commit": "475403b473e83f779ab8b3fef1184932eb0e631f",
+    "git_commit": "ba2536bd048a7e00337b6f3d753fa6bd5475ad8f",
     "migration_fingerprint": "57c97591c127f8e0ee415096a7f95dea2e412f3e8449925feed4e2d7937a660c",
-    "payload_tree_hash": "441f01eecd51bbe72c49c7328038688b8c8b51af1995faa34c73dde4a32457c8",
-    "qualification_run_id": "qual-20260815-475403b473e8",
+    "payload_tree_hash": "cda8ee0bd6a03cbf3a0fe0c2069ac7b85068d5d65c8e75e32ba3701fc888bac8",
+    "qualification_run_id": "qual-20260815-ba2536bd048a",
     "release_version": "0.5.0-rc9.dev0",
     "schema_fingerprint": "72b9ed42a190d59a39ff2a3a915312183877ad4cd5c66f47cc62d78a028b5b96"
   },
   "manifest_filename": "PAYLOAD_MANIFEST.json",
-  "manifest_sha": "fccd34fd8e7b4fb5965ae0c66577472ce68cf0d18618f76b1b4da21ace80a8b1",
-  "manifest_tree_hash": "441f01eecd51bbe72c49c7328038688b8c8b51af1995faa34c73dde4a32457c8",
+  "manifest_sha": "a8af40606bcaefca528b3fea0c9a40a933ec2e3abf81099f14f96955f8a8bebb",
+  "manifest_tree_hash": "cda8ee0bd6a03cbf3a0fe0c2069ac7b85068d5d65c8e75e32ba3701fc888bac8",
   "migration_fingerprint": "57c97591c127f8e0ee415096a7f95dea2e412f3e8449925feed4e2d7937a660c",
-  "noncritical_skipped_count": 0,
-  "payload_tree_hash": "441f01eecd51bbe72c49c7328038688b8c8b51af1995faa34c73dde4a32457c8",
-  "qualification_run_id": "qual-20260815-475403b473e8",
+  "noncritical_skipped_count": 3,
+  "payload_tree_hash": "cda8ee0bd6a03cbf3a0fe0c2069ac7b85068d5d65c8e75e32ba3701fc888bac8",
+  "qualification_run_id": "qual-20260815-ba2536bd048a",
   "qualified": true,
   "release_integrity": {
     "exit_code": 0,
     "passed": true,
-    "summary": "24 passed in 1.03s"
+    "summary": "24 passed in 0.79s"
   },
   "release_version": "0.5.0-rc9.dev0",
   "schema": {
@@ -60,23 +60,45 @@
   "security": {
     "exit_code": 0,
     "passed": true,
-    "summary": "26 passed in 0.58s"
+    "summary": "26 passed in 0.73s"
   },
-  "skipped_tests": [],
+  "skipped_tests": [
+    {
+      "classification": "NONCRITICAL_ALLOWED",
+      "line": "28",
+      "node_id": "tests/test_rc9_packaged_smoke.py::test_packaged_smoke_import_and_config",
+      "reason": "no packaged release ZIP found \u2014 run 'make qualify-release'",
+      "test_file": "tests/test_rc9_packaged_smoke.py"
+    },
+    {
+      "classification": "NONCRITICAL_ALLOWED",
+      "line": "58",
+      "node_id": "tests/test_rc9_packaged_smoke.py::<unresolved-1>",
+      "reason": "no packaged release ZIP found \u2014 run 'make qualify-release'",
+      "test_file": "tests/test_rc9_packaged_smoke.py"
+    },
+    {
+      "classification": "NONCRITICAL_ALLOWED",
+      "line": "103",
+      "node_id": "tests/test_rc9_packaged_smoke.py::<unresolved-2>",
+      "reason": "no packaged release ZIP found \u2014 run 'make qualify-release'",
+      "test_file": "tests/test_rc9_packaged_smoke.py"
+    }
+  ],
   "test_suite": {
     "error": 0,
     "exit_code": 0,
     "failed": 0,
-    "passed": 644,
+    "passed": 648,
     "run": true,
-    "skipped": 0,
-    "summary": "644 passed in 33.36s",
-    "total": 644
+    "skipped": 3,
+    "summary": "648 passed, 3 skipped in 37.93s",
+    "total": 651
   },
   "unit_suite": {
     "exit_code": 0,
     "passed": true,
-    "summary": "82 passed in 9.53s"
+    "summary": "82 passed in 7.99s"
   },
   "version": "0.5.0-rc9.dev0"
 }

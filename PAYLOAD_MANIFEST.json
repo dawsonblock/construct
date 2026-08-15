@@ -882,6 +882,14 @@
       "sha256": "2a8ba63f95a1a4e2fd2181235d8ea8e91e33b43c6c56d96aba9cf8f68b7c6a25",
       "size": 7865
     },
+    "tests/test_rc9_packaged_smoke.py": {
+      "sha256": "2009b94df3a6b43bf3d8e5d50d876f2b7e02744bf9cd476fba4e6f2a81f9738b",
+      "size": 4732
+    },
+    "tests/test_rc9_release_immutability.py": {
+      "sha256": "be6960ef920127c03a586caa711802b00e7de84e315e7bd018b1fe9500dc676d",
+      "size": 4124
+    },
     "tests/test_reconcile_unknown.py": {
       "sha256": "ca42e6e0fb3c590bb478e5985164fbb29aa2011ec860b11aba5f66244180e1a5",
       "size": 9710
@@ -959,9 +967,9 @@
       "size": 10323
     }
   },
-  "generated_at": "2026-08-15T20:47:50.960056+00:00",
+  "generated_at": "2026-08-15T20:53:42.025185+00:00",
   "git_branch": "v0.4-hardening",
-  "git_commit": "475403b473e83f779ab8b3fef1184932eb0e631f",
+  "git_commit": "ba2536bd048a7e00337b6f3d753fa6bd5475ad8f",
   "migration_count": 29,
   "migration_fingerprint": "57c97591c127f8e0ee415096a7f95dea2e412f3e8449925feed4e2d7937a660c",
   "migrations": [
@@ -1105,7 +1113,7 @@
     "SECURITY_GATE.json",
     "TEST_RESULTS.json"
   ],
-  "test_fingerprint": "0c3225f14e73bc2809bad83804c89db6d9c002a357a7eff0f4ee5d87bf8a476b",
-  "tree_hash": "441f01eecd51bbe72c49c7328038688b8c8b51af1995faa34c73dde4a32457c8",
+  "test_fingerprint": "9911591db2e816511d5d50d69b2b91333d3550dced7793df3a0d38213b7a971d",
+  "tree_hash": "cda8ee0bd6a03cbf3a0fe0c2069ac7b85068d5d65c8e75e32ba3701fc888bac8",
   "version": "0.5.0-rc9.dev0"
 }
