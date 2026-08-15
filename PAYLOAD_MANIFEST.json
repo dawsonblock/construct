@@ -55,8 +55,8 @@
       "size": 15
     },
     "apps/api/main.py": {
-      "sha256": "849a35feb98d4c05dbacdffda5201de5f23901d05935f7824815e29e67655251",
-      "size": 27893
+      "sha256": "1d438727a92a41a6e784dd5301a03f353809f8d45b6975d447bb8eb31f5346a9",
+      "size": 27437
     },
     "apps/erpnext_stub/__init__.py": {
       "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
@@ -715,8 +715,8 @@
       "size": 3367
     },
     "scripts/qualification_report.py": {
-      "sha256": "c7c7be48c4a2cb81a171806dc10147e4144b0f07a7505709d72e12d3673858c3",
-      "size": 17662
+      "sha256": "903e631e1b5cc54d2c726d1b4d3ea1defe0ecfe0806cec4f0e0faa5eac6e9b4e",
+      "size": 17937
     },
     "scripts/release_attestation.py": {
       "sha256": "f9265cec3db8d7b51dcd6b068a1903a77ea566a43064f8563f93f8a8ae61ba5c",
@@ -882,9 +882,17 @@
       "sha256": "6b7308147aca209a89834a905fe9a61cef9dc92a8b8ab55693fd86362f350c71",
       "size": 15290
     },
+    "tests/test_rc7_clean_slate.py": {
+      "sha256": "2c63ddeec635fe9120479cae93f9164a79b6c0f8926319923a2ebaef58e56613",
+      "size": 7421
+    },
     "tests/test_rc7_hardening.py": {
       "sha256": "4c4f0d9042d157b64bc695f7edb59d0c93340f369c8a98e5e3e443fdcdf195e9",
       "size": 27604
+    },
+    "tests/test_rc7_upgrade_qualification.py": {
+      "sha256": "8bfeb1d425e44218d4fc6413eb74dbd9d0a338407caefbcca6c5047a95c98087",
+      "size": 7865
     },
     "tests/test_reconcile_unknown.py": {
       "sha256": "ca42e6e0fb3c590bb478e5985164fbb29aa2011ec860b11aba5f66244180e1a5",
@@ -967,9 +975,9 @@
       "size": 461
     }
   },
-  "generated_at": "2026-08-15T06:59:29.037487+00:00",
+  "generated_at": "2026-08-15T07:13:10.822273+00:00",
   "git_branch": "v0.4-hardening",
-  "git_commit": "64d1f77f520d062b6cb4185055a3bdff875e17dc",
+  "git_commit": "b45c0ca3c6ffc351cbf966ecc915dd5b1f77c1d7",
   "migration_count": 28,
   "migration_fingerprint": "5ec8e1531a8025ce6eab83f0154fa1d18fd5172fe1b3367aadfe751c1c764b97",
   "migrations": [
@@ -1104,6 +1112,6 @@
     "TEST_RESULTS.json"
   ],
   "test_fingerprint": "de719bda5fd9011bcc16325569fc6eaf563afcef108f62ea0a4c0d8d3c428b9a",
-  "tree_hash": "d8ed4cefc60fd928aac43d4052be1a7e4493d23bf6bb2be82bbee460e83e7b6f",
+  "tree_hash": "88e32c1005a1724afb694edceb605f7cb330935c262e3244df0377776bade12f",
   "version": "0.5.0-rc7.dev0"
 }
