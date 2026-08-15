@@ -1,6 +1,6 @@
 {
   "attestation_chain": "PayloadTree -> PAYLOAD_MANIFEST.json -> Qualification -> RELEASE_ATTESTATION.json",
-  "code_fingerprint": "ce8dda097baa30d0c0ee6cb1078b7134150f654d9a31951bb45fdea1ad0aa1ce",
+  "code_fingerprint": "090ae53ed3eca6ef9f303da29ff43a5c5c769a9990a5600c8123df61225fa2f6",
   "dependencies": {
     "hypothesis": "6.151.4",
     "psycopg": "3.3.4",
@@ -41,6 +41,10 @@
     "Makefile": {
       "sha256": "f5b3e19bf5f5c85994f1ac1c6e00ae0bdb2dbee32f0eb9cf1aa270b419789cfb",
       "size": 6993
+    },
+    "RC6_AUDIT_BASELINE.json": {
+      "sha256": "b3c040dd967c81ab30f4b92e32123bf15c5b649e3d7de6651c3c5d6ac0dc233f",
+      "size": 1700
     },
     "README.md": {
       "sha256": "da2217ad0e6a0a8068427bc4fffe3d261b5eee26be389f0c05c8aa2726b3038d",
@@ -95,8 +99,8 @@
       "size": 0
     },
     "construction_ai/approvals/decision_fingerprint.py": {
-      "sha256": "2b27bca152507b33d86dc3310ac48be7dc0e876cf48861abad1a9a02b4cbe686",
-      "size": 10460
+      "sha256": "26cbd783fa66471d044220a79c73a8e8839b675cfdee84e9590c05260402bf92",
+      "size": 10830
     },
     "construction_ai/approvals/policy.py": {
       "sha256": "cccbe1cec34757dcdd4d88e437fe084eec5cb94bf68f8877bbd5291eafe55e78",
@@ -642,6 +646,10 @@
       "sha256": "4550aacc710fdacd7c31654c85ec688303da0c1a80a521c3ed28a86c7a65b4aa",
       "size": 595
     },
+    "migrations/028_rc7_payload_hash_and_reconciliation_provenance.sql": {
+      "sha256": "d258a312743c764422a4404fa7ce8c65c6ed3ba6df83093af8127f4a8f2d030c",
+      "size": 1840
+    },
     "pyproject.toml": {
       "sha256": "a61ae99e5379397cbcb55399318529d8cc7bd593a0f8449841975a666e15e62d",
       "size": 1609
@@ -657,6 +665,10 @@
     "scripts/acceptance.py": {
       "sha256": "4caa72fde1cc7a3490798f312c7e863422ee6de509bb4498c7b3b132e9c0d05c",
       "size": 18902
+    },
+    "scripts/artifact_consistency_gate.py": {
+      "sha256": "7e4a404cd6f726b1c53a9252a3c34b9abe20f88054302ffed31b172457766d24",
+      "size": 3607
     },
     "scripts/bootstrap_app_role.py": {
       "sha256": "ee1e324b4a926ef687f5b345c844a1d040ce962d0e88e32b940dbb9962b4b0e6",
@@ -686,6 +698,10 @@
       "sha256": "4f9b6e2eb0655cb22f594c90e42f6f28639cb981ca3dd01f6d275879d1569ebc",
       "size": 1589
     },
+    "scripts/package_release.py": {
+      "sha256": "b37a9655b8dcf3509479230a6bfcc4529c282ab6528b4a7651b12d3a38f635ce",
+      "size": 3367
+    },
     "scripts/qualification_report.py": {
       "sha256": "04fedbc551d65e8661d3e244c5fe07a03fa5e57adf4aa1d64dbb1dccc8564e5a",
       "size": 17008
@@ -713,6 +729,10 @@
     "scripts/upgrade_gate.py": {
       "sha256": "e459a21eded46996ec78d4471ff3c02868db208b09a26685b06848b96d5f0a8b",
       "size": 6968
+    },
+    "scripts/verify_payload_manifest.py": {
+      "sha256": "669e6100ee8280a90b3572ab597d46e25020542f22e4241c05bf084a4ad9e431",
+      "size": 6710
     },
     "tests/conftest.py": {
       "sha256": "50f26312d62b2bcbf8521c94a6a363ff1df2aecb3bd2b28c7951e82aeb4f68e7",
@@ -931,9 +951,9 @@
       "size": 461
     }
   },
-  "generated_at": "2026-08-15T05:52:28.669430+00:00",
+  "generated_at": "2026-08-15T05:57:33.347633+00:00",
   "git_branch": "v0.4-hardening",
-  "git_commit": "eee1d641305824a76d38f6e4b3505716bf42360f",
+  "git_commit": "48dff191282f8c06bcfeb343dac8af8b376a02e2",
   "migration_count": 28,
   "migration_fingerprint": "5ec8e1531a8025ce6eab83f0154fa1d18fd5172fe1b3367aadfe751c1c764b97",
   "migrations": [
@@ -1068,6 +1088,6 @@
     "TEST_RESULTS.json"
   ],
   "test_fingerprint": "b8bdd865165f1acf9f6e340a2c575bfbb3e9899828a10b884410edbb31d5b7cf",
-  "tree_hash": "b3934f28b095395b13e6f34c834339cc958a6647f9c3fcb6299a7f2ee01dabc0",
+  "tree_hash": "883891034cbd36e53f5f3af4ad69d02e42183d10d6831c9be09aa47d082c1faa",
   "version": "0.5.0-rc7.dev0"
 }

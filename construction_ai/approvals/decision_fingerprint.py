@@ -81,7 +81,12 @@ def evidence_set(evidence: list[Evidence]) -> list[dict[str, Any]]:
 
 
 def approval_requirements(approval: Approval) -> dict[str, Any]:
-    """The approval's requirements as decided."""
+    """The approval's requirements as decided.
+
+    rc7 Phase 12: Strengthened to include organization_id and invoice_id
+    (via subject_id) so the fingerprint binds to the exact financial subject
+    and tenant. This prevents cross-tenant or cross-invoice approval replay.
+    """
     return {
         "approval_id": str(approval.approval_id),
         "approval_type": approval.type,
@@ -89,6 +94,7 @@ def approval_requirements(approval: Approval) -> dict[str, Any]:
         "currency": approval.currency,
         "quorum_threshold": approval.quorum_threshold,
         "subject_id": str(approval.subject_id),
+        "organization_id": str(approval.organization_id) if hasattr(approval, "organization_id") and approval.organization_id else None,
     }
 
 
